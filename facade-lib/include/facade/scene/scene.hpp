@@ -44,6 +44,7 @@ class Scene {
 	bool load_gltf(std::string_view path);
 
 	Id<Camera> add(Camera camera);
+	Id<Sampler> add(Sampler sampler);
 	Id<Material> add(std::unique_ptr<Material> material);
 	Id<StaticMesh> add(StaticMesh mesh);
 	Id<Image> add(Image image);
@@ -62,7 +63,7 @@ class Scene {
 	bool select_camera(Id<Camera> id);
 	Node& camera();
 
-	vk::Sampler sampler() const { return *m_sampler; }
+	vk::Sampler sampler() const { return m_sampler.sampler(); }
 	Texture make_texture(Image::View image) const;
 
 	void write_view(Pipeline& out_pipeline) const;
@@ -101,6 +102,7 @@ class Scene {
 
 	struct Storage {
 		std::vector<Camera> cameras{};
+		std::vector<Sampler> samplers{};
 		std::vector<std::unique_ptr<Material>> materials{};
 		std::vector<StaticMesh> static_meshes{};
 		std::vector<Image> images{};
@@ -124,7 +126,7 @@ class Scene {
 	void check(Node const& node) const noexcept(false);
 
 	Gfx m_gfx;
-	vk::UniqueSampler m_sampler;
+	Sampler m_sampler;
 	Buffer m_view_proj;
 	Buffer m_dir_lights;
 	Texture m_white;

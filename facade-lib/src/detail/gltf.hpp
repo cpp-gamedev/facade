@@ -16,6 +16,21 @@ namespace facade {
 struct DataProvider;
 
 namespace gltf {
+enum class Filter {
+	eNearest = 9728,
+	eLinear = 9729,
+	eNearestMipmapNearest = 9984,
+	eLinearMipmapNearest = 9985,
+	eNearestMipmapLinear = 9986,
+	eLinearMipmapLinear = 9987,
+};
+
+enum class Wrap {
+	eClampEdge = 33071,
+	eMirrorRepeat = 33648,
+	eRepeat = 10497,
+};
+
 struct TextureInfo {
 	std::size_t texture{};
 	std::size_t tex_coord{};
@@ -87,6 +102,20 @@ struct Camera {
 	Type type{};
 };
 
+struct Sampler {
+	std::string name{};
+	std::optional<Filter> min_filter{};
+	std::optional<Filter> mag_filter{};
+	Wrap wrap_s{Wrap::eRepeat};
+	Wrap wrap_t{Wrap::eRepeat};
+};
+
+struct Texture {
+	std::string name{};
+	std::optional<std::size_t> sampler{};
+	std::size_t source{};
+};
+
 struct Node {
 	enum class Type { eNone, eMesh, eCamera };
 
@@ -102,8 +131,10 @@ struct Scene {
 
 struct Asset {
 	std::vector<Camera> cameras{};
+	std::vector<Sampler> samplers{};
 	std::vector<Geometry> geometries{};
 	std::vector<Image> images{};
+	std::vector<Texture> textures{};
 	std::vector<Material> materials{};
 	std::vector<Mesh> meshes{};
 	std::vector<Node> nodes{};

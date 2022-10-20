@@ -265,7 +265,9 @@ struct Data {
 		std::vector<BufferView> buffer_views{};
 		std::vector<Accessor> accessors{};
 		std::vector<Camera> cameras{};
+		std::vector<Sampler> samplers{};
 		std::vector<Image> images{};
+		std::vector<Texture> textures{};
 		std::vector<Material> materials{};
 		std::vector<MeshData> meshes{};
 
@@ -355,6 +357,15 @@ struct Data {
 			}
 		}
 
+		void sampler(dj::Json const& json) {
+			auto& s = storage.samplers.emplace_back();
+			s.name = json["name"].as<std::string>();
+			if (auto const& min = json["minFilter"]) { s.min_filter = static_cast<Filter>(min.as<int>()); }
+			if (auto const& mag = json["magFilter"]) { s.mag_filter = static_cast<Filter>(mag.as<int>()); }
+			s.wrap_s = static_cast<Wrap>(json["wrapS"].as<int>(static_cast<int>(s.wrap_s)));
+			s.wrap_t = static_cast<Wrap>(json["wrapT"].as<int>(static_cast<int>(s.wrap_t)));
+		}
+
 		MeshData::Primitive primitive(dj::Json const& json) const {
 			auto ret = MeshData::Primitive{};
 			assert(json.contains("attributes"));
@@ -379,6 +390,14 @@ struct Data {
 			} else {
 				i = Image{provider.load(uri).span(), std::move(name)};
 			}
+		}
+
+		void texture(dj::Json const& json) {
+			auto& t = storage.textures.emplace_back();
+			t.name = json["name"].as<std::string>();
+			if (auto const& sampler = json["sampler"]) { t.sampler = sampler.as<std::size_t>(); }
+			assert(json.contains("source"));
+			t.source = json["source"].as<std::size_t>();
 		}
 
 		template <typename T, std::size_t Dim>
@@ -454,7 +473,9 @@ struct Data {
 			for (auto const& s : scene["accessors"].array_view()) { accessor(s); }
 
 			for (auto const& c : scene["cameras"].array_view()) { camera(c); }
+			for (auto const& s : scene["samplers"].array_view()) { sampler(s); }
 			for (auto const& i : scene["images"].array_view()) { image(i); }
+			for (auto const& t : scene["textures"].array_view()) { texture(t); }
 			for (auto const& m : scene["materials"].array_view()) { material(m); }
 
 			for (auto const& m : scene["meshes"].array_view()) { mesh(m); }
@@ -544,6 +565,8 @@ Asset Asset::parse(dj::Json const& json, DataProvider const& provider) {
 	ret.cameras = std::move(storage.cameras);
 	ret.images = std::move(storage.images);
 	ret.materials = std::move(storage.materials);
+	ret.samplers = std::move(storage.samplers);
+	ret.textures = std::move(storage.textures);
 
 	auto const data = storage.data();
 	for (auto const& mesh_data : data.meshes) {

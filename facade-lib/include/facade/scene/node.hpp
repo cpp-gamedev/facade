@@ -12,6 +12,10 @@ concept Attachable = std::is_move_constructible_v<Type>;
 
 class Node {
   public:
+	Node() = default;
+	Node(Node&&) = default;
+	Node& operator=(Node&&) = default;
+
 	template <Attachable Type>
 	Type& attach(Type t) {
 		auto ret = std::make_unique<Model<Type>>(std::move(t));

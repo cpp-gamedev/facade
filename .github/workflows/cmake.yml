@@ -29,6 +29,5 @@ jobs:
       - name: build-Release
         shell: bash
         run: |
-          cp CMakePresets.json .
           cmake -DBUILD_DIR=build -DBUILD_CONFIG=Release -P cmake/build.cmake
           cd build/Release && ctest

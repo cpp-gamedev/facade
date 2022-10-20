@@ -6,6 +6,24 @@
 #include <span>
 
 namespace facade {
+class Sampler {
+  public:
+	struct CreateInfo {
+		Gfx gfx{};
+		vk::SamplerAddressMode mode_s{vk::SamplerAddressMode::eRepeat};
+		vk::SamplerAddressMode mode_t{vk::SamplerAddressMode::eRepeat};
+		vk::Filter min{vk::Filter::eLinear};
+		vk::Filter mag{vk::Filter::eLinear};
+	};
+
+	explicit Sampler(CreateInfo const& info);
+
+	vk::Sampler sampler() const { return *m_sampler.get(); }
+
+  private:
+	Defer<vk::UniqueSampler> m_sampler{};
+};
+
 class Texture {
   public:
 	struct CreateInfo {

@@ -88,6 +88,21 @@ bool can_mip(vk::PhysicalDevice const gpu, vk::Format const format) {
 }
 } // namespace
 
+Sampler::Sampler(CreateInfo const& info) {
+	auto sci = vk::SamplerCreateInfo{};
+	sci.minFilter = info.min;
+	sci.magFilter = info.mag;
+	sci.anisotropyEnable = info.gfx.shared->device_limits.maxSamplerAnisotropy > 0.0f;
+	sci.maxAnisotropy = info.gfx.shared->device_limits.maxSamplerAnisotropy;
+	sci.borderColor = vk::BorderColor::eIntOpaqueBlack;
+	sci.mipmapMode = vk::SamplerMipmapMode::eNearest;
+	sci.addressModeU = info.mode_s;
+	sci.addressModeV = info.mode_t;
+	sci.addressModeW = info.mode_s;
+	sci.maxLod = VK_LOD_CLAMP_NONE;
+	m_sampler = {info.gfx.device.createSamplerUnique(sci), info.gfx.shared->defer_queue};
+}
+
 std::uint32_t Texture::mip_levels(vk::Extent2D extent) { return static_cast<std::uint32_t>(std::floor(std::log2(std::max(extent.width, extent.height)))) + 1U; }
 
 vk::UniqueSampler Texture::make_sampler(Gfx const& gfx, vk::SamplerAddressMode const mode, vk::Filter const filter) {

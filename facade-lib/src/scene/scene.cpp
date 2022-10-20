@@ -30,6 +30,32 @@ Camera to_camera(gltf::Camera cam) {
 	return ret;
 }
 
+constexpr vk::SamplerAddressMode to_address_mode(gltf::Wrap const wrap) {
+	switch (wrap) {
+	case gltf::Wrap::eClampEdge: return vk::SamplerAddressMode::eClampToEdge;
+	case gltf::Wrap::eMirrorRepeat: return vk::SamplerAddressMode::eMirroredRepeat;
+	default:
+	case gltf::Wrap::eRepeat: return vk::SamplerAddressMode::eRepeat;
+	}
+}
+
+constexpr vk::Filter to_filter(gltf::Filter const filter) {
+	switch (filter) {
+	default:
+	case gltf::Filter::eLinear: return vk::Filter::eLinear;
+	case gltf::Filter::eNearest: return vk::Filter::eNearest;
+	}
+}
+
+Sampler to_sampler(Gfx const& gfx, gltf::Sampler const& sampler) {
+	auto info = Sampler::CreateInfo{gfx};
+	info.mode_s = to_address_mode(sampler.wrap_s);
+	info.mode_t = to_address_mode(sampler.wrap_t);
+	if (sampler.min_filter) { info.min = to_filter(*sampler.min_filter); }
+	if (sampler.mag_filter) { info.mag = to_filter(*sampler.mag_filter); }
+	return Sampler{info};
+}
+
 std::unique_ptr<Material> to_material(gltf::Material const& material) {
 	auto ret = std::make_unique<TestMaterial>();
 	ret->albedo = material.pbr.base_colour_factor;
@@ -136,6 +162,7 @@ bool Scene::load_gltf(dj::Json const& root, DataProvider const& provider) noexce
 
 	m_storage.images = std::move(asset.images);
 	m_storage.textures.resize(m_storage.images.size());
+	for (auto const& sampler : asset.samplers) { add(to_sampler(m_gfx, sampler)); }
 	for (auto const& material : asset.materials) { add(to_material(material)); }
 	for (auto const& geometry : asset.geometries) { add(StaticMesh{m_gfx, geometry}); }
 	for (auto const& mesh : asset.meshes) { add(to_mesh(mesh)); }
@@ -149,12 +176,18 @@ bool Scene::load_gltf(dj::Json const& root, DataProvider const& provider) noexce
 }
 
 Scene::Scene(Gfx const& gfx)
-	: m_gfx(gfx), m_sampler(Texture::make_sampler(gfx, vk::SamplerAddressMode::eClampToEdge)), m_view_proj(gfx, Buffer::Type::eUniform),
-	  m_dir_lights(gfx, Buffer::Type::eStorage), m_white(Texture::CreateInfo{gfx, *m_sampler, false}, Img1x1::make({0xff, 0xff, 0xff, 0xff}).view()) {}
+	: m_gfx(gfx), m_sampler(Sampler::CreateInfo{gfx}), m_view_proj(gfx, Buffer::Type::eUniform), m_dir_lights(gfx, Buffer::Type::eStorage),
+	  m_white(Texture::CreateInfo{gfx, m_sampler.sampler(), false}, Img1x1::make({0xff, 0xff, 0xff, 0xff}).view()) {}
 
 Id<Camera> Scene::add(Camera camera) {
 	auto const id = m_storage.cameras.size();
 	m_storage.cameras.push_back(std::move(camera));
+	return id;
+}
+
+Id<Sampler> Scene::add(Sampler sampler) {
+	auto const id = m_storage.samplers.size();
+	m_storage.samplers.push_back(std::move(sampler));
 	return id;
 }
 

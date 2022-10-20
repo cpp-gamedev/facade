@@ -5,9 +5,14 @@
 namespace facade {
 struct Gfx {
 	struct Shared {
+		struct DeviceBlock {
+			vk::Device device;
+			~DeviceBlock() { device.waitIdle(); }
+		};
 		vk::PhysicalDeviceLimits device_limits{};
 		DeferQueue defer_queue{};
 		std::mutex mutex{};
+		DeviceBlock block{};
 	};
 
 	Vma vma{};

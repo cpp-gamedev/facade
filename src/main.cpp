@@ -62,6 +62,7 @@ Vulkan make_vulkan(Glfw::Window const& window) {
 	ret.device = Vulkan::Device::make(ret.instance, *surface);
 	ret.vma = Vulkan::make_vma(*ret.instance.instance, ret.device.gpu.device, *ret.device.device);
 	ret.shared = std::make_unique<Gfx::Shared>();
+	ret.shared->block.device = *ret.device.device;
 	ret.shared->device_limits = ret.device.gpu.properties.limits;
 	return ret;
 }

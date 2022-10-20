@@ -24,7 +24,7 @@ jobs:
       run: sudo apt-get update
 
     - name: Get the c++ compiler
-      run: sudo apt-get install g++
+      run: sudo apt-get install g++-10
 
     - name: Install Vulcan dependencies
       run: sudo apt-get install xorg-dev libglu1-mesa-dev

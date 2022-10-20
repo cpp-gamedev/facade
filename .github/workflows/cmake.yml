@@ -20,6 +20,12 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - name: Update our packages
+      run: sudo apt-get update
+
+    - name: Get the c++ compiler
+      run: sudo apt-get install g++
+
     - name: Install Vulcan dependencies
       run: sudo apt-get install xorg-dev libglu1-mesa-dev
 

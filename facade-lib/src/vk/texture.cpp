@@ -88,36 +88,24 @@ bool can_mip(vk::PhysicalDevice const gpu, vk::Format const format) {
 }
 } // namespace
 
-Sampler::Sampler(CreateInfo const& info) {
+Sampler::Sampler(Gfx const& gfx, CreateInfo const& info) {
 	auto sci = vk::SamplerCreateInfo{};
 	sci.minFilter = info.min;
 	sci.magFilter = info.mag;
-	sci.anisotropyEnable = info.gfx.shared->device_limits.maxSamplerAnisotropy > 0.0f;
-	sci.maxAnisotropy = info.gfx.shared->device_limits.maxSamplerAnisotropy;
+	sci.anisotropyEnable = gfx.shared->device_limits.maxSamplerAnisotropy > 0.0f;
+	sci.maxAnisotropy = gfx.shared->device_limits.maxSamplerAnisotropy;
 	sci.borderColor = vk::BorderColor::eIntOpaqueBlack;
 	sci.mipmapMode = vk::SamplerMipmapMode::eNearest;
 	sci.addressModeU = info.mode_s;
 	sci.addressModeV = info.mode_t;
 	sci.addressModeW = info.mode_s;
 	sci.maxLod = VK_LOD_CLAMP_NONE;
-	m_sampler = {info.gfx.device.createSamplerUnique(sci), info.gfx.shared->defer_queue};
+	m_sampler = {gfx.device.createSamplerUnique(sci), gfx.shared->defer_queue};
 }
 
 std::uint32_t Texture::mip_levels(vk::Extent2D extent) { return static_cast<std::uint32_t>(std::floor(std::log2(std::max(extent.width, extent.height)))) + 1U; }
 
-vk::UniqueSampler Texture::make_sampler(Gfx const& gfx, vk::SamplerAddressMode const mode, vk::Filter const filter) {
-	auto sci = vk::SamplerCreateInfo{};
-	sci.minFilter = sci.magFilter = filter;
-	sci.anisotropyEnable = gfx.shared->device_limits.maxSamplerAnisotropy > 0.0f;
-	sci.maxAnisotropy = gfx.shared->device_limits.maxSamplerAnisotropy;
-	sci.borderColor = vk::BorderColor::eIntOpaqueBlack;
-	sci.mipmapMode = vk::SamplerMipmapMode::eNearest;
-	sci.addressModeU = sci.addressModeV = sci.addressModeW = mode;
-	sci.maxLod = VK_LOD_CLAMP_NONE;
-	return gfx.device.createSamplerUnique(sci);
-}
-
-Texture::Texture(CreateInfo const& info, Image::View image) : sampler{info.sampler}, m_gfx{info.gfx} {
+Texture::Texture(Gfx const& gfx, vk::Sampler sampler, Image::View image, CreateInfo const& info) : sampler{sampler}, m_gfx{gfx} {
 	static constexpr std::uint8_t magenta_v[] = {0xff, 0x0, 0xff, 0xff};
 	m_info.format = info.colour_space == ColourSpace::eLinear ? vk::Format::eR8G8B8A8Unorm : vk::Format::eR8G8B8A8Srgb;
 	bool mip_mapped = info.mip_mapped;

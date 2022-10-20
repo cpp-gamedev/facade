@@ -48,12 +48,12 @@ constexpr vk::Filter to_filter(gltf::Filter const filter) {
 }
 
 Sampler to_sampler(Gfx const& gfx, gltf::Sampler const& sampler) {
-	auto info = Sampler::CreateInfo{gfx};
+	auto info = Sampler::CreateInfo{};
 	info.mode_s = to_address_mode(sampler.wrap_s);
 	info.mode_t = to_address_mode(sampler.wrap_t);
 	if (sampler.min_filter) { info.min = to_filter(*sampler.min_filter); }
 	if (sampler.mag_filter) { info.mag = to_filter(*sampler.mag_filter); }
-	return Sampler{info};
+	return Sampler{gfx, info};
 }
 
 std::unique_ptr<Material> to_material(gltf::Material const& material) {
@@ -176,8 +176,8 @@ bool Scene::load_gltf(dj::Json const& root, DataProvider const& provider) noexce
 }
 
 Scene::Scene(Gfx const& gfx)
-	: m_gfx(gfx), m_sampler(Sampler::CreateInfo{gfx}), m_view_proj(gfx, Buffer::Type::eUniform), m_dir_lights(gfx, Buffer::Type::eStorage),
-	  m_white(Texture::CreateInfo{gfx, m_sampler.sampler(), false}, Img1x1::make({0xff, 0xff, 0xff, 0xff}).view()) {}
+	: m_gfx(gfx), m_sampler(gfx), m_view_proj(gfx, Buffer::Type::eUniform), m_dir_lights(gfx, Buffer::Type::eStorage),
+	  m_white(gfx, m_sampler.sampler(), Img1x1::make({0xff, 0xff, 0xff, 0xff}).view(), Texture::CreateInfo{.mip_mapped = false}) {}
 
 Id<Camera> Scene::add(Camera camera) {
 	auto const id = m_storage.cameras.size();
@@ -243,7 +243,7 @@ Node& Scene::camera() {
 	return *ret;
 }
 
-Texture Scene::make_texture(Image::View image) const { return Texture{Texture::CreateInfo{m_gfx, sampler()}, image}; }
+Texture Scene::make_texture(Image::View image) const { return Texture{m_gfx, sampler(), image}; }
 
 void Scene::write_view(Pipeline& out_pipeline) const {
 	auto& set0 = out_pipeline.next_set(0);
@@ -326,7 +326,7 @@ void Scene::render(Renderer& renderer, vk::CommandBuffer cb, Node const& node, g
 			auto& ret = scene.m_storage.textures[index][colour_space];
 			if (!ret) {
 				assert(index < scene.m_storage.images.size());
-				ret.emplace(Texture::CreateInfo{scene.m_gfx, scene.sampler(), true, colour_space}, scene.m_storage.images[index]);
+				ret.emplace(scene.m_gfx, scene.sampler(), scene.m_storage.images[index], Texture::CreateInfo{true, colour_space});
 			}
 			return &*ret;
 		}

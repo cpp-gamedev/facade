@@ -1,0 +1,135 @@
+#pragma once
+#include <facade/scene/camera.hpp>
+#include <facade/scene/id.hpp>
+#include <facade/scene/lights.hpp>
+#include <facade/scene/material.hpp>
+#include <facade/scene/node.hpp>
+#include <facade/scene/transform.hpp>
+#include <facade/util/enum_array.hpp>
+#include <facade/util/image.hpp>
+#include <facade/vk/buffer.hpp>
+#include <facade/vk/static_mesh.hpp>
+#include <facade/vk/texture.hpp>
+#include <functional>
+#include <memory>
+#include <optional>
+#include <span>
+#include <vector>
+
+namespace dj {
+class Json;
+}
+
+namespace facade {
+class Renderer;
+
+struct Mesh {
+	struct Primitive {
+		Id<StaticMesh> static_mesh{};
+		std::optional<Id<Material>> material{};
+	};
+
+	std::vector<Primitive> primitives{};
+};
+
+struct DataProvider;
+
+class Scene {
+  public:
+	static constexpr auto id_v = Id<Node>{0};
+
+	explicit Scene(Gfx const& gfx);
+
+	bool load_gltf(dj::Json const& root, DataProvider const& provider) noexcept(false);
+	bool load_gltf(std::string_view path);
+
+	Id<Camera> add(Camera camera);
+	Id<Material> add(std::unique_ptr<Material> material);
+	Id<StaticMesh> add(StaticMesh mesh);
+	Id<Image> add(Image image);
+	Id<Mesh> add(Mesh mesh);
+	Id<Node> add(Node node, Id<Node> parent);
+
+	Id<Scene> id() const { return m_tree.id; }
+	std::size_t scene_count() const { return m_storage.data.trees.size(); }
+	bool load(Id<Scene> id);
+
+	Node const* find_node(Id<Node> id) const;
+	Node* find_node(Id<Node> id);
+	Material* find_material(Id<Material> id) const;
+
+	std::size_t camera_count() const { return m_storage.cameras.size(); }
+	bool select_camera(Id<Camera> id);
+	Node& camera();
+
+	vk::Sampler sampler() const { return *m_sampler; }
+	Texture make_texture(Image::View image) const;
+
+	void write_view(Pipeline& out_pipeline) const;
+	void render(Renderer& renderer, vk::CommandBuffer cb);
+
+	std::vector<DirLight> dir_lights{};
+
+  private:
+	struct TreeBuilder;
+
+	struct NodeData {
+		enum class Type { eNone, eMesh, eCamera };
+
+		Transform transform{};
+		std::vector<std::size_t> children{};
+		std::size_t index{};
+		Type type{};
+	};
+
+	struct Tree {
+		struct Data {
+			std::vector<std::size_t> roots{};
+		};
+
+		std::vector<Node> roots{};
+		Id<Node> camera{};
+		Id<Scene> id{};
+	};
+
+	struct Data {
+		std::vector<NodeData> nodes{};
+		std::vector<Tree::Data> trees{};
+	};
+
+	using Tex = EnumArray<ColourSpace, std::optional<Texture>, 2>;
+
+	struct Storage {
+		std::vector<Camera> cameras{};
+		std::vector<std::unique_ptr<Material>> materials{};
+		std::vector<StaticMesh> static_meshes{};
+		std::vector<Image> images{};
+		std::vector<Tex> textures{};
+		std::vector<Mesh> meshes{};
+		std::vector<glm::mat4x4> instances{};
+		Data data{};
+		Id<Node> next_node{};
+	};
+
+	bool load_tree(Id<Scene> id);
+	Id<Mesh> add_unchecked(Mesh mesh);
+	Id<Node> add_unchecked(std::vector<Node>& out, Node&& node);
+	static Node const* find_node(std::span<Node const> nodes, Id<Node> id);
+
+	void write_view(glm::vec2 extent);
+	std::span<glm::mat4x4 const> make_instances(Node const& node, glm::mat4x4 const& parent);
+	void render(Renderer& renderer, vk::CommandBuffer cb, Node const& node, glm::mat4 const& parent = glm::mat4{1.0f});
+
+	void check(Mesh const& mesh) const noexcept(false);
+	void check(Node const& node) const noexcept(false);
+
+	Gfx m_gfx;
+	vk::UniqueSampler m_sampler;
+	Buffer m_view_proj;
+	Buffer m_dir_lights;
+	Texture m_white;
+	Storage m_storage{};
+	std::string m_name{};
+	Tree m_tree{};
+};
+} // namespace facade

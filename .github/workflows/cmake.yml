@@ -29,5 +29,5 @@ jobs:
       - name: build-Release
         shell: bash
         run: |
-          cmake -DBUILD_DIR=build -DBUILD_CONFIG=Release -P cmake/build.cmake
+          cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
           cd build/Release && ctest

@@ -6,20 +6,37 @@
 #include <span>
 
 namespace facade {
+struct SamplerCreateInfo {
+	vk::SamplerAddressMode mode_s{vk::SamplerAddressMode::eRepeat};
+	vk::SamplerAddressMode mode_t{vk::SamplerAddressMode::eRepeat};
+	vk::Filter min{vk::Filter::eLinear};
+	vk::Filter mag{vk::Filter::eLinear};
+};
+
+struct TextureCreateInfo {
+	bool mip_mapped{true};
+	ColourSpace colour_space{ColourSpace::eSrgb};
+};
+
+class Sampler {
+  public:
+	using CreateInfo = SamplerCreateInfo;
+
+	explicit Sampler(Gfx const& gfx, CreateInfo const& info = {});
+
+	vk::Sampler sampler() const { return *m_sampler.get(); }
+
+  private:
+	Defer<vk::UniqueSampler> m_sampler{};
+};
+
 class Texture {
   public:
-	struct CreateInfo {
-		Gfx gfx{};
-		vk::Sampler sampler{};
-
-		bool mip_mapped{true};
-		ColourSpace colour_space{ColourSpace::eSrgb};
-	};
+	using CreateInfo = TextureCreateInfo;
 
 	static std::uint32_t mip_levels(vk::Extent2D extent);
-	static vk::UniqueSampler make_sampler(Gfx const& gfx, vk::SamplerAddressMode mode, vk::Filter filter = vk::Filter::eLinear);
 
-	Texture(CreateInfo const& info, Image::View image);
+	Texture(Gfx const& gfx, vk::Sampler sampler, Image::View image, CreateInfo const& info = {});
 
 	ImageView view() const { return m_image.get().get().image_view(); }
 	DescriptorImage descriptor_image() const { return {*m_image.get().get().view, sampler}; }

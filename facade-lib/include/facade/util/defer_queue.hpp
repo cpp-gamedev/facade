@@ -10,6 +10,8 @@ class DeferQueue {
 	DeferQueue() = default;
 	DeferQueue& operator=(DeferQueue&&) = delete;
 
+	~DeferQueue() { clear(); }
+
 	template <typename T>
 	void push(T t) {
 		auto lock = std::scoped_lock{m_mutex};
@@ -19,6 +21,11 @@ class DeferQueue {
 	void next() {
 		auto lock = std::scoped_lock{m_mutex};
 		m_stack.next();
+	}
+
+	void clear() {
+		auto lock = std::scoped_lock{m_mutex};
+		m_stack = {};
 	}
 
   private:

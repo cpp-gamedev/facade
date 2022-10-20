@@ -67,6 +67,7 @@ bool Renderer::next_frame(std::span<vk::CommandBuffer> out) {
 	if (m_impl->swapchain.acquire(m_impl->window.framebuffer_extent(), acquired, *frame.sync.draw) != vk::Result::eSuccess) { return false; }
 	m_impl->gfx.reset(*frame.sync.drawn);
 	m_impl->dear_imgui.new_frame();
+	m_impl->gfx.shared->defer_queue.next();
 
 	m_impl->render_target = m_impl->render_pass.refresh(acquired);
 

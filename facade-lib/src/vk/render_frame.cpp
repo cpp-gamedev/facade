@@ -28,12 +28,12 @@ ImageBarrier undef_to_colour(ImageView const& image) {
 
 ImageBarrier undef_to_depth(ImageView const& image) {
 	auto ret = ImageBarrier{};
-	ret.barrier.dstAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentRead;
+	ret.barrier.srcAccessMask = ret.barrier.dstAccessMask = vk::AccessFlagBits::eDepthStencilAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentRead;
 	ret.barrier.oldLayout = vk::ImageLayout::eUndefined;
 	ret.barrier.newLayout = vk::ImageLayout::eDepthAttachmentOptimal;
 	ret.barrier.image = image.image;
 	ret.barrier.subresourceRange = {vk::ImageAspectFlagBits::eDepth, 0, 1, 0, 1};
-	ret.stages = {vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eEarlyFragmentTests | vk::PipelineStageFlagBits::eLateFragmentTests};
+	ret.stages.first = ret.stages.second = vk::PipelineStageFlagBits::eEarlyFragmentTests | vk::PipelineStageFlagBits::eLateFragmentTests;
 	return ret;
 }
 

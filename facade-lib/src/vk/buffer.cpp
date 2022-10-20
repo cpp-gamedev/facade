@@ -29,17 +29,17 @@ void Buffer::rotate() { m_buffers.rotate(); }
 
 void Buffer::refresh() const {
 	auto& buffer = m_buffers.get();
-	if (m_data.size() > buffer.get().size) { buffer = m_gfx.vma.make_buffer(get_usage(m_type), m_data.size(), true); }
-	std::memcpy(buffer.get().ptr, m_data.data(), m_data.size());
+	if (m_data.size() > buffer.get().get().size) { buffer = {m_gfx.vma.make_buffer(get_usage(m_type), m_data.size(), true), m_gfx.shared->defer_queue}; }
+	std::memcpy(buffer.get().get().ptr, m_data.data(), m_data.size());
 }
 
 BufferView Buffer::view() const {
 	refresh();
-	return {m_buffers.get().get().buffer, m_size};
+	return {m_buffers.get().get().get().buffer, m_size};
 }
 
 DescriptorBuffer Buffer::descriptor_buffer() const {
 	refresh();
-	return {m_buffers.get().get().buffer, m_buffers.get().get().size, to_descriptor_type(m_type)};
+	return {m_buffers.get().get().get().buffer, m_buffers.get().get().get().size, to_descriptor_type(m_type)};
 }
 } // namespace facade

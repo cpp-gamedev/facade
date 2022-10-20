@@ -1,4 +1,5 @@
-# facade
+# façade
+Native 3D GLTF scene viewer and editor (WIP)
 
 **A native 3D GLTF scene viewer and editor (WIP)**
 

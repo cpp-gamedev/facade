@@ -1,5 +1,7 @@
 project(facade-lib)
 
+find_package(Threads)
+
 add_library(${PROJECT_NAME})
 add_library(facade::lib ALIAS ${PROJECT_NAME})
 
@@ -18,7 +20,12 @@ target_link_libraries(${PROJECT_NAME}
   spirv-cross-glsl
   facade::compile-options
   facade::stb-image
+  Threads::Threads
 )
+
+if(CMAKE_SYSTEM_NAME STREQUAL Linux)
+  target_link_libraries(${PROJECT_NAME} PRIVATE pthread)
+endif()
 
 target_precompile_headers(${PROJECT_NAME} PUBLIC
   <vulkan/vulkan.hpp>

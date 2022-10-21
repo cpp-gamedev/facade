@@ -1,5 +1,7 @@
 project(facade-lib)
 
+find_package(Threads)
+
 add_library(${PROJECT_NAME})
 add_library(facade::lib ALIAS ${PROJECT_NAME})
 
@@ -18,7 +20,12 @@ target_link_libraries(${PROJECT_NAME}
   spirv-cross-glsl
   facade::compile-options
   facade::stb-image
+  Threads::Threads
 )
+
+if(CMAKE_SYSTEM_NAME STREQUAL Linux)
+  target_link_libraries(${PROJECT_NAME} PRIVATE pthread)
+endif()
 
 target_precompile_headers(${PROJECT_NAME} PUBLIC
   <vulkan/vulkan.hpp>
@@ -49,7 +56,8 @@ target_compile_definitions(${PROJECT_NAME}
   GLM_FORCE_SILENT_WARNINGS
   GLM_ENABLE_EXPERIMENTAL
   GLM_EXT_INCLUDED
-  $<$<CONFIG:Debug>:facade_DEBUG>
+  $<$<CONFIG:Debug>:FACADE_DEBUG>
+  $<$<BOOL:${has_make_unique_for_overwrite}>:FACADE_MUFO>
 )
 
 target_sources(${PROJECT_NAME} PRIVATE
@@ -65,6 +73,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/facade/util/geometry.hpp
   include/facade/util/image.hpp
   include/facade/util/logger.hpp
+  include/facade/util/mufo.hpp
   include/facade/util/nvec3.hpp
   include/facade/util/ring_buffer.hpp
   include/facade/util/string.hpp
@@ -112,6 +121,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   src/util/data_provider.cpp
   src/util/geometry.cpp
   src/util/image.cpp
+  src/util/logger.cpp
   src/util/time.cpp
 
   src/glfw/glfw.cpp

@@ -15,7 +15,7 @@ Shader Shader::Db::add(std::string id, SpirV vert, SpirV frag) {
 	return {it->first, it->second.vert, it->second.frag};
 }
 
-Shader Shader::Db::find(std::string_view id) const {
+Shader Shader::Db::find(std::string const& id) const {
 	if (auto it = m_map.find(id); it != m_map.end()) {
 		auto vert = it->second.vert ? it->second.vert : it->second.vvert;
 		auto frag = it->second.frag ? it->second.frag : it->second.vfrag;

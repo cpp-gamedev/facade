@@ -8,6 +8,18 @@ project(facade)
 
 option(FACADE_BUILD_SHADERS ON)
 
+if(FACADE_BUILD_SHADERS)
+  find_program(glslc glslc)
+
+  if(glslc STREQUAL glslc-NOTFOUND)
+    message(WARNING "glslc not found, disabling FACADE_BUILD_SHADERS")
+    set(FACADE_BUILD_SHADERS OFF CACHE STRING "" FORCE)
+  endif()
+endif()
+
+set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
+try_compile(has_make_unique_for_overwrite "${CMAKE_CURRENT_BINARY_DIR}" SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/cmake/src/make_unique_for_overwrite.cpp")
+
 add_subdirectory(ext)
 add_subdirectory(cmake/interface)
 add_subdirectory(tools/embed_shader)
@@ -15,6 +27,7 @@ add_subdirectory(tools/embed_shader)
 add_subdirectory(facade-lib)
 
 if(FACADE_BUILD_SHADERS)
+  message(STATUS "Adding build step to embed shaders")
   add_custom_command(
     DEPENDS
     ${CMAKE_CURRENT_SOURCE_DIR}/shaders/default.vert

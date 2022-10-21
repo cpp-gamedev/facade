@@ -78,7 +78,7 @@ std::vector<T> vec_from_bytes(std::span<std::byte const> bytes, std::size_t coun
 	return ret;
 }
 
-template <typename T, std::size_t Dim>
+template <typename T, glm::length_t Dim>
 void push_converted(std::vector<glm::vec<Dim, float>>& out, glm::vec<Dim, T> const& other_vec) {
 	out.push_back(glm::vec<Dim, float>{other_vec});
 }
@@ -241,7 +241,7 @@ struct Data {
 		return {};
 	}
 
-	template <typename T, std::size_t Dim>
+	template <typename T, glm::length_t Dim>
 	std::vector<glm::vec<Dim, T>> as_vec(std::optional<std::size_t> const accessor) const {
 		if (!accessor) { return {}; }
 		assert(*accessor < accessors.size());
@@ -400,7 +400,7 @@ struct Data {
 			t.source = json["source"].as<std::size_t>();
 		}
 
-		template <typename T, std::size_t Dim>
+		template <typename T, glm::length_t Dim>
 		static glm::vec<Dim, T> get_vec(dj::Json const& value, glm::vec<Dim, T> const& fallback = {}) {
 			auto ret = fallback;
 			if (!value) { return ret; }

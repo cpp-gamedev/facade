@@ -1,4 +1,5 @@
 #include <facade/util/error.hpp>
+#include <facade/util/mufo.hpp>
 #include <facade/util/string.hpp>
 #include <facade/vk/spir_v.hpp>
 #include <atomic>
@@ -63,7 +64,7 @@ bool SpirV::try_compile(SpirV& out_spirv, std::string& out_error, char const* gl
 	}
 	file.seekg({});
 	out_spirv.size = static_cast<std::size_t>(size) / sizeof(std::uint32_t);
-	out_spirv.code = std::make_unique_for_overwrite<std::uint32_t[]>(out_spirv.size);
+	out_spirv.code = make_unique_for_overwrite<std::uint32_t[]>(out_spirv.size);
 	file.read(reinterpret_cast<char*>(out_spirv.code.get()), size);
 	return true;
 }

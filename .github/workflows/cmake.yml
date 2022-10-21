@@ -9,27 +9,21 @@ on:
     branches:
       - '*'
 jobs:
-  build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [windows-latest, ubuntu-latest]
-        include:
-          - os: windows-latest
-            install: choco install ninja
-          - os: ubuntu-latest
-            install: |
-              sudo apt-get install xorg-dev libglu1-mesa-dev
-              sudo apt install -yqq ninja-build
+  build-linux:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: install
-        shell: bash
-        run: ${{ matrix.install }}
-      - name: build-Release
-        shell: bash
+      - name: init
         run: |
-          cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
-          cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
-          ctest -C ${{env.BUILD_TYPE}}
-          
+          sudo apt install -yqq ninja-build xorg-dev g++-11
+          sudo apt-get install xorg-dev libglu1-mesa-dev
+      - name: configure clang
+        run: cmake -S . --preset=default -B build
+      - name: configure gcc
+        run: cmake -S . -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++-11 -B plain_build
+      - name: build clang
+        run: cmake --build build
+      - name: build gcc
+        run: cmake --build plain_build
+      - name: test
+        run: cd build && ctest

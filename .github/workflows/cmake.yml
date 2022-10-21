@@ -17,12 +17,8 @@ jobs:
         run: |
           sudo apt install -yqq ninja-build xorg-dev g++-11
           sudo apt-get install xorg-dev libglu1-mesa-dev
-      - name: configure clang
-        run: cmake -S . --preset=default -B build
       - name: configure gcc
         run: cmake -S . -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++-11 -B plain_build
-      - name: build clang
-        run: cmake --build build
       - name: build gcc
         run: cmake --build plain_build
       - name: test

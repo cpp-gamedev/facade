@@ -8,6 +8,9 @@ project(facade)
 
 option(FACADE_BUILD_SHADERS ON)
 
+set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
+try_compile(has_make_unique_for_overwrite "${CMAKE_CURRENT_BINARY_DIR}" SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/cmake/src/make_unique_for_overwrite.cpp")
+
 add_subdirectory(ext)
 add_subdirectory(cmake/interface)
 add_subdirectory(tools/embed_shader)

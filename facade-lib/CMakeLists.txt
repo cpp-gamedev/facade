@@ -50,6 +50,7 @@ target_compile_definitions(${PROJECT_NAME}
   GLM_ENABLE_EXPERIMENTAL
   GLM_EXT_INCLUDED
   $<$<CONFIG:Debug>:FACADE_DEBUG>
+  $<$<BOOL:${has_make_unique_for_overwrite}>:FACADE_MUFO>
 )
 
 target_sources(${PROJECT_NAME} PRIVATE
@@ -66,6 +67,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/facade/util/geometry.hpp
   include/facade/util/image.hpp
   include/facade/util/logger.hpp
+  include/facade/util/mufo.hpp
   include/facade/util/nvec3.hpp
   include/facade/util/ring_buffer.hpp
   include/facade/util/string.hpp

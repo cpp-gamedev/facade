@@ -32,7 +32,7 @@ UniqueBuffer Vma::make_buffer(vk::BufferUsageFlags const usage, vk::DeviceSize c
 	ret.allocation.vma = *this;
 	ret.size = bci.size;
 	if (host_visible) { vmaMapMemory(allocator, ret.allocation.allocation, &ret.ptr); }
-	return ret;
+	return UniqueBuffer{std::move(ret)};
 }
 
 UniqueImage Vma::make_image(ImageCreateInfo const& info, vk::Extent2D const extent) const {
@@ -56,7 +56,7 @@ UniqueImage Vma::make_image(ImageCreateInfo const& info, vk::Extent2D const exte
 	ret.image = image;
 	ret.allocation.vma = *this;
 	ret.extent = extent;
-	return ret;
+	return UniqueImage{std::move(ret)};
 }
 
 vk::UniqueImageView Vma::make_image_view(vk::Image const image, vk::Format const format, vk::ImageSubresourceRange isr) const {

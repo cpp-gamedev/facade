@@ -538,7 +538,7 @@ Geometry build_geometry(Data const data, MeshData::Primitive const& mp) {
 Transform transform(dj::Json const& node) {
 	auto ret = Transform{};
 	if (auto const& mat = node["matrix"]) {
-		auto const& arr = mat.array_view();
+		[[maybe_unused]] auto const& arr = mat.array_view();
 		assert(arr.size() == 16);
 		ret.set_matrix(to<glm::mat4x4>(mat));
 	} else {

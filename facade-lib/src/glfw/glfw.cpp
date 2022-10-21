@@ -1,19 +1,18 @@
 #include <facade/glfw/glfw.hpp>
 #include <facade/util/error.hpp>
-#include <atomic>
 #include <mutex>
 #include <unordered_map>
 
 namespace facade {
 namespace {
-std::atomic<std::weak_ptr<Glfw>> g_glfw{};
+std::weak_ptr<Glfw> g_glfw{};
 std::mutex g_mutex{};
 
 std::unordered_map<GLFWwindow*, Glfw::State> g_states{};
 
 std::shared_ptr<Glfw> get_or_make_glfw() {
-	if (auto glfw = g_glfw.load().lock()) { return glfw; }
 	auto lock = std::scoped_lock{g_mutex};
+	if (auto glfw = g_glfw.lock()) { return glfw; }
 	if (glfwInit() != GLFW_TRUE) { throw InitError{"GLFW initialization failed"}; }
 	if (!glfwVulkanSupported()) {
 		glfwTerminate();
@@ -21,7 +20,7 @@ std::shared_ptr<Glfw> get_or_make_glfw() {
 	}
 	auto ret = std::make_shared<Glfw>();
 	ret->active = true;
-	g_glfw.load() = ret;
+	g_glfw = ret;
 	return ret;
 }
 

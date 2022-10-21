@@ -7,7 +7,7 @@
 
 namespace facade {
 namespace {
-constexpr bool has_all_sets(std::span<SetLayout const> layouts) {
+[[maybe_unused]] constexpr bool has_all_sets(std::span<SetLayout const> layouts) {
 	std::uint32_t set{};
 	for (auto const& layout : layouts) {
 		if (layout.set != set) { return false; }

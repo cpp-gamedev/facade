@@ -8,7 +8,7 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL Clang OR CMAKE_CXX_COMPILER_ID STREQUAL GNU)
     -Wall -Wextra -Wpedantic -Werror=return-type
   )
 
-  if(CMAKE_CXX_COMPILER_ID STREQUAL GNU)
+  if(CMAKE_CXX_COMPILER_ID STREQUAL GNU AND NOT CMAKE_SYSTEM_PROCESSOR STREQUAL aarch64)
     target_compile_options(${PROJECT_NAME} INTERFACE -Wconversion)
   endif()
 endif()

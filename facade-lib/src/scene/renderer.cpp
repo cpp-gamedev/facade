@@ -77,7 +77,7 @@ bool Renderer::next_frame(std::span<vk::CommandBuffer> out) {
 	return fill_and_return();
 }
 
-Pipeline Renderer::bind_pipeline(vk::CommandBuffer cb, Pipeline::State const& state, std::string_view shader_id) {
+Pipeline Renderer::bind_pipeline(vk::CommandBuffer cb, Pipeline::State const& state, std::string const& shader_id) {
 	auto const shader = m_impl->shader_db.find(shader_id);
 	if (!shader) { throw Error{concat("Failed to find shader: ", shader_id)}; }
 	auto ret = m_impl->pipes.get(m_impl->render_pass.render_pass(), state, shader);

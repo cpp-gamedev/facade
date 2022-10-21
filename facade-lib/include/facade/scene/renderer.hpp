@@ -25,7 +25,7 @@ class Renderer {
 	std::size_t command_buffers_per_frame() const;
 
 	bool next_frame(std::span<vk::CommandBuffer> out);
-	Pipeline bind_pipeline(vk::CommandBuffer cb, Pipeline::State const& state = {}, std::string_view shader_id = "default");
+	Pipeline bind_pipeline(vk::CommandBuffer cb, Pipeline::State const& state = {}, std::string const& shader_id = "default");
 	bool render();
 
 	Shader add_shader(std::string id, SpirV vert, SpirV frag);

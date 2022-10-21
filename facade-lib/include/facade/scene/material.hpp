@@ -5,7 +5,7 @@
 #include <glm/vec4.hpp>
 #include <optional>
 #include <span>
-#include <string_view>
+#include <string>
 
 namespace facade {
 class Texture;
@@ -24,22 +24,22 @@ struct TextureStore {
 
 class Material {
   public:
-	static constexpr std::string_view default_shader_id{"default"};
+	inline static std::string const default_shader_id{"default"};
 
 	virtual ~Material() = default;
 
-	virtual std::string_view shader_id() const { return default_shader_id; }
+	virtual std::string const& shader_id() const { return default_shader_id; }
 	virtual void write_sets(Pipeline& pipeline, TextureStore const& store) const = 0;
 };
 
 class UnlitMaterial : public Material {
   public:
-	static constexpr std::string_view shader_id_v{"unlit"};
+	inline static std::string const shader_id_v{"unlit"};
 
 	glm::vec4 tint{1.0f};
 	std::optional<Id<Texture>> texture{};
 
-	std::string_view shader_id() const override { return shader_id_v; }
+	std::string const& shader_id() const override { return shader_id_v; }
 	void write_sets(Pipeline& pipeline, TextureStore const& store) const override;
 };
 

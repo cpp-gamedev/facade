@@ -4,7 +4,6 @@
 #include <unordered_map>
 
 namespace facade {
-
 struct Shader {
 	class Db;
 

@@ -15,10 +15,10 @@ jobs:
       - uses: actions/checkout@v2
       - name: init
         run: |
-          sudo apt install -yqq ninja-build xorg-dev g++-11
+          sudo apt install -yqq ninja-build xorg-dev g++-12
           sudo apt-get install xorg-dev libglu1-mesa-dev
       - name: configure gcc
-        run: cmake -S . -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++-11 -B plain_build
+        run: cmake -S . -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=g++-12 -B plain_build
       - name: build gcc
         run: cmake --build plain_build
       - name: test

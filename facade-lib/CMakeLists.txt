@@ -49,7 +49,7 @@ target_compile_definitions(${PROJECT_NAME}
   GLM_FORCE_SILENT_WARNINGS
   GLM_ENABLE_EXPERIMENTAL
   GLM_EXT_INCLUDED
-  $<$<CONFIG:Debug>:facade_DEBUG>
+  $<$<CONFIG:Debug>:FACADE_DEBUG>
 )
 
 target_sources(${PROJECT_NAME} PRIVATE
@@ -61,6 +61,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/facade/util/defer_queue.hpp
   include/facade/util/enum_array.hpp
   include/facade/util/error.hpp
+  include/facade/util/fixed_string.hpp
   include/facade/util/flex_array.hpp
   include/facade/util/geometry.hpp
   include/facade/util/image.hpp
@@ -112,6 +113,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   src/util/data_provider.cpp
   src/util/geometry.cpp
   src/util/image.cpp
+  src/util/logger.cpp
   src/util/time.cpp
 
   src/glfw/glfw.cpp

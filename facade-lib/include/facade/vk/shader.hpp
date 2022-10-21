@@ -1,8 +1,10 @@
 #pragma once
+#include <facade/util/fixed_string.hpp>
 #include <facade/vk/spir_v.hpp>
 #include <unordered_map>
 
 namespace facade {
+
 struct Shader {
 	class Db;
 
@@ -16,16 +18,13 @@ struct Shader {
 
 class Shader::Db {
   public:
-	Shader add(std::string id, SpirV vert, SpirV frag);
+	Shader add(std::string_view id, SpirV vert, SpirV frag);
 	bool add(Shader shader);
 	bool contains(std::string_view id) const { return m_map.contains(id); }
 	Shader find(std::string_view id) const;
 
   private:
-	struct Hasher {
-		using is_transparent = void;
-		size_t operator()(std::string_view const txt) const { return std::hash<std::string_view>{}(txt); }
-	};
+	using ShaderId = FixedString<16>;
 
 	struct Entry {
 		SpirV vert{};
@@ -34,6 +33,6 @@ class Shader::Db {
 		SpirV::View vfrag{};
 	};
 
-	std::unordered_map<std::string, Entry, Hasher, std::equal_to<>> m_map{};
+	std::unordered_map<ShaderId, Entry, std::hash<std::string_view>> m_map{};
 };
 } // namespace facade

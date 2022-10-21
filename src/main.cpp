@@ -207,7 +207,7 @@ void run() {
 		window.get().glfw->poll_events();
 
 		auto const& input = window.get().state().input;
-		bool const mouse_look = input.mouse.held(GLFW_MOUSE_BUTTON_1);
+		bool const mouse_look = input.mouse.held(GLFW_MOUSE_BUTTON_RIGHT);
 
 		if (input.keyboard.pressed(GLFW_KEY_ESCAPE)) { glfwSetWindowShouldClose(window.get(), GLFW_TRUE); }
 		glfwSetInputMode(window.get(), GLFW_CURSOR, mouse_look ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
@@ -230,6 +230,8 @@ void run() {
 			if (input.keyboard.held(GLFW_KEY_D) || input.keyboard.held(GLFW_KEY_RIGHT)) { fly_cam.move_right(dt); }
 			if (input.keyboard.held(GLFW_KEY_W) || input.keyboard.held(GLFW_KEY_UP)) { fly_cam.move_front(-dt); }
 			if (input.keyboard.held(GLFW_KEY_S) || input.keyboard.held(GLFW_KEY_DOWN)) { fly_cam.move_front(dt); }
+			if (input.keyboard.held(GLFW_KEY_E)) { fly_cam.move_up(dt); }
+			if (input.keyboard.held(GLFW_KEY_Q)) { fly_cam.move_up(-dt); }
 			if (mouse_look) { fly_cam.rotate({input.mouse.delta_pos().x, -input.mouse.delta_pos().y}); }
 		}
 

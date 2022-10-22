@@ -11,15 +11,11 @@ namespace facade {
 class Texture;
 class Pipeline;
 
-struct TextureProvider {
-	virtual Texture const* get(std::size_t index, ColourSpace colour_space) const = 0;
-};
-
 struct TextureStore {
+	std::span<Texture const> textures;
 	Texture const& white;
-	TextureProvider const& provider;
 
-	Texture const& get(std::optional<std::size_t> index, ColourSpace colour_space) const;
+	Texture const& get(std::optional<std::size_t> index) const;
 };
 
 class Material {
@@ -43,7 +39,7 @@ class UnlitMaterial : public Material {
 	void write_sets(Pipeline& pipeline, TextureStore const& store) const override;
 };
 
-class TestMaterial : public Material {
+class LitMaterial : public Material {
   public:
 	glm::vec3 albedo{1.0f};
 	float metallic{0.5f};

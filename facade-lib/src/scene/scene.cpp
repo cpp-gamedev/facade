@@ -57,13 +57,12 @@ Sampler to_sampler(Gfx const& gfx, gltf::Sampler const& sampler) {
 }
 
 std::unique_ptr<Material> to_material(gltf::Material const& material) {
-	auto ret = std::make_unique<TestMaterial>();
+	auto ret = std::make_unique<LitMaterial>();
 	ret->albedo = material.pbr.base_colour_factor;
 	ret->metallic = material.pbr.metallic_factor;
 	ret->roughness = material.pbr.roughness_factor;
 	if (material.pbr.base_colour_texture) { ret->base_colour = material.pbr.base_colour_texture->texture; }
 	if (material.pbr.metallic_roughness_texture) { ret->roughness_metallic = material.pbr.metallic_roughness_texture->texture; }
-	// TODO: textures
 	return ret;
 }
 
@@ -73,6 +72,10 @@ Mesh to_mesh(gltf::Mesh const& mesh) {
 		ret.primitives.push_back(Mesh::Primitive{.static_mesh = primitive.geometry, .material = primitive.material});
 	}
 	return ret;
+}
+
+Texture to_texture(Gfx const& gfx, vk::Sampler sampler, Image const& image, gltf::Texture const& texture) {
+	return Texture{gfx, sampler, image.view(), Texture::CreateInfo{.mip_mapped = true, .colour_space = texture.colour_space}};
 }
 
 struct Img1x1 {
@@ -161,11 +164,18 @@ bool Scene::load_gltf(dj::Json const& root, DataProvider const& provider) noexce
 	}
 
 	m_storage.images = std::move(asset.images);
-	m_storage.textures.resize(m_storage.images.size());
 	for (auto const& sampler : asset.samplers) { add(to_sampler(m_gfx, sampler)); }
 	for (auto const& material : asset.materials) { add(to_material(material)); }
 	for (auto const& geometry : asset.geometries) { add(StaticMesh{m_gfx, geometry}); }
 	for (auto const& mesh : asset.meshes) { add(to_mesh(mesh)); }
+
+	auto get_sampler = [this](std::optional<std::size_t> sampler_id) {
+		if (!sampler_id || sampler_id >= m_storage.samplers.size()) { return default_sampler(); }
+		return m_storage.samplers[*sampler_id].sampler();
+	};
+	for (auto const& texture : asset.textures) {
+		m_storage.textures.push_back(to_texture(m_gfx, get_sampler(texture.sampler), m_storage.images.at(texture.source), texture));
+	}
 
 	for (auto& node : asset.nodes) {
 		m_storage.data.nodes.push_back(NodeData{node.transform, std::move(node.children), node.index, static_cast<NodeData::Type>(node.type)});
@@ -243,7 +253,7 @@ Node& Scene::camera() {
 	return *ret;
 }
 
-Texture Scene::make_texture(Image::View image) const { return Texture{m_gfx, sampler(), image}; }
+Texture Scene::make_texture(Image::View image) const { return Texture{m_gfx, default_sampler(), image}; }
 
 void Scene::write_view(Pipeline& out_pipeline) const {
 	auto& set0 = out_pipeline.next_set(0);
@@ -316,31 +326,15 @@ std::span<glm::mat4x4 const> Scene::make_instances(Node const& node, glm::mat4x4
 }
 
 void Scene::render(Renderer& renderer, vk::CommandBuffer cb, Node const& node, glm::mat4 const& parent) {
-	struct TexProvider : TextureProvider {
-		Scene& scene;
-
-		TexProvider(Scene& scene) : scene(scene) {}
-
-		Texture const* get(std::size_t index, ColourSpace colour_space) const override {
-			if (index >= scene.m_storage.textures.size()) { return {}; }
-			auto& ret = scene.m_storage.textures[index][colour_space];
-			if (!ret) {
-				assert(index < scene.m_storage.images.size());
-				ret.emplace(scene.m_gfx, scene.sampler(), scene.m_storage.images[index], Texture::CreateInfo{true, colour_space});
-			}
-			return &*ret;
-		}
-	};
-
 	if (auto const* mesh_id = node.find<Id<Mesh>>()) {
-		static auto const s_default_material = TestMaterial{};
+		static auto const s_default_material = LitMaterial{};
 		auto const& mesh = m_storage.meshes.at(*mesh_id);
 		for (auto const& primitive : mesh.primitives) {
 			auto const& material = primitive.material ? *m_storage.materials.at(primitive.material->value()) : static_cast<Material const&>(s_default_material);
 			auto pipeline = renderer.bind_pipeline(cb, {}, material.shader_id());
 
 			write_view(pipeline);
-			auto const store = TextureStore{m_white, TexProvider{*this}};
+			auto const store = TextureStore{m_storage.textures, m_white};
 			material.write_sets(pipeline, store);
 
 			auto const& static_mesh = m_storage.static_meshes.at(primitive.static_mesh);
@@ -367,9 +361,9 @@ void Scene::check(Node const& node) const noexcept(false) {
 	if (auto const* mesh_id = node.find<Id<Mesh>>(); mesh_id && *mesh_id >= m_storage.meshes.size()) {
 		throw Error{concat("Scene ", m_name, ": Invalid mesh [", *mesh_id, "] in node")};
 	}
-	// if (node.type == Node::Type::eCamera && node.index >= m_storage.cameras.size()) {
-	// 	throw Error{concat("Scene ", m_name, ": Invalid mesh [", node.index, "] in node")};
-	// }
+	if (auto const* camera_id = node.find<Id<Camera>>(); camera_id && *camera_id >= m_storage.cameras.size()) {
+		throw Error{concat("Scene ", m_name, ": Invalid camera [", *camera_id, "] in node")};
+	}
 	for (auto const& child : node.m_children) { check(child); }
 }
 } // namespace facade

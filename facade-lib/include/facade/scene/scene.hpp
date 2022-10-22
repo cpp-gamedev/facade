@@ -63,7 +63,7 @@ class Scene {
 	bool select_camera(Id<Camera> id);
 	Node& camera();
 
-	vk::Sampler sampler() const { return m_sampler.sampler(); }
+	vk::Sampler default_sampler() const { return m_sampler.sampler(); }
 	Texture make_texture(Image::View image) const;
 
 	void write_view(Pipeline& out_pipeline) const;
@@ -98,15 +98,13 @@ class Scene {
 		std::vector<Tree::Data> trees{};
 	};
 
-	using Tex = EnumArray<ColourSpace, std::optional<Texture>, 2>;
-
 	struct Storage {
 		std::vector<Camera> cameras{};
 		std::vector<Sampler> samplers{};
 		std::vector<std::unique_ptr<Material>> materials{};
 		std::vector<StaticMesh> static_meshes{};
 		std::vector<Image> images{};
-		std::vector<Tex> textures{};
+		std::vector<Texture> textures{};
 		std::vector<Mesh> meshes{};
 		std::vector<glm::mat4x4> instances{};
 		Data data{};

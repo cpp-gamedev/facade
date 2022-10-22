@@ -5,6 +5,8 @@ namespace facade {
 template <typename T>
 class Id {
   public:
+	using id_type = std::size_t;
+
 	constexpr Id(std::size_t value = {}) : m_value(value) {}
 
 	constexpr std::size_t value() const { return m_value; }

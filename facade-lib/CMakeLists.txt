@@ -75,6 +75,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/facade/util/logger.hpp
   include/facade/util/mufo.hpp
   include/facade/util/nvec3.hpp
+  include/facade/util/pinned.hpp
   include/facade/util/ring_buffer.hpp
   include/facade/util/string.hpp
   include/facade/util/time.hpp
@@ -121,6 +122,9 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/facade/scene/scene.hpp
   include/facade/scene/transform.hpp
 
+  include/facade/editor/common.hpp
+  include/facade/editor/inspector.hpp
+
   src/util/data_provider.cpp
   src/util/geometry.cpp
   src/util/image.cpp
@@ -159,4 +163,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   src/scene/material.cpp
   src/scene/scene.cpp
   src/scene/transform.cpp
+
+  src/editor/common.cpp
+  src/editor/inspector.cpp
 )

@@ -1,6 +1,7 @@
 #pragma once
 #include <imgui.h>
 #include <facade/glfw/glfw.hpp>
+#include <facade/util/colour_space.hpp>
 #include <facade/vk/gfx.hpp>
 
 namespace facade {
@@ -11,6 +12,7 @@ class DearImgui {
 		Glfw::Window window{};
 		vk::RenderPass render_pass{};
 		vk::SampleCountFlagBits samples{vk::SampleCountFlagBits::e1};
+		ColourSpace swapchain{ColourSpace::eSrgb};
 	};
 
 	DearImgui(Info const& info);

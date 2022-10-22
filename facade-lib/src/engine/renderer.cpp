@@ -38,6 +38,7 @@ struct Renderer::Impl {
 			  window,
 			  render_pass.render_pass(),
 			  info.samples,
+			  Swapchain::colour_space(swapchain.info.imageFormat),
 		  }) {}
 };
 

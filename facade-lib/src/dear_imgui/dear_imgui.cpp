@@ -2,6 +2,7 @@
 #include <backends/imgui_impl_vulkan.h>
 #include <imgui.h>
 #include <facade/dear_imgui/dear_imgui.hpp>
+#include <facade/scene/material.hpp>
 #include <facade/vk/cmd.hpp>
 
 namespace facade {
@@ -20,6 +21,15 @@ vk::UniqueDescriptorPool make_pool(vk::Device const device) {
 	pool_info.pPoolSizes = pool_sizes;
 	return device.createDescriptorPoolUnique(pool_info);
 }
+
+void correct_style() {
+	auto* colours = ImGui::GetStyle().Colors;
+	for (int i = 0; i < ImGuiCol_COUNT; ++i) {
+		auto& colour = colours[i];
+		auto const corrected = Material::to_linear(glm::vec4{colour.x, colour.y, colour.z, colour.w});
+		colour = {corrected.x, corrected.y, corrected.z, corrected.w};
+	}
+}
 } // namespace
 
 DearImgui::DearImgui(Info const& info) {
@@ -32,6 +42,7 @@ DearImgui::DearImgui(Info const& info) {
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;  // Enable Gamepad Controls
 
 	ImGui::StyleColorsDark();
+	if (info.swapchain == ColourSpace::eSrgb) { correct_style(); }
 
 	auto loader = vk::DynamicLoader{};
 	auto get_fn = [&loader](char const* name) { return loader.getProcAddress<PFN_vkVoidFunction>(name); };

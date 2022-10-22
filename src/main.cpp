@@ -15,6 +15,8 @@
 #include <facade/scene/fly_cam.hpp>
 #include <facade/scene/scene.hpp>
 
+#include <facade/editor/inspector.hpp>
+
 #include <bin/shaders.hpp>
 
 using namespace facade;
@@ -184,12 +186,11 @@ void run() {
 		ImGui::ShowDemoWindow();
 
 		ImGui::SetNextWindowSize({250.0f, 100.0f}, ImGuiCond_Once);
-		if (ImGui::Begin("Material")) {
-			auto* mat = static_cast<LitMaterial*>(scene.find_material(material_id));
-			ImGui::SliderFloat("Metallic", &mat->metallic, 0.0f, 1.0f);
-			ImGui::SliderFloat("Roughness", &mat->roughness, 0.0f, 1.0f);
+		if (auto window = editor::Window{"Node"}) {
+			static auto s_input = int{};
+			ImGui::InputInt("Id", &s_input);
+			editor::SceneInspector{window, scene}.inspect(Id<Node>{static_cast<std::size_t>(s_input)});
 		}
-		ImGui::End();
 
 		engine.render(scene);
 	}

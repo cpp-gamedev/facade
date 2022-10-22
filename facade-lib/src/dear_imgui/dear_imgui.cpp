@@ -76,5 +76,10 @@ void DearImgui::new_frame() {
 	ImGui::NewFrame();
 }
 
+void DearImgui::end_frame() {
+	ImGui::Render();
+	ImGui::EndFrame();
+}
+
 void DearImgui::render(vk::CommandBuffer const cb) { ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cb); }
 } // namespace facade

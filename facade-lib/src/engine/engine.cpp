@@ -74,8 +74,7 @@ float Engine::next_frame() {
 void Engine::request_stop() { glfwSetWindowShouldClose(m_impl->window.get(), GLFW_TRUE); }
 
 void Engine::render(Scene& scene) const {
-	if (!m_impl->cb) { return; }
-	scene.render(m_impl->renderer, *m_impl->cb);
+	if (m_impl->cb) { scene.render(m_impl->renderer, *m_impl->cb); }
 	m_impl->renderer.render();
 	m_impl->cb.reset();
 }

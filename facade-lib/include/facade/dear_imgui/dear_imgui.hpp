@@ -17,6 +17,7 @@ class DearImgui {
 	~DearImgui();
 
 	void new_frame();
+	void end_frame();
 	void render(vk::CommandBuffer cb);
 
 	DearImgui& operator=(DearImgui&&) = delete;

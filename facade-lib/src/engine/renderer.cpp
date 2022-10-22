@@ -1,10 +1,13 @@
 #include <facade/dear_imgui/dear_imgui.hpp>
 #include <facade/engine/renderer.hpp>
 #include <facade/util/error.hpp>
+#include <facade/util/logger.hpp>
 #include <facade/util/string.hpp>
+#include <facade/util/time.hpp>
 #include <facade/vk/pipes.hpp>
 #include <facade/vk/render_frame.hpp>
 #include <facade/vk/render_pass.hpp>
+#include <facade/vk/swapchain.hpp>
 
 namespace facade {
 namespace {
@@ -14,6 +17,22 @@ vk::Format depth_format(vk::PhysicalDevice const gpu) {
 	if (props.optimalTilingFeatures & vk::FormatFeatureFlagBits::eDepthStencilAttachment) { return target; }
 	return vk::Format::eD16Unorm;
 }
+
+struct Fps {
+	std::uint32_t frames{};
+	std::uint32_t fps{};
+	float start{time::since_start()};
+
+	std::uint32_t next_frame() {
+		++frames;
+		if (auto const now = time::since_start(); now - start >= 1.0f) {
+			start = now;
+			fps = frames;
+			frames = 0;
+		}
+		return fps;
+	}
+};
 } // namespace
 
 struct Renderer::Impl {
@@ -30,19 +49,37 @@ struct Renderer::Impl {
 	std::optional<RenderTarget> render_target{};
 	Framebuffer framebuffer{};
 
-	Impl(Gfx gfx, Glfw::Window window, Renderer::Info const& info)
-		: gfx{gfx}, window{window}, swapchain{gfx, GlfwWsi{window}.make_surface(gfx.instance), vk::PresentModeKHR::eFifo}, pipes(gfx, info.samples),
+	std::optional<vk::PresentModeKHR> change_mode{};
+	std::optional<ColourSpace> change_colour_space{};
+
+	Fps fps{};
+
+	struct {
+		FrameStats stats{};
+		std::uint64_t triangles{};
+		std::uint32_t draw_calls{};
+	} stats{};
+
+	Impl(Gfx gfx, Glfw::Window window, Renderer::CreateInfo const& info)
+		: gfx{gfx}, window{window}, swapchain{gfx, GlfwWsi{window}.make_surface(gfx.instance)}, pipes(gfx, info.samples),
 		  render_pass(gfx, info.samples, this->swapchain.info.imageFormat, depth_format(gfx.gpu)), render_frames(make_render_frames(gfx, info.command_buffers)),
-		  dear_imgui(DearImgui::Info{
+		  dear_imgui(DearImgui::CreateInfo{
 			  gfx,
 			  window,
 			  render_pass.render_pass(),
 			  info.samples,
 			  Swapchain::colour_space(swapchain.info.imageFormat),
 		  }) {}
+
+	void next_frame() {
+		stats.stats.fps = fps.next_frame();
+		++stats.stats.frame_counter;
+		stats.stats.triangles = std::exchange(stats.triangles, 0);
+		stats.stats.draw_calls = std::exchange(stats.draw_calls, 0);
+	}
 };
 
-Renderer::Renderer(Gfx gfx, Glfw::Window window, Info const& info) : m_impl{std::make_unique<Impl>(std::move(gfx), window, info)} {
+Renderer::Renderer(Gfx gfx, Glfw::Window window, CreateInfo const& info) : m_impl{std::make_unique<Impl>(std::move(gfx), window, info)} {
 	m_impl->swapchain.refresh(Swapchain::Spec{window.framebuffer_extent()});
 }
 
@@ -50,12 +87,38 @@ Renderer::Renderer(Renderer&&) noexcept = default;
 Renderer& Renderer::operator=(Renderer&&) noexcept = default;
 Renderer::~Renderer() noexcept = default;
 
+auto Renderer::info() const -> Info {
+	return {
+		.mode = m_impl->swapchain.info.presentMode,
+		.samples = m_impl->render_pass.samples(),
+		.colour_space = m_impl->swapchain.colour_space(),
+		.cbs_per_frame = m_impl->render_frames.get().secondary.size(),
+	};
+}
+
 glm::uvec2 Renderer::framebuffer_extent() const { return m_impl->window.framebuffer_extent(); }
 
-std::size_t Renderer::command_buffers_per_frame() const { return m_impl->render_frames.get().secondary.span().size(); }
+FrameStats const& Renderer::frame_stats() const { return m_impl->stats.stats; }
+
+bool Renderer::is_supported(vk::PresentModeKHR const mode) const { return m_impl->swapchain.supported_present_modes().contains(mode); }
+
+bool Renderer::request_mode(vk::PresentModeKHR const desired) const {
+	if (!is_supported(desired)) {
+		logger::error("Unsupported present mode requested: ", present_mode_str(desired));
+		return false;
+	}
+	if (m_impl->swapchain.info.presentMode != desired) { m_impl->change_mode = desired; }
+	return true;
+}
+
+void Renderer::request_colour_space(ColourSpace desired) const {
+	if (m_impl->swapchain.colour_space() == desired) { return; }
+	m_impl->change_colour_space = desired;
+}
 
 bool Renderer::next_frame(std::span<vk::CommandBuffer> out) {
-	assert(out.size() <= command_buffers_per_frame());
+	assert(out.size() <= m_impl->render_frames.get().secondary.size());
+	m_impl->next_frame();
 	auto& frame = m_impl->render_frames.get();
 	auto fill_and_return = [out, &frame] {
 		auto span = frame.secondary.span();
@@ -67,6 +130,19 @@ bool Renderer::next_frame(std::span<vk::CommandBuffer> out) {
 	// ImGui NewFrame / EndFrame are called even if acquire / present fails
 	// This allows user code to unconditionally call ImGui:: code in a frame, regardless of whether it will be drawn / presented
 	m_impl->dear_imgui.new_frame();
+
+	if (m_impl->change_mode || m_impl->change_colour_space) {
+		auto const spec = [&] {
+			auto ret = Swapchain::Spec{};
+			if (m_impl->change_colour_space) { ret.colour_space = *m_impl->change_colour_space; }
+			if (m_impl->change_mode) { ret.mode = *m_impl->change_mode; }
+			m_impl->change_mode.reset();
+			m_impl->change_colour_space.reset();
+			return ret;
+		}();
+		m_impl->swapchain.refresh(spec);
+	}
+
 	auto acquired = ImageView{};
 	if (m_impl->swapchain.acquire(m_impl->window.framebuffer_extent(), acquired, *frame.sync.draw) != vk::Result::eSuccess) { return false; }
 	m_impl->gfx.reset(*frame.sync.drawn);
@@ -121,7 +197,16 @@ bool Renderer::render() {
 	m_impl->render_frames.rotate();
 
 	m_impl->render_target.reset();
+
+	++m_impl->stats.stats.frame_counter;
+
 	return true;
+}
+
+void Renderer::draw(Pipeline& pipeline, StaticMesh const& mesh, std::span<glm::mat4x4 const> instances) {
+	++m_impl->stats.draw_calls;
+	m_impl->stats.triangles += instances.size() * mesh.view().vertex_count / 3;
+	pipeline.draw(mesh, instances);
 }
 
 Shader Renderer::add_shader(std::string id, SpirV vert, SpirV frag) { return m_impl->shader_db.add(std::move(id), std::move(vert), std::move(frag)); }

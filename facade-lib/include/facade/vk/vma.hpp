@@ -10,7 +10,7 @@ using Pair = std::pair<T, U>;
 template <typename Type>
 concept BufferWrite = !std::is_pointer_v<Type> && std::is_trivially_destructible_v<Type>;
 
-constexpr vk::Format srgb_formats_v[] = {vk::Format::eR8G8B8A8Srgb, vk::Format::eB8G8R8A8Srgb};
+constexpr vk::Format srgb_formats_v[] = {vk::Format::eR8G8B8A8Srgb, vk::Format::eB8G8R8A8Srgb, vk::Format::eA8B8G8R8SrgbPack32};
 constexpr vk::Format linear_formats_v[] = {vk::Format::eR8G8B8A8Unorm, vk::Format::eB8G8R8A8Unorm};
 
 constexpr bool is_linear(vk::Format format) {
@@ -18,6 +18,16 @@ constexpr bool is_linear(vk::Format format) {
 }
 
 constexpr bool is_srgb(vk::Format format) { return std::find(std::begin(srgb_formats_v), std::end(srgb_formats_v), format) != std::end(srgb_formats_v); }
+
+constexpr std::string_view present_mode_str(vk::PresentModeKHR const mode) {
+	switch (mode) {
+	case vk::PresentModeKHR::eFifo: return "fifo";
+	case vk::PresentModeKHR::eFifoRelaxed: return "fifo_relaxed";
+	case vk::PresentModeKHR::eImmediate: return "immediate";
+	case vk::PresentModeKHR::eMailbox: return "mailbox";
+	default: return "(unsupported)";
+	}
+}
 
 struct BufferView {
 	vk::Buffer buffer{};

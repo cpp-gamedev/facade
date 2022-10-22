@@ -5,22 +5,23 @@
 
 namespace facade {
 namespace {
-constexpr vk::Format srgb_formats_v[] = {vk::Format::eR8G8B8A8Srgb, vk::Format::eB8G8R8A8Srgb};
-
-constexpr vk::SurfaceFormatKHR surface_format(std::span<vk::SurfaceFormatKHR const> available) noexcept {
-	assert(!available.empty());
-	vk::SurfaceFormatKHR ranked[std::size(srgb_formats_v)]{};
+SurfaceFormats make_surface_formats(std::span<vk::SurfaceFormatKHR const> available) {
+	auto ret = SurfaceFormats{};
 	for (auto const format : available) {
-		if (format.colorSpace == vk::ColorSpaceKHR::eVkColorspaceSrgbNonlinear) {
-			for (std::size_t i = 0; i < std::size(srgb_formats_v); ++i) {
-				if (format == srgb_formats_v[i]) { ranked[i] = format.format; }
+		if (format.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear) {
+			if (std::find(std::begin(srgb_formats_v), std::end(srgb_formats_v), format.format) != std::end(srgb_formats_v)) {
+				ret.srgb.push_back(format.format);
+			} else {
+				ret.linear.push_back(format.format);
 			}
 		}
 	}
-	for (auto const& format : ranked) {
-		if (format.format != vk::Format()) { return format; }
-	}
-	return available.front();
+	return ret;
+}
+
+vk::SurfaceFormatKHR surface_format(SurfaceFormats const& formats, ColourSpace colour_space) {
+	if (colour_space == ColourSpace::eSrgb && !formats.srgb.empty()) { return formats.srgb.front(); }
+	return formats.linear.front();
 }
 
 constexpr std::uint32_t image_count(vk::SurfaceCapabilitiesKHR const& caps) noexcept {
@@ -36,9 +37,9 @@ constexpr vk::Extent2D image_extent(vk::SurfaceCapabilitiesKHR const& caps, vk::
 	return vk::Extent2D{x, y};
 }
 
-vk::SwapchainCreateInfoKHR make_swci(Gfx const& gfx, std::span<vk::SurfaceFormatKHR const> formats, vk::SurfaceKHR surface, vk::PresentModeKHR mode) {
+vk::SwapchainCreateInfoKHR make_swci(Gfx const& gfx, vk::SurfaceKHR surface, SurfaceFormats const& formats, ColourSpace colour_space, vk::PresentModeKHR mode) {
 	vk::SwapchainCreateInfoKHR ret;
-	auto const format = surface_format(formats);
+	auto const format = surface_format(formats, colour_space);
 	ret.surface = surface;
 	ret.presentMode = mode;
 	ret.imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferDst;
@@ -53,15 +54,20 @@ vk::SwapchainCreateInfoKHR make_swci(Gfx const& gfx, std::span<vk::SurfaceFormat
 constexpr bool is_zero(glm::uvec2 const extent) { return extent.x == 0 || extent.y == 0; }
 } // namespace
 
-Swapchain::Swapchain(Gfx const& gfx, vk::UniqueSurfaceKHR surface, vk::PresentModeKHR mode) : m_gfx{gfx}, m_surface{std::move(surface)} {
-	m_formats = m_gfx.gpu.getSurfaceFormatsKHR(*m_surface);
-	info = make_swci(m_gfx, m_formats, *m_surface, mode);
+Swapchain::Swapchain(Gfx const& gfx, vk::UniqueSurfaceKHR surface, ColourSpace colour_space) : m_gfx{gfx}, m_surface{std::move(surface)} {
+	m_formats = make_surface_formats(m_gfx.gpu.getSurfaceFormatsKHR(*m_surface));
+	auto const supported_modes = m_gfx.gpu.getSurfacePresentModesKHR(*m_surface);
+	m_supported_modes = {supported_modes.begin(), supported_modes.end()};
+	info = make_swci(m_gfx, *m_surface, m_formats, colour_space, vk::PresentModeKHR::eFifo);
 }
 
 vk::Result Swapchain::refresh(Spec const& spec) {
 	auto create_info = info;
-	if (spec.format) { create_info.imageFormat = *spec.format; }
-	if (spec.mode) { create_info.presentMode = *spec.mode; }
+	if (spec.colour_space) { create_info.imageFormat = surface_format(m_formats, *spec.colour_space).format; }
+	if (spec.mode) {
+		assert(m_supported_modes.contains(*spec.mode));
+		create_info.presentMode = *spec.mode;
+	}
 	auto const caps = m_gfx.gpu.getSurfaceCapabilitiesKHR(*m_surface);
 	create_info.imageExtent = image_extent(caps, to_vk_extent(spec.extent));
 	create_info.minImageCount = image_count(caps);

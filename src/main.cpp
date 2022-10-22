@@ -1,50 +1,25 @@
 
-#include <glm/gtx/quaternion.hpp>
-
 #include <facade/defines.hpp>
 
 #include <facade/util/data_provider.hpp>
 #include <facade/util/error.hpp>
 #include <facade/util/geometry.hpp>
-#include <facade/util/image.hpp>
 #include <facade/util/logger.hpp>
-#include <facade/util/time.hpp>
-
-#include <facade/glfw/glfw.hpp>
-
-#include <facade/vk/buffer.hpp>
-#include <facade/vk/static_mesh.hpp>
-#include <facade/vk/texture.hpp>
-#include <facade/vk/vk.hpp>
 
 #include <facade/dear_imgui/dear_imgui.hpp>
 
 #include <djson/json.hpp>
 
-#include <facade/scene/camera.hpp>
-#include <facade/scene/fly_cam.hpp>
-#include <facade/scene/material.hpp>
-#include <facade/scene/renderer.hpp>
-#include <facade/scene/scene.hpp>
-#include <facade/scene/transform.hpp>
+#include <facade/engine/engine.hpp>
 
-#include <iostream>
-#include <string>
-#include <vector>
+#include <facade/scene/fly_cam.hpp>
+#include <facade/scene/scene.hpp>
 
 #include <bin/shaders.hpp>
-#include <fstream>
 
 using namespace facade;
 
 namespace {
-UniqueWin make_window() {
-	auto ret = Glfw::Window::make();
-	glfwSetWindowTitle(ret.get(), "facade");
-	glfwSetWindowSize(ret.get(), 800, 800);
-	return ret;
-}
-
 bool load_gltf(Scene& out, std::string_view path) {
 	auto const provider = FileDataProvider::mount_parent_dir(path);
 	auto json = dj::Json::from_file(path.data());
@@ -135,23 +110,18 @@ static constexpr auto test_json_v = R"(
 )";
 
 void run() {
-	auto window = make_window();
-	auto vulkan = Vulkan{GlfwWsi{window}};
-	auto gfx = vulkan.gfx();
-
-	auto const renderer_info = Renderer::Info{.command_buffers = 1, .samples = vk::SampleCountFlagBits::e1};
-	auto renderer = Renderer{vulkan.gfx(), window, renderer_info};
+	auto engine = Engine{};
 
 	auto lit = shaders::lit();
 	lit.id = "default";
-	renderer.add_shader(lit);
-	renderer.add_shader(shaders::unlit());
+	engine.add_shader(lit);
+	engine.add_shader(shaders::unlit());
 
 	struct DummyDataProvider : DataProvider {
 		ByteBuffer load(std::string_view) const override { return {}; }
 	};
 
-	auto scene = Scene{gfx};
+	auto scene = Scene{engine.gfx()};
 	scene.dir_lights.push_back(DirLight{.direction = glm::normalize(glm::vec3{-1.0f, -1.0f, -1.0f}), .diffuse = glm::vec3{5.0f}});
 
 	auto material_id = Id<Material>{};
@@ -162,7 +132,7 @@ void run() {
 		auto material = std::make_unique<LitMaterial>();
 		material->albedo = {1.0f, 0.0f, 0.0f};
 		material_id = scene.add(std::move(material));
-		auto static_mesh_id = scene.add(StaticMesh{gfx, make_cubed_sphere(1.0f, 32)});
+		auto static_mesh_id = scene.add(StaticMesh{engine.gfx(), make_cubed_sphere(1.0f, 32)});
 		auto mesh_id = scene.add(Mesh{.primitives = {Mesh::Primitive{static_mesh_id, material_id}}});
 
 		auto node = Node{};
@@ -177,24 +147,18 @@ void run() {
 
 	float const drot_z[] = {100.0f, -150.0f};
 
-	auto delta_time = DeltaTime{};
-	glfwShowWindow(window.get());
-	while (!glfwWindowShouldClose(window.get())) {
-		auto const dt = delta_time();
-
-		window.get().glfw->poll_events();
-
-		auto const& input = window.get().state().input;
+	engine.show(true);
+	while (engine.running()) {
+		auto const dt = engine.next_frame();
+		auto const& state = engine.window().state();
+		auto const& input = state.input;
 		bool const mouse_look = input.mouse.held(GLFW_MOUSE_BUTTON_RIGHT);
 
-		if (input.keyboard.pressed(GLFW_KEY_ESCAPE)) { glfwSetWindowShouldClose(window.get(), GLFW_TRUE); }
-		glfwSetInputMode(window.get(), GLFW_CURSOR, mouse_look ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+		if (input.keyboard.pressed(GLFW_KEY_ESCAPE)) { engine.request_stop(); }
+		glfwSetInputMode(engine.window(), GLFW_CURSOR, mouse_look ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
 
-		auto cb = vk::CommandBuffer{};
-		if (!renderer.next_frame({&cb, 1})) { continue; }
-
-		if (auto const& files = window.get().state().file_drops; !files.empty()) {
-			auto const& file = files.front();
+		if (!state.file_drops.empty()) {
+			auto const& file = state.file_drops.front();
 			if (!load_gltf(scene, file)) {
 				logger::warn("Failed to load GLTF: ", file);
 			} else {
@@ -227,12 +191,8 @@ void run() {
 		}
 		ImGui::End();
 
-		scene.render(renderer, cb);
-
-		renderer.render();
+		engine.render(scene);
 	}
-
-	gfx.device.waitIdle();
 }
 } // namespace
 

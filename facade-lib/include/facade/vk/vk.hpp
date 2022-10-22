@@ -40,6 +40,7 @@ class Vulkan {
 	Vulkan(Wsi const& wsi) noexcept(false);
 
 	Gfx gfx() const;
+	Gpu const& gpu() const { return device.gpu; }
 
   private:
 	Instance instance{};

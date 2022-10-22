@@ -13,6 +13,8 @@ struct Gfx {
 		DeferQueue defer_queue{};
 		std::mutex mutex{};
 		DeviceBlock block{};
+
+		Shared(vk::Device device, vk::PhysicalDeviceProperties const& props) : device_limits(props.limits), block{device} {}
 	};
 
 	Vma vma{};

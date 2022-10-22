@@ -104,8 +104,12 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/facade/vk/texture.hpp
   include/facade/vk/vk.hpp
   include/facade/vk/vma.hpp
+  include/facade/vk/wsi.hpp
 
   include/facade/dear_imgui/dear_imgui.hpp
+
+  include/facade/engine/engine.hpp
+  include/facade/engine/renderer.hpp
 
   include/facade/scene/camera.hpp
   include/facade/scene/fly_cam.hpp
@@ -114,7 +118,6 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/facade/scene/material.hpp
   include/facade/scene/node.hpp
   include/facade/scene/rect.hpp
-  include/facade/scene/renderer.hpp
   include/facade/scene/scene.hpp
   include/facade/scene/transform.hpp
 
@@ -149,9 +152,11 @@ target_sources(${PROJECT_NAME} PRIVATE
   src/detail/gltf.cpp
   src/detail/gltf.hpp
 
+  src/engine/engine.cpp
+  src/engine/renderer.cpp
+
   src/scene/camera.cpp
   src/scene/material.cpp
-  src/scene/renderer.cpp
   src/scene/scene.cpp
   src/scene/transform.cpp
 )

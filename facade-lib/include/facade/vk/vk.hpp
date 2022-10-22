@@ -1,7 +1,7 @@
 #pragma once
 #include <facade/vk/gfx.hpp>
 #include <facade/vk/vma.hpp>
-#include <vector>
+#include <facade/vk/wsi.hpp>
 
 namespace facade {
 struct Gpu {
@@ -12,7 +12,8 @@ struct Gpu {
 	explicit operator bool() const { return !!device; }
 };
 
-struct Vulkan {
+class Vulkan {
+  public:
 	enum Flag : std::uint32_t {
 		eValidation = 1 << 0,
 		ePortability = 1 << 1,
@@ -36,8 +37,12 @@ struct Vulkan {
 
 	static UniqueVma make_vma(vk::Instance instance, vk::PhysicalDevice gpu, vk::Device device);
 
-	Gfx gfx() const;
+	Vulkan(Wsi const& wsi) noexcept(false);
 
+	Gfx gfx() const;
+	Gpu const& gpu() const { return device.gpu; }
+
+  private:
 	Instance instance{};
 	Device device{};
 	UniqueVma vma{};

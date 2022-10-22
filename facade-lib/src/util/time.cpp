@@ -12,8 +12,8 @@ float time::since_start() { return Secs{Clock::now() - g_start}.count(); }
 
 float DeltaTime::operator()() {
 	auto const now = time::since_start();
-	auto const ret = now - start;
+	value = now - start;
 	start = now;
-	return ret;
+	return value;
 }
 } // namespace facade

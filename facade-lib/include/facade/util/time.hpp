@@ -7,6 +7,7 @@ float since_start();
 
 struct DeltaTime {
 	float start{};
+	float value{};
 
 	float operator()();
 };

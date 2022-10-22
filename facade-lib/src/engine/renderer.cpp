@@ -1,5 +1,5 @@
 #include <facade/dear_imgui/dear_imgui.hpp>
-#include <facade/scene/renderer.hpp>
+#include <facade/engine/renderer.hpp>
 #include <facade/util/error.hpp>
 #include <facade/util/string.hpp>
 #include <facade/vk/pipes.hpp>
@@ -31,7 +31,7 @@ struct Renderer::Impl {
 	Framebuffer framebuffer{};
 
 	Impl(Gfx gfx, Glfw::Window window, Renderer::Info const& info)
-		: gfx{gfx}, window{window}, swapchain{gfx, window.make_surface(gfx.instance), vk::PresentModeKHR::eFifo}, pipes(gfx, info.samples),
+		: gfx{gfx}, window{window}, swapchain{gfx, GlfwWsi{window}.make_surface(gfx.instance), vk::PresentModeKHR::eFifo}, pipes(gfx, info.samples),
 		  render_pass(gfx, info.samples, this->swapchain.info.imageFormat, depth_format(gfx.gpu)), render_frames(make_render_frames(gfx, info.command_buffers)),
 		  dear_imgui(DearImgui::Info{
 			  gfx,
@@ -63,10 +63,12 @@ bool Renderer::next_frame(std::span<vk::CommandBuffer> out) {
 	};
 	if (m_impl->render_target) { return fill_and_return(); }
 
+	// ImGui NewFrame / EndFrame are called even if acquire / present fails
+	// This allows user code to unconditionally call ImGui:: code in a frame, regardless of whether it will be drawn / presented
+	m_impl->dear_imgui.new_frame();
 	auto acquired = ImageView{};
 	if (m_impl->swapchain.acquire(m_impl->window.framebuffer_extent(), acquired, *frame.sync.draw) != vk::Result::eSuccess) { return false; }
 	m_impl->gfx.reset(*frame.sync.drawn);
-	m_impl->dear_imgui.new_frame();
 	m_impl->gfx.shared->defer_queue.next();
 
 	m_impl->render_target = m_impl->render_pass.refresh(acquired);
@@ -91,9 +93,11 @@ Pipeline Renderer::bind_pipeline(vk::CommandBuffer cb, Pipeline::State const& st
 }
 
 bool Renderer::render() {
+	// ImGui NewFrame / EndFrame are called even if acquire / present fails
+	// This allows user code to unconditionally call ImGui:: code in a frame, regardless of whether it will be drawn / presented
+	m_impl->dear_imgui.end_frame();
 	if (!m_impl->render_target) { return false; }
 
-	ImGui::Render();
 	auto& frame = m_impl->render_frames.get();
 
 	auto const cbs = frame.secondary.span();

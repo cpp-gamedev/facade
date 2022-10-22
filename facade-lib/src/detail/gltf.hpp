@@ -1,6 +1,7 @@
 #pragma once
 #include <facade/scene/transform.hpp>
 #include <facade/util/byte_buffer.hpp>
+#include <facade/util/colour_space.hpp>
 #include <facade/util/geometry.hpp>
 #include <facade/util/image.hpp>
 #include <glm/vec4.hpp>
@@ -114,6 +115,15 @@ struct Texture {
 	std::string name{};
 	std::optional<std::size_t> sampler{};
 	std::size_t source{};
+
+	///
+	/// \brief Describes whether to load the source image in sRGB or linear format
+	///
+	/// Textures with colour info are sRGB encoded, with other info (eg normal data) are linear encoded
+	/// This information is obtained from the material(s) textures are used in
+	/// Different materials using the same texture as colour and non-colour sources is undefined behaviour
+	///
+	ColourSpace colour_space{ColourSpace::eSrgb};
 };
 
 struct Node {

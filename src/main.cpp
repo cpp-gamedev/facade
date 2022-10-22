@@ -181,7 +181,7 @@ void run() {
 	auto post_scene_load = [&] {
 		scene.camera().transform.set_position({0.0f, 0.0f, 5.0f});
 
-		auto material = std::make_unique<TestMaterial>();
+		auto material = std::make_unique<LitMaterial>();
 		material->albedo = {1.0f, 0.0f, 0.0f};
 		material_id = scene.add(std::move(material));
 		auto static_mesh_id = scene.add(StaticMesh{gfx, make_cubed_sphere(1.0f, 32)});
@@ -243,7 +243,7 @@ void run() {
 
 		ImGui::SetNextWindowSize({250.0f, 100.0f}, ImGuiCond_Once);
 		if (ImGui::Begin("Material")) {
-			auto* mat = static_cast<TestMaterial*>(scene.find_material(material_id));
+			auto* mat = static_cast<LitMaterial*>(scene.find_material(material_id));
 			ImGui::SliderFloat("Metallic", &mat->metallic, 0.0f, 1.0f);
 			ImGui::SliderFloat("Roughness", &mat->roughness, 0.0f, 1.0f);
 		}

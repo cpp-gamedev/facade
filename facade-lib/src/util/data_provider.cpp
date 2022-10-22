@@ -20,7 +20,7 @@ FileDataProvider::FileDataProvider(std::string_view directory) {
 	m_directory = path.generic_string();
 }
 
-FileDataProvider FileDataProvider::mount_parent_dir(std::string_view filename) { return {fs::path{filename}.parent_path().generic_string()}; }
+FileDataProvider FileDataProvider::mount_parent_dir(std::string_view filename) { return FileDataProvider{fs::path{filename}.parent_path().generic_string()}; }
 
 ByteBuffer FileDataProvider::load(std::string_view uri) const {
 	auto const path = absolute_path(m_directory, uri);

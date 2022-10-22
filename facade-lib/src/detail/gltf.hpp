@@ -119,7 +119,7 @@ struct Texture {
 	///
 	/// \brief Describes whether to load the source image in sRGB or linear format
 	///
-	/// Textures with colour info are sRGB encoeded, with other info (eg normal data) are linear encoded
+	/// Textures with colour info are sRGB encoded, with other info (eg normal data) are linear encoded
 	/// This information is obtained from the material(s) textures are used in
 	/// Different materials using the same texture as colour and non-colour sources is undefined behaviour
 	///

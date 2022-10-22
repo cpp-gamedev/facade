@@ -241,6 +241,8 @@ Node const* Scene::find_node(Id<Node> id) const { return find_node(m_tree.roots,
 
 Material* Scene::find_material(Id<Material> id) const { return id >= m_storage.materials.size() ? nullptr : m_storage.materials[id].get(); }
 
+Mesh const* Scene::find_mesh(Id<Mesh> id) const { return id >= m_storage.meshes.size() ? nullptr : &m_storage.meshes[id]; }
+
 bool Scene::select_camera(Id<Camera> id) {
 	if (id >= camera_count()) { return false; }
 	*camera().find<Id<Camera>>() = id;

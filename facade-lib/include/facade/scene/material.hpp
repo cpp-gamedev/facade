@@ -20,6 +20,9 @@ struct TextureStore {
 
 class Material {
   public:
+	static glm::vec4 to_linear(glm::vec4 const& srgb);
+	static glm::vec4 to_srgb(glm::vec4 const& linear);
+
 	inline static std::string const default_shader_id{"default"};
 
 	virtual ~Material() = default;

@@ -58,6 +58,7 @@ class Scene {
 	Node const* find_node(Id<Node> id) const;
 	Node* find_node(Id<Node> id);
 	Material* find_material(Id<Material> id) const;
+	Mesh const* find_mesh(Id<Mesh> id) const;
 
 	std::size_t camera_count() const { return m_storage.cameras.size(); }
 	bool select_camera(Id<Camera> id);

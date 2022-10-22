@@ -1,4 +1,5 @@
 #pragma once
+#include <facade/util/colour_space.hpp>
 #include <facade/util/defer_queue.hpp>
 #include <facade/util/flex_array.hpp>
 #include <facade/vk/gfx.hpp>
@@ -21,6 +22,8 @@ class Swapchain {
 		std::optional<vk::PresentModeKHR> mode{};
 		std::optional<vk::Format> format{};
 	};
+
+	static constexpr ColourSpace colour_space(vk::Format format) { return is_srgb(format) ? ColourSpace::eSrgb : ColourSpace::eLinear; }
 
 	Swapchain(Gfx const& gfx, vk::UniqueSurfaceKHR surface, vk::PresentModeKHR mode);
 

@@ -104,6 +104,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/facade/vk/texture.hpp
   include/facade/vk/vk.hpp
   include/facade/vk/vma.hpp
+  include/facade/vk/wsi.hpp
 
   include/facade/dear_imgui/dear_imgui.hpp
 

@@ -38,32 +38,10 @@
 using namespace facade;
 
 namespace {
-[[maybe_unused]] ByteBuffer read_file(char const* path) {
-	auto file = std::ifstream{path, std::ios::binary | std::ios::ate};
-	if (!file) { return {}; }
-	auto const ssize = file.tellg();
-	file.seekg({});
-	auto ret = ByteBuffer::make(static_cast<std::size_t>(ssize));
-	file.read(reinterpret_cast<char*>(ret.data()), ssize);
-	return ret;
-}
-
 UniqueWin make_window() {
 	auto ret = Glfw::Window::make();
 	glfwSetWindowTitle(ret.get(), "facade");
 	glfwSetWindowSize(ret.get(), 800, 800);
-	return ret;
-}
-
-Vulkan make_vulkan(Glfw::Window const& window) {
-	auto ret = Vulkan{};
-	ret.instance = Vulkan::Instance::make(window.glfw->vk_extensions(), Vulkan::eValidation);
-	auto surface = window.make_surface(*ret.instance.instance);
-	ret.device = Vulkan::Device::make(ret.instance, *surface);
-	ret.vma = Vulkan::make_vma(*ret.instance.instance, ret.device.gpu.device, *ret.device.device);
-	ret.shared = std::make_unique<Gfx::Shared>();
-	ret.shared->block.device = *ret.device.device;
-	ret.shared->device_limits = ret.device.gpu.properties.limits;
 	return ret;
 }
 
@@ -158,7 +136,7 @@ static constexpr auto test_json_v = R"(
 
 void run() {
 	auto window = make_window();
-	auto vulkan = make_vulkan(window);
+	auto vulkan = Vulkan{GlfwWsi{window}};
 	auto gfx = vulkan.gfx();
 
 	auto const renderer_info = Renderer::Info{.command_buffers = 1, .samples = vk::SampleCountFlagBits::e1};

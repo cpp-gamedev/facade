@@ -31,7 +31,7 @@ struct Renderer::Impl {
 	Framebuffer framebuffer{};
 
 	Impl(Gfx gfx, Glfw::Window window, Renderer::Info const& info)
-		: gfx{gfx}, window{window}, swapchain{gfx, window.make_surface(gfx.instance), vk::PresentModeKHR::eFifo}, pipes(gfx, info.samples),
+		: gfx{gfx}, window{window}, swapchain{gfx, GlfwWsi{window}.make_surface(gfx.instance), vk::PresentModeKHR::eFifo}, pipes(gfx, info.samples),
 		  render_pass(gfx, info.samples, this->swapchain.info.imageFormat, depth_format(gfx.gpu)), render_frames(make_render_frames(gfx, info.command_buffers)),
 		  dear_imgui(DearImgui::Info{
 			  gfx,

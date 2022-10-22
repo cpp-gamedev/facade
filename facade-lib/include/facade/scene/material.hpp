@@ -1,6 +1,7 @@
 #pragma once
 #include <facade/scene/id.hpp>
 #include <facade/util/colour_space.hpp>
+#include <facade/vk/texture.hpp>
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
 #include <optional>
@@ -8,7 +9,6 @@
 #include <string>
 
 namespace facade {
-class Texture;
 class Pipeline;
 
 struct TextureStore {

@@ -1,6 +1,5 @@
 #include <facade/scene/material.hpp>
 #include <facade/vk/pipeline.hpp>
-#include <facade/vk/texture.hpp>
 #include <glm/gtc/color_space.hpp>
 
 namespace facade {

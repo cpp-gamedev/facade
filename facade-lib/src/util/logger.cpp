@@ -38,13 +38,13 @@ GetThreadId get_thread_id{};
 
 int logger::thread_id() { return get_thread_id(); }
 
-std::string logger::format(char severity, std::string_view const message) {
-	return fmt::format(fmt::runtime(g_format), fmt::arg("thread", thread_id()), fmt::arg("severity", severity), fmt::arg("message", message),
-					   fmt::arg("timestamp", make_timestamp()));
+std::string logger::format(Level level, std::string_view const message) {
+	return fmt::format(fmt::runtime(g_format), fmt::arg("thread", thread_id()), fmt::arg("level", levels_v[static_cast<std::size_t>(level)]),
+					   fmt::arg("message", message), fmt::arg("timestamp", make_timestamp()));
 }
 
-void logger::print_to(Pipe pipe, char const* text) {
+void logger::log_to(Pipe pipe, Entry const& entry) {
 	auto* fd = pipe == Pipe::eStdErr ? stderr : stdout;
-	std::fprintf(fd, "%s\n", text);
+	std::fprintf(fd, "%s\n", entry.message.c_str());
 }
 } // namespace facade

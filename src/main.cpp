@@ -113,6 +113,52 @@ static constexpr auto test_json_v = R"(
 }
 )";
 
+struct MainMenu {
+	struct {
+		bool inspector{};
+		bool stats{};
+	} windows{};
+
+	void inspector(Scene& scene) {
+		ImGui::SetNextWindowSize({250.0f, 100.0f}, ImGuiCond_Once);
+		if (auto window = editor::Window{"Node", &windows.inspector}) {
+			static auto s_input = int{};
+			ImGui::InputInt("Id", &s_input);
+			editor::SceneInspector{window, scene}.inspect(Id<Node>{static_cast<std::size_t>(s_input)});
+		}
+	}
+
+	void stats(Engine const& engine, float const dt) {
+		ImGui::SetNextWindowSize({200.0f, 150.0f}, ImGuiCond_Once);
+		if (auto window = editor::Window{"Frame Stats", &windows.stats}) {
+			auto const& stats = engine.renderer().frame_stats();
+			ImGui::Text("%s", FixedString{"Counter: {}", stats.frame_counter}.c_str());
+			ImGui::Text("%s", FixedString{"Triangles: {}", stats.triangles}.c_str());
+			ImGui::Text("%s", FixedString{"Draw calls: {}", stats.draw_calls}.c_str());
+			ImGui::Text("%s", FixedString{"FPS: {}", (stats.fps == 0 ? static_cast<std::uint32_t>(stats.frame_counter) : stats.fps)}.c_str());
+			ImGui::Text("%s", FixedString{"Frame time: {:.2f}ms", dt * 1000.0f}.c_str());
+		}
+	}
+
+	void display(Engine& engine, Scene& scene, float const dt) {
+		if (auto main = editor::MainMenu{}) {
+			if (auto file = editor::Menu{main, "File"}) {
+				ImGui::Separator();
+				if (ImGui::MenuItem("Exit")) { engine.request_stop(); }
+			}
+			if (auto window = editor::Menu{main, "Window"}) {
+				if (ImGui::MenuItem("Inspect")) { windows.inspector = true; }
+				if (ImGui::MenuItem("Stats")) { windows.stats = true; }
+				ImGui::Separator();
+				if (ImGui::MenuItem("Close All")) { windows = {}; }
+			}
+		}
+
+		if (windows.inspector) { inspector(scene); }
+		if (windows.stats) { stats(engine, dt); }
+	}
+};
+
 void run() {
 	auto engine = Engine{};
 
@@ -150,6 +196,8 @@ void run() {
 	post_scene_load();
 
 	float const drot_z[] = {100.0f, -150.0f};
+
+	auto main_menu = MainMenu{};
 
 	engine.show(true);
 	while (engine.running()) {
@@ -205,22 +253,7 @@ void run() {
 
 		ImGui::ShowDemoWindow();
 
-		ImGui::SetNextWindowSize({250.0f, 100.0f}, ImGuiCond_Once);
-		if (auto window = editor::Window{"Node"}) {
-			static auto s_input = int{};
-			ImGui::InputInt("Id", &s_input);
-			editor::SceneInspector{window, scene}.inspect(Id<Node>{static_cast<std::size_t>(s_input)});
-		}
-
-		ImGui::SetNextWindowSize({200.0f, 150.0f}, ImGuiCond_Once);
-		if (auto window = editor::Window("Frame Stats")) {
-			auto const& stats = engine.renderer().frame_stats();
-			ImGui::Text("%s", FixedString{"Counter: {}", stats.frame_counter}.c_str());
-			ImGui::Text("%s", FixedString{"Triangles: {}", stats.triangles}.c_str());
-			ImGui::Text("%s", FixedString{"Draw calls: {}", stats.draw_calls}.c_str());
-			ImGui::Text("%s", FixedString{"FPS: {}", (stats.fps == 0 ? static_cast<std::uint32_t>(stats.frame_counter) : stats.fps)}.c_str());
-			ImGui::Text("%s", FixedString{"Frame time: {:.2f}ms", dt * 1000.0f}.c_str());
-		}
+		main_menu.display(engine, scene, dt);
 		// TEMP CODE
 
 		engine.render(scene);

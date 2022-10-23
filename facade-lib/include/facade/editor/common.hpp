@@ -1,28 +1,87 @@
 #pragma once
 #include <facade/util/pinned.hpp>
+#include <glm/vec2.hpp>
+#include <cassert>
+#include <concepts>
 
 namespace facade::editor {
-class Window : public Pinned {
+///
+/// \brief Base class for RAII Dear ImGui wrappers whose widgets return a boolean on Begin()
+///
+class Openable : public Pinned {
   public:
-	explicit Window(char const* label, bool* open_if = {}, int flags = {});
-	~Window();
-
 	bool is_open() const { return m_open; }
 	explicit operator bool() const { return is_open(); }
 
-  private:
-	bool m_open{};
+  protected:
+	Openable(bool is_open);
+	bool m_open;
 };
 
-class TreeNode : public Pinned {
+///
+/// \brief Required dependency on an Openable which must be open (when used as an argument)
+///
+template <typename T>
+struct NotClosed {
+	NotClosed(T const& t) { assert(t.is_open()); }
+};
+
+///
+/// \brief RAII Dear ImGui window
+///
+class Window : public Openable {
+  public:
+	class Menu;
+
+	explicit Window(char const* label, bool* open_if = {}, int flags = {});
+	Window(NotClosed<Window> parent, char const* label, glm::vec2 size = {}, bool border = {}, int flags = {});
+	~Window();
+
+  private:
+	bool m_child{};
+};
+
+///
+/// \brief RAII Dear ImGui TreeNode
+///
+class TreeNode : public Openable {
   public:
 	explicit TreeNode(char const* label, int flags = {});
 	~TreeNode();
+};
 
-	bool is_open() const { return m_open; }
-	explicit operator bool() const { return is_open(); }
+///
+/// \brief Base class for Dear ImGui MenuBars
+///
+class MenuBar : public Openable {
+  protected:
+	using Openable::Openable;
+};
 
-  private:
-	bool m_open{};
+///
+/// \brief RAII Dear ImGui Menu object
+///
+class Menu : public Openable {
+  public:
+	explicit Menu(NotClosed<MenuBar>, char const* label, bool enabled = true);
+	~Menu();
+};
+
+///
+/// \brief RAII Dear ImGui windowed MenuBar
+///
+class Window::Menu : public MenuBar {
+  public:
+	explicit Menu(NotClosed<Window>);
+	~Menu();
+};
+
+///
+/// \brief RAII Dear ImGui MainMenuBar
+///
+class MainMenu : public MenuBar {
+  public:
+	explicit MainMenu();
+	~MainMenu();
 };
 } // namespace facade::editor

@@ -190,7 +190,7 @@ Pipeline Pipes::get(vk::RenderPass rp, State const& state, Shader shader) {
 	populate(lock, map, shader);
 	auto& ret = map.pipelines[rp];
 	if (!ret) { ret = make_pipeline(state, shader.vert, shader.frag, *map.pipeline_layout, rp); }
-	return {*ret, *map.pipeline_layout, &*map.set_pools.get(), &m_drawers.get()};
+	return {*ret, *map.pipeline_layout, &*map.set_pools.get(), &m_gfx.shared->device_limits, &m_drawers.get()};
 }
 
 void Pipes::rotate() {

@@ -8,9 +8,21 @@
 
 namespace facade {
 struct FrameStats {
+	///
+	/// \brief Total frames so far
+	///
 	std::uint64_t frame_counter{};
+	///
+	/// \brief Triangles drawn in previous frame
+	///
 	std::uint64_t triangles{};
+	///
+	/// \brief Draw calls in previous frame
+	///
 	std::uint32_t draw_calls{};
+	///
+	/// \brief Framerate (until previous frame)
+	///
 	std::uint32_t fps{};
 };
 

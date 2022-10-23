@@ -25,6 +25,7 @@ constexpr std::string_view present_mode_str(vk::PresentModeKHR const mode) {
 	case vk::PresentModeKHR::eFifoRelaxed: return "fifo_relaxed";
 	case vk::PresentModeKHR::eImmediate: return "immediate";
 	case vk::PresentModeKHR::eMailbox: return "mailbox";
+	// Using any other present mode is undefined behaviour
 	default: return "(unsupported)";
 	}
 }

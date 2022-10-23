@@ -13,11 +13,21 @@ constexpr vk::Extent2D to_vk_extent(glm::tvec2<T> extent) {
 	return {static_cast<std::uint32_t>(extent.x), static_cast<std::uint32_t>(extent.y)};
 }
 
+///
+/// \brief Supported swapchain / surface image formats, separated into sRGB vs linear
+///
 struct SurfaceFormats {
 	std::vector<vk::Format> srgb{};
 	std::vector<vk::Format> linear{};
 };
 
+///
+/// \brief Abstraction over Vulkan Swapchain + its resources
+///
+/// ColourSpace determines the surface image format (sRGB vs linear)
+///  - sRGB formats perform sRGB colour correction of fragment shader outputs in hardware (default)
+///  - Linear formats perform no colour correction (not recommended)
+///
 class Swapchain {
   public:
 	static constexpr std::size_t max_images_v{8};

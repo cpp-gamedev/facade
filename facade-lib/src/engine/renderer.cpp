@@ -18,6 +18,9 @@ vk::Format depth_format(vk::PhysicalDevice const gpu) {
 	return vk::Format::eD16Unorm;
 }
 
+///
+/// \brief Tracks frames per second
+///
 struct Fps {
 	std::uint32_t frames{};
 	std::uint32_t fps{};
@@ -27,8 +30,7 @@ struct Fps {
 		++frames;
 		if (auto const now = time::since_start(); now - start >= 1.0f) {
 			start = now;
-			fps = frames;
-			frames = 0;
+			fps = std::exchange(frames, 0);
 		}
 		return fps;
 	}
@@ -49,15 +51,24 @@ struct Renderer::Impl {
 	std::optional<RenderTarget> render_target{};
 	Framebuffer framebuffer{};
 
-	std::optional<vk::PresentModeKHR> change_mode{};
-	std::optional<ColourSpace> change_colour_space{};
+	struct {
+		std::optional<vk::PresentModeKHR> mode{};
+		std::optional<ColourSpace> colour_space{};
+
+		explicit operator bool() const { return mode || colour_space; }
+
+		void reset() {
+			mode.reset();
+			colour_space.reset();
+		}
+	} requests{};
 
 	Fps fps{};
 
 	struct {
 		FrameStats stats{};
-		std::uint64_t triangles{};
-		std::uint32_t draw_calls{};
+		std::uint64_t triangles{};	// reset every frame
+		std::uint32_t draw_calls{}; // reset every frame
 	} stats{};
 
 	Impl(Gfx gfx, Glfw::Window window, Renderer::CreateInfo const& info)
@@ -107,60 +118,75 @@ bool Renderer::request_mode(vk::PresentModeKHR const desired) const {
 		logger::error("Unsupported present mode requested: ", present_mode_str(desired));
 		return false;
 	}
-	if (m_impl->swapchain.info.presentMode != desired) { m_impl->change_mode = desired; }
+	// queue up request to refresh swapchain at beginning of next frame
+	if (m_impl->swapchain.info.presentMode != desired) { m_impl->requests.mode = desired; }
 	return true;
 }
 
 void Renderer::request_colour_space(ColourSpace desired) const {
 	if (m_impl->swapchain.colour_space() == desired) { return; }
-	m_impl->change_colour_space = desired;
+	// queue up request to refresh swapchain at beginning of next frame
+	m_impl->requests.colour_space = desired;
 }
 
 bool Renderer::next_frame(std::span<vk::CommandBuffer> out) {
 	assert(out.size() <= m_impl->render_frames.get().secondary.size());
 	m_impl->next_frame();
+
 	auto& frame = m_impl->render_frames.get();
+
+	// "return" wrapper
 	auto fill_and_return = [out, &frame] {
 		auto span = frame.secondary.span();
 		for (std::size_t i = 0; i < out.size(); ++i) { out[i] = span[i]; }
 		return true;
 	};
+
+	// already have an acquired image
 	if (m_impl->render_target) { return fill_and_return(); }
 
 	// ImGui NewFrame / EndFrame are called even if acquire / present fails
-	// This allows user code to unconditionally call ImGui:: code in a frame, regardless of whether it will be drawn / presented
+	// this allows user code to unconditionally call ImGui:: code in a frame, regardless of whether it will be drawn / presented
 	m_impl->dear_imgui.new_frame();
 
-	if (m_impl->change_mode || m_impl->change_colour_space) {
+	// check for pending swapchain refresh requests
+	if (m_impl->requests) {
 		auto const spec = [&] {
 			auto ret = Swapchain::Spec{};
-			if (m_impl->change_colour_space) { ret.colour_space = *m_impl->change_colour_space; }
-			if (m_impl->change_mode) { ret.mode = *m_impl->change_mode; }
-			m_impl->change_mode.reset();
-			m_impl->change_colour_space.reset();
+			if (m_impl->requests.colour_space) { ret.colour_space = *m_impl->requests.colour_space; }
+			if (m_impl->requests.mode) { ret.mode = *m_impl->requests.mode; }
+			m_impl->requests.reset();
 			return ret;
 		}();
 		m_impl->swapchain.refresh(spec);
 	}
 
+	// acquire swapchain image
 	auto acquired = ImageView{};
 	if (m_impl->swapchain.acquire(m_impl->window.framebuffer_extent(), acquired, *frame.sync.draw) != vk::Result::eSuccess) { return false; }
 	m_impl->gfx.reset(*frame.sync.drawn);
 	m_impl->gfx.shared->defer_queue.next();
 
+	// refresh render target
 	m_impl->render_target = m_impl->render_pass.refresh(acquired);
 
+	// refresh framebuffer
 	m_impl->framebuffer = frame.refresh(m_impl->render_pass.render_pass(), *m_impl->render_target);
+
+	// begin recording commands
 	auto const cbii = vk::CommandBufferInheritanceInfo{m_impl->render_pass.render_pass(), 0, m_impl->framebuffer.framebuffer};
 	for (auto const cb : m_impl->framebuffer.secondary) { cb.begin({vk::CommandBufferUsageFlagBits::eRenderPassContinue, &cbii}); }
 	return fill_and_return();
 }
 
 Pipeline Renderer::bind_pipeline(vk::CommandBuffer cb, Pipeline::State const& state, std::string const& shader_id) {
+	// obtain pipeline and bind it
 	auto const shader = m_impl->shader_db.find(shader_id);
 	if (!shader) { throw Error{concat("Failed to find shader: ", shader_id)}; }
 	auto ret = m_impl->pipes.get(m_impl->render_pass.render_pass(), state, shader);
 	ret.bind(cb);
+
+	// set viewport and scissor
 	glm::vec2 const extent = glm::uvec2{m_impl->render_target->extent.width, m_impl->render_target->extent.height};
 	auto viewport = vk::Viewport{0.0f, extent.y, extent.x, -extent.y, 0.0f, 1.0f};
 	auto scissor = vk::Rect2D{{}, m_impl->render_target->extent};
@@ -171,41 +197,56 @@ Pipeline Renderer::bind_pipeline(vk::CommandBuffer cb, Pipeline::State const& st
 
 bool Renderer::render() {
 	// ImGui NewFrame / EndFrame are called even if acquire / present fails
-	// This allows user code to unconditionally call ImGui:: code in a frame, regardless of whether it will be drawn / presented
+	// this allows user code to unconditionally call ImGui:: code in a frame, regardless of whether it will be drawn / presented
 	m_impl->dear_imgui.end_frame();
 	if (!m_impl->render_target) { return false; }
 
 	auto& frame = m_impl->render_frames.get();
 
 	auto const cbs = frame.secondary.span();
+	// perform the actual Dear ImGui render
 	m_impl->dear_imgui.render(cbs.front());
+	// end recording
 	for (auto cb : cbs) { cb.end(); }
 
+	// prepare render pass
 	frame.primary.begin({vk::CommandBufferUsageFlagBits::eOneTimeSubmit});
+	// transition render target to be ready to draw to
 	m_impl->render_target->to_draw(frame.primary);
 
 	auto const clear_colour = vk::ClearColorValue{std::array{0.0f, 0.0f, 0.0f, 0.0f}};
+	// execute render pass
 	m_impl->render_pass.execute(m_impl->framebuffer, clear_colour);
 
+	// transition render target to be ready to be presented
 	m_impl->render_target->to_present(frame.primary);
+	// end render pass
 	frame.primary.end();
 
+	// submit commands
 	frame.submit(m_impl->gfx.queue);
+	// present image
 	m_impl->swapchain.present(m_impl->window.framebuffer_extent(), *frame.sync.present);
 
+	// rotate everything
 	m_impl->pipes.rotate();
 	m_impl->render_frames.rotate();
 
+	// clear render target
 	m_impl->render_target.reset();
 
+	// update stats
 	++m_impl->stats.stats.frame_counter;
 
 	return true;
 }
 
 void Renderer::draw(Pipeline& pipeline, StaticMesh const& mesh, std::span<glm::mat4x4 const> instances) {
+	// update stats
 	++m_impl->stats.draw_calls;
 	m_impl->stats.triangles += instances.size() * mesh.view().vertex_count / 3;
+
+	// draw
 	pipeline.draw(mesh, instances);
 }
 

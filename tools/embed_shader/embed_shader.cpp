@@ -1,3 +1,4 @@
+#include <fmt/format.h>
 #include <algorithm>
 #include <cassert>
 #include <filesystem>
@@ -7,6 +8,13 @@
 
 namespace {
 namespace fs = std::filesystem;
+
+constexpr auto compiler_v =
+#if defined(GLSLC_PATH)
+	GLSLC_PATH;
+#else
+	"glslc";
+#endif
 
 bool is_alpha(char const c) { return std::isalpha(static_cast<unsigned char>(c)); }
 bool is_digit(char const c) { return std::isdigit(static_cast<unsigned char>(c)); }
@@ -25,14 +33,12 @@ void write(std::ifstream& in_file, std::string_view const ident) {
 		col = 0;
 	};
 
-	std::cout << "inline constexpr unsigned char " << ident << "_v[] = {";
+	std::cout << fmt::format("inline constexpr unsigned char {}_v[] = {}", ident, "{");
 	indent = 1;
 	line_feed();
 	char c;
 	while (in_file.get(c)) {
-		auto str = std::stringstream{};
-		str << "0x" << std::hex << static_cast<std::uint32_t>(static_cast<unsigned char>(c)) << ", ";
-		auto out = str.str();
+		auto out = fmt::format("0x{:02x}, ", static_cast<std::uint32_t>(static_cast<unsigned char>(c)));
 		col += out.size();
 		std::cout << out;
 		if (++col >= 160) { line_feed(); }
@@ -42,17 +48,10 @@ void write(std::ifstream& in_file, std::string_view const ident) {
 	std::cout << "};\n";
 }
 
-template <typename... T>
-std::string concat(T const&... t) {
-	auto ret = std::stringstream{};
-	((ret << t), ...);
-	return ret.str();
-}
-
 bool compile(fs::path const& glsl, fs::path& out_spir_v) {
 	out_spir_v = glsl;
 	out_spir_v += ".spv";
-	return std::system(concat("glslc ", glsl.generic_string(), " -o ", out_spir_v.generic_string()).c_str()) == 0;
+	return std::system(fmt::format("{} {} -o {}", compiler_v, glsl.generic_string(), out_spir_v.generic_string()).c_str()) == 0;
 }
 
 void open(char const* const file, std::string_view const ident) {

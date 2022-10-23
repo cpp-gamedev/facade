@@ -1,6 +1,6 @@
+#include <fmt/format.h>
 #include <facade/util/error.hpp>
 #include <facade/util/mufo.hpp>
-#include <facade/util/string.hpp>
 #include <facade/vk/spir_v.hpp>
 #include <atomic>
 #include <filesystem>
@@ -20,7 +20,7 @@ constexpr std::string_view dev_null_v =
 #endif
 
 bool try_compiler() {
-	auto const cmd = concat(compiler_v, " --version > ", dev_null_v);
+	auto const cmd = fmt::format("{} --version > {}", compiler_v, dev_null_v);
 	return std::system(cmd.c_str()) == 0;
 }
 
@@ -34,13 +34,13 @@ bool do_try_compile(char const* src, char const* dst, bool debug) {
 	if (!compiler_available()) { return false; }
 	if (!fs::is_regular_file(src)) { return false; }
 	char const* debug_str = debug ? " -g " : "";
-	auto const cmd = concat(compiler_v, debug_str, " ", src, " -o ", dst);
+	auto const cmd = fmt::format("{} {} {} -o {}", compiler_v, debug_str, src, dst);
 	return std::system(cmd.c_str()) == 0;
 }
 
 std::string get_spir_v_path(char const* glsl, char const* path) {
 	if (path && *path) { return path; }
-	return concat(glsl, ".spv");
+	return fmt::format("{}.spv", glsl);
 }
 } // namespace
 
@@ -49,17 +49,17 @@ bool SpirV::can_compile() { return compiler_available(); }
 bool SpirV::try_compile(SpirV& out_spirv, std::string& out_error, char const* glsl_path, char const* spir_v_path, bool debug) {
 	auto const dst = get_spir_v_path(glsl_path, spir_v_path);
 	if (!do_try_compile(glsl_path, dst.c_str(), debug)) {
-		out_error = concat("Failed to compile [", glsl_path, "]");
+		out_error = fmt::format("Failed to compile [{}]", glsl_path);
 		return false;
 	}
 	auto file = std::ifstream(dst, std::ios::binary | std::ios::ate);
 	if (!file) {
-		out_error = concat("Failed to open [", dst, "]");
+		out_error = fmt::format("Failed to open [{}]", dst);
 		return false;
 	}
 	auto const size = file.tellg();
 	if (static_cast<std::size_t>(size) % sizeof(std::uint32_t) != 0) {
-		out_error = concat("Invalid SPIR-V [", dst, "]");
+		out_error = fmt::format("Invalid SPIR-V [{}]", dst);
 		return false;
 	}
 	file.seekg({});

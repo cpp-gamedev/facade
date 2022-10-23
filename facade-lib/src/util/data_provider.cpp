@@ -14,7 +14,7 @@ fs::path absolute_path(std::string_view const directory, std::string_view const 
 FileDataProvider::FileDataProvider(std::string_view directory) {
 	auto const path = fs::absolute(directory);
 	if (!fs::is_directory(path)) {
-		logger::warn("Path not a directory: ", directory);
+		logger::warn("Path not a directory: [{}]", directory);
 		return;
 	}
 	m_directory = path.generic_string();
@@ -31,7 +31,7 @@ ByteBuffer FileDataProvider::load(std::string_view uri) const {
 		file.read(reinterpret_cast<char*>(ret.data()), size);
 		return ret;
 	}
-	logger::warn("Failed to open file: ", path.generic_string());
+	logger::warn("Failed to open file: [{}]", path.generic_string());
 	return {};
 }
 } // namespace facade

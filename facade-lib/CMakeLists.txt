@@ -15,6 +15,7 @@ target_link_libraries(${PROJECT_NAME}
   facade::vma
   facade::dear_imgui
   djson::djson
+  fmt::fmt
 
   PRIVATE
   spirv-cross-glsl
@@ -30,6 +31,7 @@ endif()
 target_precompile_headers(${PROJECT_NAME} PUBLIC
   <vulkan/vulkan.hpp>
   <vk_mem_alloc.h>
+  <fmt/format.h>
   <algorithm>
   <atomic>
   <functional>
@@ -69,6 +71,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/facade/util/defer_queue.hpp
   include/facade/util/enum_array.hpp
   include/facade/util/error.hpp
+  include/facade/util/fixed_string.hpp
   include/facade/util/flex_array.hpp
   include/facade/util/geometry.hpp
   include/facade/util/image.hpp
@@ -77,7 +80,6 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/facade/util/nvec3.hpp
   include/facade/util/pinned.hpp
   include/facade/util/ring_buffer.hpp
-  include/facade/util/string.hpp
   include/facade/util/time.hpp
   include/facade/util/type_id.hpp
   include/facade/util/unique.hpp

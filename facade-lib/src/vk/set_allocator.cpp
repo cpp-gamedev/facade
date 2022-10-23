@@ -1,7 +1,7 @@
 #include <facade/util/error.hpp>
-#include <facade/util/string.hpp>
 #include <facade/vk/set_allocator.hpp>
 #include <span>
+#include <fmt/format.h>
 
 namespace facade {
 namespace {
@@ -74,7 +74,7 @@ auto SetAllocator::Pool::descriptor_set_layouts() const -> FlexArray<vk::Descrip
 
 DescriptorSet& SetAllocator::Pool::next_set(std::uint32_t number) {
 	if (!m_mutex) { throw Error{"Attempt to use empty set pool"}; }
-	if (number >= m_sets.size()) { throw Error{concat("OOB set number: [", number, "]")}; }
+	if (number >= m_sets.size()) { throw Error{fmt::format("OOB set number: [{}]", number)}; }
 	auto lock = std::scoped_lock{*m_mutex};
 	return m_sets[number].acquire();
 }

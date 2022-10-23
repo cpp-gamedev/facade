@@ -6,7 +6,7 @@ set(CMAKE_DEBUG_POSTFIX "-d")
 
 project(facade)
 
-option(FACADE_BUILD_SHADERS ON)
+option(FACADE_BUILD_SHADERS "Build facade shaders" ON)
 
 if(FACADE_BUILD_SHADERS)
   find_program(glslc glslc)

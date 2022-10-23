@@ -1,6 +1,5 @@
 #include <facade/util/error.hpp>
 #include <facade/util/logger.hpp>
-#include <facade/util/string.hpp>
 #include <facade/vk/vk.hpp>
 #include <algorithm>
 #include <compare>
@@ -49,13 +48,13 @@ vk::UniqueInstance create_instance(std::vector<char const*> extensions, std::uin
 vk::UniqueDebugUtilsMessengerEXT make_debug_messenger(vk::Instance instance) {
 	auto validationCallback = [](VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT,
 								 VkDebugUtilsMessengerCallbackDataEXT const* pCallbackData, void*) -> vk::Bool32 {
-		auto const msg = concat("[vk] ", pCallbackData && pCallbackData->pMessage ? pCallbackData->pMessage : "UNKNOWN");
+		auto const msg = fmt::format("[vk] {}", pCallbackData && pCallbackData->pMessage ? pCallbackData->pMessage : "UNKNOWN");
 		switch (messageSeverity) {
 		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT: {
 			throw ValidationError{msg};
 		}
-		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: logger::warn(msg); break;
-		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT: logger::info(msg); break;
+		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: logger::warn("{}", msg); break;
+		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT: logger::info("{}", msg); break;
 		default: break;
 		}
 		return false;

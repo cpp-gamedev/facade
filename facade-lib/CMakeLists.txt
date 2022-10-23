@@ -15,6 +15,7 @@ target_link_libraries(${PROJECT_NAME}
   facade::vma
   facade::dear_imgui
   djson::djson
+  fmt::fmt
 
   PRIVATE
   spirv-cross-glsl
@@ -30,6 +31,7 @@ endif()
 target_precompile_headers(${PROJECT_NAME} PUBLIC
   <vulkan/vulkan.hpp>
   <vk_mem_alloc.h>
+  <fmt/format.h>
   <algorithm>
   <atomic>
   <functional>

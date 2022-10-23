@@ -44,3 +44,5 @@ add_subdirectory(src/stb)
 add_library(${PROJECT_NAME}::stb-image ALIAS stb-image)
 
 add_subdirectory(src/djson)
+
+add_subdirectory(src/fmt)

@@ -3,6 +3,7 @@
 
 #include <facade/util/data_provider.hpp>
 #include <facade/util/error.hpp>
+#include <facade/util/fixed_string.hpp>
 #include <facade/util/geometry.hpp>
 #include <facade/util/logger.hpp>
 
@@ -214,11 +215,11 @@ void run() {
 		ImGui::SetNextWindowSize({200.0f, 150.0f}, ImGuiCond_Once);
 		if (auto window = editor::Window("Frame Stats")) {
 			auto const& stats = engine.renderer().frame_stats();
-			ImGui::Text("Counter: %lu", stats.frame_counter);
-			ImGui::Text("Triangles: %lu", stats.triangles);
-			ImGui::Text("Draw calls: %u", stats.draw_calls);
-			ImGui::Text("FPS: %u", (stats.fps == 0 ? static_cast<std::uint32_t>(stats.frame_counter) : stats.fps));
-			ImGui::Text("Frame time: %.2fms", dt * 1000.0f);
+			ImGui::Text("%s", FixedString{"Counter: {}", stats.frame_counter}.c_str());
+			ImGui::Text("%s", FixedString{"Triangles: {}", stats.triangles}.c_str());
+			ImGui::Text("%s", FixedString{"Draw calls: {}", stats.draw_calls}.c_str());
+			ImGui::Text("%s", FixedString{"FPS: {}", (stats.fps == 0 ? static_cast<std::uint32_t>(stats.frame_counter) : stats.fps)}.c_str());
+			ImGui::Text("%s", FixedString{"Frame time: {:.2f}ms", dt * 1000.0f}.c_str());
 		}
 		// TEMP CODE
 

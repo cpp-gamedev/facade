@@ -71,6 +71,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/facade/util/defer_queue.hpp
   include/facade/util/enum_array.hpp
   include/facade/util/error.hpp
+  include/facade/util/fixed_string.hpp
   include/facade/util/flex_array.hpp
   include/facade/util/geometry.hpp
   include/facade/util/image.hpp

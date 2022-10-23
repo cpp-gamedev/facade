@@ -341,7 +341,7 @@ void Scene::render(Renderer& renderer, vk::CommandBuffer cb, Node const& node, g
 
 			auto const& static_mesh = m_storage.static_meshes.at(primitive.static_mesh);
 			auto const instances = make_instances(node, parent);
-			pipeline.draw(static_mesh, instances);
+			renderer.draw(pipeline, static_mesh, instances);
 		}
 	}
 

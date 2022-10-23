@@ -23,8 +23,8 @@ constexpr auto get_samples(vk::SampleCountFlags supported, std::uint8_t desired)
 	return vk::SampleCountFlagBits::e1;
 }
 
-Renderer::Info make_renderer_info(Gpu const& gpu, std::uint8_t sample_count) {
-	return Renderer::Info{command_buffers_v, get_samples(gpu.properties.limits.framebufferColorSampleCounts, sample_count)};
+Renderer::CreateInfo make_renderer_info(Gpu const& gpu, std::uint8_t sample_count) {
+	return Renderer::CreateInfo{command_buffers_v, get_samples(gpu.properties.limits.framebufferColorSampleCounts, sample_count)};
 }
 } // namespace
 

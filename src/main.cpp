@@ -11,6 +11,7 @@
 #include <djson/json.hpp>
 
 #include <facade/engine/engine.hpp>
+#include <facade/engine/renderer.hpp>
 
 #include <facade/scene/fly_cam.hpp>
 #include <facade/scene/scene.hpp>
@@ -183,6 +184,24 @@ void run() {
 		node->instances[0].rotate(glm::radians(drot_z[0]) * dt, {0.0f, 1.0f, 0.0f});
 		node->instances[1].rotate(glm::radians(drot_z[1]) * dt, {1.0f, 0.0f, 0.0f});
 
+		// TEMP CODE
+		if (input.keyboard.pressed(GLFW_KEY_M)) {
+			static constexpr vk::PresentModeKHR modes[] = {vk::PresentModeKHR::eFifo, vk::PresentModeKHR::eFifoRelaxed, vk::PresentModeKHR::eMailbox,
+														   vk::PresentModeKHR::eImmediate};
+			static std::size_t index{0};
+			auto const next_mode = [&] {
+				while (true) {
+					index = (index + 1) % std::size(modes);
+					auto const ret = modes[index];
+					if (!engine.renderer().is_supported(ret)) { continue; }
+					return ret;
+				}
+				throw Error{"Invariant violated"};
+			}();
+			engine.renderer().request_mode(next_mode);
+			logger::info("Requesting present mode: [", present_mode_str(next_mode), "]");
+		}
+
 		ImGui::ShowDemoWindow();
 
 		ImGui::SetNextWindowSize({250.0f, 100.0f}, ImGuiCond_Once);
@@ -191,6 +210,17 @@ void run() {
 			ImGui::InputInt("Id", &s_input);
 			editor::SceneInspector{window, scene}.inspect(Id<Node>{static_cast<std::size_t>(s_input)});
 		}
+
+		ImGui::SetNextWindowSize({200.0f, 150.0f}, ImGuiCond_Once);
+		if (auto window = editor::Window("Frame Stats")) {
+			auto const& stats = engine.renderer().frame_stats();
+			ImGui::Text("Counter: %lu", stats.frame_counter);
+			ImGui::Text("Triangles: %lu", stats.triangles);
+			ImGui::Text("Draw calls: %u", stats.draw_calls);
+			ImGui::Text("FPS: %u", (stats.fps == 0 ? static_cast<std::uint32_t>(stats.frame_counter) : stats.fps));
+			ImGui::Text("Frame time: %.2fms", dt * 1000.0f);
+		}
+		// TEMP CODE
 
 		engine.render(scene);
 	}

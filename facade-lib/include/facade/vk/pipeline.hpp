@@ -17,18 +17,21 @@ class Pipeline {
 	void bind(vk::CommandBuffer cb);
 
 	[[nodiscard]] DescriptorSet& next_set(std::uint32_t number) const;
+	void set_line_width(float width) const;
 	void bind(DescriptorSet const& set) const;
 	void draw(StaticMesh const& mesh, std::span<glm::mat4x4 const> instances) const;
 
 	explicit operator bool() const { return m_pipeline && m_pool; }
 
   private:
-	Pipeline(vk::Pipeline p, vk::PipelineLayout l, SetAllocator::Pool* pool, class Drawer* d) : m_pipeline{p}, m_layout{l}, m_pool{pool}, m_drawer{d} {}
+	Pipeline(vk::Pipeline p, vk::PipelineLayout l, SetAllocator::Pool* pool, vk::PhysicalDeviceLimits const* limits, class Drawer* d)
+		: m_pipeline{p}, m_layout{l}, m_pool{pool}, m_limits(limits), m_drawer{d} {}
 
 	vk::Pipeline m_pipeline{};
 	vk::PipelineLayout m_layout{};
 	vk::CommandBuffer m_cb{};
 	SetAllocator::Pool* m_pool{};
+	vk::PhysicalDeviceLimits const* m_limits{};
 	Drawer* m_drawer{};
 
 	friend class Pipes;

@@ -7,7 +7,7 @@
 namespace facade {
 class DearImgui {
   public:
-	struct Info {
+	struct CreateInfo {
 		Gfx gfx{};
 		Glfw::Window window{};
 		vk::RenderPass render_pass{};
@@ -15,7 +15,7 @@ class DearImgui {
 		ColourSpace swapchain{ColourSpace::eSrgb};
 	};
 
-	DearImgui(Info const& info);
+	DearImgui(CreateInfo const& info);
 	~DearImgui();
 
 	void new_frame();

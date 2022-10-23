@@ -32,7 +32,7 @@ void correct_style() {
 }
 } // namespace
 
-DearImgui::DearImgui(Info const& info) {
+DearImgui::DearImgui(CreateInfo const& info) {
 	m_pool = make_pool(info.gfx.device);
 
 	IMGUI_CHECKVERSION();
@@ -88,8 +88,8 @@ void DearImgui::new_frame() {
 }
 
 void DearImgui::end_frame() {
+	// ImGui::Render calls ImGui::EndFrame
 	ImGui::Render();
-	ImGui::EndFrame();
 }
 
 void DearImgui::render(vk::CommandBuffer const cb) { ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cb); }

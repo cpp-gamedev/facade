@@ -163,7 +163,7 @@ void run() {
 		if (!state.file_drops.empty()) {
 			auto const& file = state.file_drops.front();
 			if (!load_gltf(scene, file)) {
-				logger::warn("Failed to load GLTF: ", file);
+				logger::warn("Failed to load GLTF: [{}]", file);
 			} else {
 				post_scene_load();
 			}
@@ -199,7 +199,7 @@ void run() {
 				throw Error{"Invariant violated"};
 			}();
 			engine.renderer().request_mode(next_mode);
-			logger::info("Requesting present mode: [", present_mode_str(next_mode), "]");
+			logger::info("Requesting present mode: [{}]", present_mode_str(next_mode));
 		}
 
 		ImGui::ShowDemoWindow();
@@ -231,13 +231,13 @@ int main() {
 	try {
 		run();
 	} catch (InitError const& e) {
-		logger::error("Initialization failure: ", e.what());
+		logger::error("Initialization failure: {}", e.what());
 		return EXIT_FAILURE;
 	} catch (Error const& e) {
-		logger::error("Runtime error: ", e.what());
+		logger::error("Runtime error: {}", e.what());
 		return EXIT_FAILURE;
 	} catch (std::exception const& e) {
-		logger::error("Fatal error: ", e.what());
+		logger::error("Fatal error: {}", e.what());
 		return EXIT_FAILURE;
 	} catch (...) {
 		logger::error("Unknown error");

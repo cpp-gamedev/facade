@@ -1,5 +1,5 @@
+#include <fmt/format.h>
 #include <facade/util/error.hpp>
-#include <facade/util/string.hpp>
 #include <facade/vk/buffer.hpp>
 #include <facade/vk/descriptor_set.hpp>
 #include <facade/vk/texture.hpp>
@@ -58,7 +58,7 @@ void DescriptorSet::update(T const& t, std::uint32_t binding, vk::DescriptorType
 
 template <typename... T>
 vk::DescriptorType DescriptorSet::get_type(std::uint32_t const binding, T... match) const noexcept(false) {
-	if (binding >= m_layout.bindings.span().size()) { throw Error{concat("DescriptorSet: Invalid binding: ", binding)}; }
+	if (binding >= m_layout.bindings.span().size()) { throw Error{fmt::format("DescriptorSet: Invalid binding: {}", binding)}; }
 	auto const& bind = m_layout.bindings.span()[binding];
 	if ((... && (bind.descriptorType != match))) { throw Error{"DescriptorSet: Invalid descriptor type"}; }
 	return bind.descriptorType;

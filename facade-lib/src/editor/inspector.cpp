@@ -1,7 +1,7 @@
+#include <fmt/format.h>
 #include <imgui.h>
 #include <facade/editor/inspector.hpp>
 #include <facade/scene/scene.hpp>
-#include <facade/util/string.hpp>
 #include <cassert>
 
 namespace facade::editor {
@@ -94,11 +94,14 @@ bool SceneInspector::inspect(TreeNode const& node, LitMaterial& out_material) co
 bool SceneInspector::inspect(Id<Material> material_id) const {
 	auto* material = m_scene.find_material(material_id);
 	if (!material) { return false; }
+	char buf[512]{};
 	if (auto* unlit = dynamic_cast<UnlitMaterial*>(material)) {
-		if (auto tn = TreeNode{concat("Material (Unlit) (", material_id, ")").c_str()}) { return inspect(tn, *unlit); }
+		fmt::format_to(buf, "Material (Unlit) ({})", material_id);
+		if (auto tn = TreeNode{buf}) { return inspect(tn, *unlit); }
 		return false;
 	} else if (auto* lit = dynamic_cast<LitMaterial*>(material)) {
-		if (auto tn = TreeNode{concat("Material (Lit) (", material_id, ")").c_str()}) { return inspect(tn, *lit); }
+		fmt::format_to(buf, "Material (Lit) ({})", material_id);
+		if (auto tn = TreeNode{buf}) { return inspect(tn, *lit); }
 		return false;
 	}
 	return false;
@@ -117,11 +120,15 @@ bool SceneInspector::inspect(Id<Mesh> mesh_id) const {
 	auto ret = Modified{};
 	auto* mesh = m_scene.find_mesh(mesh_id);
 	if (!mesh) { return ret.value; }
-	if (auto tn = TreeNode{concat("Mesh (", mesh_id, ")").c_str()})
+	char buf[512]{};
+	fmt::format_to(buf, "Mesh ({})", mesh_id);
+	if (auto tn = TreeNode{buf})
 		for (std::size_t i = 0; i < mesh->primitives.size(); ++i) {
-			if (auto tn = TreeNode{concat("Primitive ", i).c_str()}) {
+			fmt::format_to(buf, "Primitive {}", i);
+			if (auto tn = TreeNode{buf}) {
 				auto const& primitive = mesh->primitives[i];
-				ImGui::Text("%s", concat("Static Mesh: (", primitive.static_mesh, ")").c_str());
+				fmt::format_to(buf, "Static Mesh ({})", primitive.static_mesh);
+				ImGui::Text("%s", buf);
 				if (primitive.material) { ret(inspect(*primitive.material)); }
 			}
 		}

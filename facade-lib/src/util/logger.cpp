@@ -7,11 +7,15 @@
 
 namespace facade {
 namespace {
-std::stringstream& append_timestamp(std::stringstream& out) {
+struct Timestamp {
+	char buffer[32]{};
+};
+
+Timestamp make_timestamp() {
 	auto const now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-	char buf[32]{};
-	if (!std::strftime(buf, sizeof(buf), "  [%H:%M:%S]", std::localtime(&now))) { return out; }
-	return concat_to(out, buf);
+	auto ret = Timestamp{};
+	if (!std::strftime(ret.buffer, sizeof(ret.buffer), "%H:%M:%S", std::localtime(&now))) { return {}; }
+	return ret;
 }
 
 struct GetThreadId {
@@ -34,10 +38,8 @@ GetThreadId get_thread_id{};
 int logger::thread_id() { return get_thread_id(); }
 
 std::string logger::format(char severity, std::string_view const message) {
-	auto str = std::stringstream{};
-	concat_to(str, "[", severity, "] [T", thread_id(), "] ", message);
-	append_timestamp(str);
-	return str.str();
+	return fmt::format(fmt::runtime(g_format), fmt::arg("thread", thread_id()), fmt::arg("severity", severity), fmt::arg("message", message),
+					   fmt::arg("timestamp", make_timestamp().buffer));
 }
 
 void logger::print_to(Pipe pipe, char const* text) {

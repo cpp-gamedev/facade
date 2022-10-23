@@ -2,7 +2,6 @@
 #include <facade/engine/renderer.hpp>
 #include <facade/util/error.hpp>
 #include <facade/util/logger.hpp>
-#include <facade/util/string.hpp>
 #include <facade/util/time.hpp>
 #include <facade/vk/pipes.hpp>
 #include <facade/vk/render_frame.hpp>
@@ -115,7 +114,7 @@ bool Renderer::is_supported(vk::PresentModeKHR const mode) const { return m_impl
 
 bool Renderer::request_mode(vk::PresentModeKHR const desired) const {
 	if (!is_supported(desired)) {
-		logger::error("Unsupported present mode requested: ", present_mode_str(desired));
+		logger::error("Unsupported present mode requested: [{}]", present_mode_str(desired));
 		return false;
 	}
 	// queue up request to refresh swapchain at beginning of next frame
@@ -182,7 +181,7 @@ bool Renderer::next_frame(std::span<vk::CommandBuffer> out) {
 Pipeline Renderer::bind_pipeline(vk::CommandBuffer cb, Pipeline::State const& state, std::string const& shader_id) {
 	// obtain pipeline and bind it
 	auto const shader = m_impl->shader_db.find(shader_id);
-	if (!shader) { throw Error{concat("Failed to find shader: ", shader_id)}; }
+	if (!shader) { throw Error{fmt::format("Failed to find shader: {}", shader_id)}; }
 	auto ret = m_impl->pipes.get(m_impl->render_pass.render_pass(), state, shader);
 	ret.bind(cb);
 

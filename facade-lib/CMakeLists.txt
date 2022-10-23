@@ -79,7 +79,6 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/facade/util/nvec3.hpp
   include/facade/util/pinned.hpp
   include/facade/util/ring_buffer.hpp
-  include/facade/util/string.hpp
   include/facade/util/time.hpp
   include/facade/util/type_id.hpp
   include/facade/util/unique.hpp

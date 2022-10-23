@@ -4,7 +4,6 @@
 #include <facade/scene/scene.hpp>
 #include <facade/util/error.hpp>
 #include <facade/util/logger.hpp>
-#include <facade/util/string.hpp>
 #include <facade/vk/texture.hpp>
 #include <map>
 
@@ -154,7 +153,7 @@ struct Scene::TreeBuilder {
 bool Scene::load_gltf(dj::Json const& root, DataProvider const& provider) noexcept(false) {
 	auto asset = gltf::Asset::parse(root, provider);
 	if (asset.geometries.empty() || asset.scenes.empty()) { return false; }
-	if (asset.start_scene >= asset.scenes.size()) { throw Error{concat("Invalid start scene: ", asset.start_scene)}; }
+	if (asset.start_scene >= asset.scenes.size()) { throw Error{fmt::format("Invalid start scene: {}", asset.start_scene)}; }
 
 	m_storage = {};
 	if (asset.cameras.empty()) {
@@ -228,7 +227,7 @@ Id<Node> Scene::add(Node node, Id<Node> parent) {
 	check(node);
 	if (parent == id_v) { return add_unchecked(m_tree.roots, std::move(node)); }
 	if (auto* target = find_node(parent)) { return add_unchecked(target->m_children, std::move(node)); }
-	throw Error{concat("Scene ", m_name, ": Invalid parent Node Id: ", parent)};
+	throw Error{fmt::format("Scene {}: Invalid parent Node Id: {}", m_name, parent)};
 }
 
 bool Scene::load(Id<Scene> id) {
@@ -351,20 +350,20 @@ void Scene::render(Renderer& renderer, vk::CommandBuffer cb, Node const& node, g
 void Scene::check(Mesh const& mesh) const noexcept(false) {
 	for (auto const& primitive : mesh.primitives) {
 		if (primitive.static_mesh >= m_storage.static_meshes.size()) {
-			throw Error{concat("Scene ", m_name, ": Invalid Static Mesh Id: ", primitive.static_mesh)};
+			throw Error{fmt::format("Scene {}: Invalid Static Mesh Id: {}", m_name, primitive.static_mesh)};
 		}
 		if (primitive.material && primitive.material->value() >= m_storage.materials.size()) {
-			throw Error{concat("Scene ", m_name, ": Invalid Material Id: ", *primitive.material)};
+			throw Error{fmt::format("Scene {}: Invalid Material Id: {}", m_name, *primitive.material)};
 		}
 	}
 }
 
 void Scene::check(Node const& node) const noexcept(false) {
 	if (auto const* mesh_id = node.find<Id<Mesh>>(); mesh_id && *mesh_id >= m_storage.meshes.size()) {
-		throw Error{concat("Scene ", m_name, ": Invalid mesh [", *mesh_id, "] in node")};
+		throw Error{fmt::format("Scene {}: Invalid mesh [{}] in node", m_name, *mesh_id)};
 	}
 	if (auto const* camera_id = node.find<Id<Camera>>(); camera_id && *camera_id >= m_storage.cameras.size()) {
-		throw Error{concat("Scene ", m_name, ": Invalid camera [", *camera_id, "] in node")};
+		throw Error{fmt::format("Scene {}: Invalid camera [{}] in node", m_name, *camera_id)};
 	}
 	for (auto const& child : node.m_children) { check(child); }
 }

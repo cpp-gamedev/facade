@@ -1,5 +1,6 @@
 #pragma once
 #include <fmt/format.h>
+#include <facade/defines.hpp>
 
 namespace facade::logger {
 enum class Pipe { eStdOut, eStdErr };
@@ -32,6 +33,6 @@ void info(fmt::format_string<Args...> fmt, Args const&... args) {
 
 template <typename... Args>
 void debug(fmt::format_string<Args...> fmt, Args const&... args) {
-	print_to(Pipe::eStdOut, format('D', fmt, args...).c_str());
+	if constexpr (debug_v) { print_to(Pipe::eStdOut, format('D', fmt, args...).c_str()); }
 }
 } // namespace facade::logger

@@ -2,7 +2,7 @@
 
 namespace facade {
 constexpr bool debug_v =
-#if defined(UDUN_DEBUG)
+#if defined(FACADE_DEBUG)
 	true;
 #else
 	false;

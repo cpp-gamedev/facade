@@ -11,11 +11,11 @@
 
 #include <djson/json.hpp>
 
-#include <facade/engine/engine.hpp>
-#include <facade/engine/renderer.hpp>
-
 #include <facade/scene/fly_cam.hpp>
+#include <facade/scene/renderer.hpp>
 #include <facade/scene/scene.hpp>
+
+#include <facade/engine/engine.hpp>
 
 #include <facade/editor/inspector.hpp>
 #include <facade/editor/log.hpp>

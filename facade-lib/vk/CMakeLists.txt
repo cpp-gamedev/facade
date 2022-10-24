@@ -4,8 +4,6 @@ endif()
 
 project(${target_prefix}-vk)
 
-find_package(Threads)
-
 add_library(${PROJECT_NAME})
 add_library(${target_prefix}::vk ALIAS ${PROJECT_NAME})
 

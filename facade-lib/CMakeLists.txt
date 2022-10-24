@@ -6,6 +6,7 @@ add_subdirectory(interface)
 add_subdirectory(util)
 add_subdirectory(vk)
 add_subdirectory(glfw)
+add_subdirectory(render)
 
 find_package(Threads)
 
@@ -16,9 +17,7 @@ target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
 
 target_link_libraries(${PROJECT_NAME}
   PUBLIC
-  glm::glm
-  ${target_prefix}::glfw
-  ${target_prefix}::dear_imgui
+  ${target_prefix}::render
   djson::djson
 
   PRIVATE
@@ -37,8 +36,6 @@ target_include_directories(${PROJECT_NAME}
 target_sources(${PROJECT_NAME} PRIVATE
   include/facade/defines.hpp
 
-  include/facade/render/renderer.hpp
-
   include/facade/scene/camera.hpp
   include/facade/scene/fly_cam.hpp
   include/facade/scene/id.hpp
@@ -56,10 +53,6 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/facade/editor/inspector.hpp
   include/facade/editor/log.hpp
   include/facade/editor/scene_tree.hpp
-
-  src/detail/dear_imgui.cpp
-  src/detail/dear_imgui.hpp
-  src/render/renderer.cpp
 
   src/detail/gltf.cpp
   src/detail/gltf.hpp

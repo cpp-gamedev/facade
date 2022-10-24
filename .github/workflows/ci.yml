@@ -1,12 +1,5 @@
 name: ci
-on:
-  push:
-    tags-ignore: v*.*
-    branches:
-      - '*'
-  pull_request:
-    branches:
-      - '*'
+on: [push, pull_request]
 jobs:
   build-linux:
     runs-on: ubuntu-latest

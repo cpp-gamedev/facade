@@ -23,7 +23,7 @@ class Openable : public Pinned {
 ///
 template <typename T>
 struct NotClosed {
-	NotClosed(T const& t) { assert(t.is_open()); }
+	NotClosed([[maybe_unused]] T const& t) { assert(t.is_open()); }
 };
 
 ///

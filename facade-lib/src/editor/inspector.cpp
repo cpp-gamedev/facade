@@ -20,7 +20,7 @@ struct Modified {
 };
 } // namespace
 
-Inspector::Inspector(Window const& target) { assert(target.is_open()); }
+Inspector::Inspector([[maybe_unused]] Window const& target) { assert(target.is_open()); }
 
 bool Inspector::inspect(char const* label, glm::vec2& out_vec2, float speed, float lo, float hi) const {
 	float arr[2] = {out_vec2.x, out_vec2.y};
@@ -74,16 +74,16 @@ bool Inspector::inspect(Transform& out_transform) const {
 	return ret.value;
 }
 
-SceneInspector::SceneInspector(Window const& target, Scene& scene) : Inspector(target), m_scene(scene) { assert(target.is_open()); }
+SceneInspector::SceneInspector([[maybe_unused]] Window const& target, Scene& scene) : Inspector(target), m_scene(scene) { assert(target.is_open()); }
 
-bool SceneInspector::inspect(TreeNode const& node, UnlitMaterial& out_material) const {
+bool SceneInspector::inspect([[maybe_unused]] TreeNode const& node, UnlitMaterial& out_material) const {
 	assert(node.is_open());
 	auto ret = Modified{};
 	ret(inspect("Tint", out_material.tint, 0.01f, 0.0f, 1.0f));
 	return ret.value;
 }
 
-bool SceneInspector::inspect(TreeNode const& node, LitMaterial& out_material) const {
+bool SceneInspector::inspect([[maybe_unused]] TreeNode const& node, LitMaterial& out_material) const {
 	assert(node.is_open());
 	auto ret = Modified{};
 	ret(ImGui::SliderFloat("Metallic", &out_material.metallic, 0.0f, 1.0f));

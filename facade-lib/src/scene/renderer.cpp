@@ -82,6 +82,7 @@ struct Renderer::Impl {
 		  }) {}
 
 	void next_frame() {
+		stats.stats.mode = swapchain.info.presentMode;
 		stats.stats.fps = fps.next_frame();
 		++stats.stats.frame_counter;
 		stats.stats.triangles = std::exchange(stats.triangles, 0);

@@ -133,8 +133,35 @@ struct MainMenu {
 		}
 	}
 
+	static constexpr std::string_view vsync_status(vk::PresentModeKHR const mode) {
+		switch (mode) {
+		case vk::PresentModeKHR::eFifo: return "On";
+		case vk::PresentModeKHR::eFifoRelaxed: return "Adaptive";
+		case vk::PresentModeKHR::eImmediate: return "Off";
+		case vk::PresentModeKHR::eMailbox: return "Double-buffered";
+		default: return "Unsupported";
+		}
+	}
+
+	void change_vsync(Engine const& engine) const {
+		static constexpr vk::PresentModeKHR modes[] = {vk::PresentModeKHR::eFifo, vk::PresentModeKHR::eFifoRelaxed, vk::PresentModeKHR::eMailbox,
+													   vk::PresentModeKHR::eImmediate};
+		static std::size_t index{0};
+		auto const next_mode = [&] {
+			while (true) {
+				index = (index + 1) % std::size(modes);
+				auto const ret = modes[index];
+				if (!engine.renderer().is_supported(ret)) { continue; }
+				return ret;
+			}
+			throw Error{"Invariant violated"};
+		}();
+		engine.renderer().request_mode(next_mode);
+		logger::info("Requesting present mode: [{}]", present_mode_str(next_mode));
+	}
+
 	void stats(Engine const& engine, float const dt) {
-		ImGui::SetNextWindowSize({200.0f, 150.0f}, ImGuiCond_Once);
+		ImGui::SetNextWindowSize({200.0f, 200.0f}, ImGuiCond_Once);
 		if (auto window = editor::Window{"Frame Stats", &windows.stats}) {
 			auto const& stats = engine.renderer().frame_stats();
 			ImGui::Text("%s", FixedString{"Counter: {}", stats.frame_counter}.c_str());
@@ -142,6 +169,9 @@ struct MainMenu {
 			ImGui::Text("%s", FixedString{"Draw calls: {}", stats.draw_calls}.c_str());
 			ImGui::Text("%s", FixedString{"FPS: {}", (stats.fps == 0 ? static_cast<std::uint32_t>(stats.frame_counter) : stats.fps)}.c_str());
 			ImGui::Text("%s", FixedString{"Frame time: {:.2f}ms", dt * 1000.0f}.c_str());
+			if (ImGui::SmallButton("Vsync")) { change_vsync(engine); }
+			ImGui::SameLine();
+			ImGui::Text("%s", vsync_status(stats.mode).data());
 		}
 	}
 
@@ -236,27 +266,10 @@ void run() {
 			if (mouse_look) { fly_cam.rotate({input.mouse.delta_pos().x, -input.mouse.delta_pos().y}); }
 		}
 
+		// TEMP CODE
 		auto* node = scene.find_node(node_id);
 		node->instances[0].rotate(glm::radians(drot_z[0]) * dt, {0.0f, 1.0f, 0.0f});
 		node->instances[1].rotate(glm::radians(drot_z[1]) * dt, {1.0f, 0.0f, 0.0f});
-
-		// TEMP CODE
-		if (input.keyboard.pressed(GLFW_KEY_M)) {
-			static constexpr vk::PresentModeKHR modes[] = {vk::PresentModeKHR::eFifo, vk::PresentModeKHR::eFifoRelaxed, vk::PresentModeKHR::eMailbox,
-														   vk::PresentModeKHR::eImmediate};
-			static std::size_t index{0};
-			auto const next_mode = [&] {
-				while (true) {
-					index = (index + 1) % std::size(modes);
-					auto const ret = modes[index];
-					if (!engine.renderer().is_supported(ret)) { continue; }
-					return ret;
-				}
-				throw Error{"Invariant violated"};
-			}();
-			engine.renderer().request_mode(next_mode);
-			logger::info("Requesting present mode: [{}]", present_mode_str(next_mode));
-		}
 
 		ImGui::ShowDemoWindow();
 

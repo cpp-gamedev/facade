@@ -4,6 +4,7 @@
 #include <facade/scene/lights.hpp>
 #include <facade/scene/material.hpp>
 #include <facade/scene/node.hpp>
+#include <facade/scene/node_data.hpp>
 #include <facade/scene/transform.hpp>
 #include <facade/util/enum_array.hpp>
 #include <facade/util/image.hpp>
@@ -59,6 +60,8 @@ class Scene {
 	Node* find_node(Id<Node> id);
 	Material* find_material(Id<Material> id) const;
 	Mesh const* find_mesh(Id<Mesh> id) const;
+	std::span<Node> roots() { return m_tree.roots; }
+	std::span<Node const> roots() const { return m_tree.roots; }
 
 	std::size_t camera_count() const { return m_storage.cameras.size(); }
 	bool select_camera(Id<Camera> id);
@@ -74,15 +77,6 @@ class Scene {
 
   private:
 	struct TreeBuilder;
-
-	struct NodeData {
-		enum class Type { eNone, eMesh, eCamera };
-
-		Transform transform{};
-		std::vector<std::size_t> children{};
-		std::size_t index{};
-		Type type{};
-	};
 
 	struct Tree {
 		struct Data {

@@ -19,6 +19,7 @@
 
 #include <facade/editor/inspector.hpp>
 #include <facade/editor/log.hpp>
+#include <facade/editor/scene_tree.hpp>
 
 #include <bin/shaders.hpp>
 
@@ -118,20 +119,17 @@ static constexpr auto test_json_v = R"(
 
 struct MainMenu {
 	struct {
-		bool inspector{};
 		bool stats{};
+		bool tree{};
 	} windows{};
 
 	editor::Log log{};
+	struct {
+		FixedString<128> name{};
+		Id<Node> id{};
+	} inspecting{};
 
-	void inspector(Scene& scene) {
-		ImGui::SetNextWindowSize({250.0f, 100.0f}, ImGuiCond_Once);
-		if (auto window = editor::Window{"Node", &windows.inspector}) {
-			static auto s_input = int{};
-			ImGui::InputInt("Id", &s_input);
-			editor::SceneInspector{window, scene}.inspect(Id<Node>{static_cast<std::size_t>(s_input)});
-		}
-	}
+	editor::Inspectee inspectee{};
 
 	static constexpr std::string_view vsync_status(vk::PresentModeKHR const mode) {
 		switch (mode) {
@@ -160,6 +158,13 @@ struct MainMenu {
 		logger::info("Requesting present mode: [{}]", present_mode_str(next_mode));
 	}
 
+	void inspector(Scene& scene) {
+		bool show = true;
+		ImGui::SetNextWindowSize({400.0f, 400.0f}, ImGuiCond_Once);
+		if (auto window = editor::Window{inspectee.name.c_str(), &show}) { editor::SceneInspector{window, scene}.inspect(inspectee.id); }
+		if (!show) { inspectee = {}; }
+	}
+
 	void stats(Engine const& engine, float const dt) {
 		ImGui::SetNextWindowSize({200.0f, 200.0f}, ImGuiCond_Once);
 		if (auto window = editor::Window{"Frame Stats", &windows.stats}) {
@@ -175,6 +180,41 @@ struct MainMenu {
 		}
 	}
 
+	void tree(Scene& scene) {
+		ImGui::SetNextWindowSize({250.0f, 350.0f}, ImGuiCond_Once);
+		if (auto window = editor::Window{"Scene", &windows.tree}) { editor::SceneTree{scene}.render(window, inspectee); }
+	}
+
+	static FixedString<128> node_name(Node const& node) {
+		auto ret = FixedString<128>{node.name};
+		if (ret.empty()) { ret = "(Unnamed)"; }
+		ret += FixedString{" ({})", node.id()};
+		return ret;
+	}
+
+	void mark_inspect(Node const& node) {
+		inspecting.id = node.id();
+		inspecting.name = node_name(node);
+		inspecting.name += FixedString{"###Node"};
+	}
+
+	void uninspect() { inspecting = {.name = "[Node]###Node"}; }
+
+	void walk(Node& node) {
+		auto flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
+		if (node.id() == inspecting.id) { flags |= ImGuiTreeNodeFlags_Selected; }
+		if (node.children().empty()) { flags |= ImGuiTreeNodeFlags_Leaf; }
+		auto tn = editor::TreeNode{node_name(node).c_str(), flags};
+		if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
+			mark_inspect(node);
+		} else if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
+			uninspect();
+		}
+		if (tn) {
+			for (auto& child : node.children()) { walk(child); }
+		}
+	}
+
 	void display(Engine& engine, Scene& scene, float const dt) {
 		if (auto main = editor::MainMenu{}) {
 			if (auto file = editor::Menu{main, "File"}) {
@@ -182,7 +222,7 @@ struct MainMenu {
 				if (ImGui::MenuItem("Exit")) { engine.request_stop(); }
 			}
 			if (auto window = editor::Menu{main, "Window"}) {
-				if (ImGui::MenuItem("Inspect")) { windows.inspector = true; }
+				if (ImGui::MenuItem("Tree")) { windows.tree = true; }
 				if (ImGui::MenuItem("Stats")) { windows.stats = true; }
 				if (ImGui::MenuItem("Log")) { log.show = true; }
 				ImGui::Separator();
@@ -190,7 +230,8 @@ struct MainMenu {
 			}
 		}
 
-		if (windows.inspector) { inspector(scene); }
+		if (windows.tree) { tree(scene); }
+		if (inspectee) { inspector(scene); }
 		if (windows.stats) { stats(engine, dt); }
 		if (log.show) { log.render(); }
 	}

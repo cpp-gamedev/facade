@@ -109,6 +109,7 @@ struct Scene::TreeBuilder {
 
 	void add(NodeData const& child, std::vector<Node>& out_children) {
 		auto node = Node{};
+		node.name = child.name;
 		node.transform = child.transform;
 		bool set_cam{};
 		switch (child.type) {
@@ -176,9 +177,7 @@ bool Scene::load_gltf(dj::Json const& root, DataProvider const& provider) noexce
 		m_storage.textures.push_back(to_texture(m_gfx, get_sampler(texture.sampler), m_storage.images.at(texture.source), texture));
 	}
 
-	for (auto& node : asset.nodes) {
-		m_storage.data.nodes.push_back(NodeData{node.transform, std::move(node.children), node.index, static_cast<NodeData::Type>(node.type)});
-	}
+	m_storage.data.nodes = std::move(asset.nodes);
 	for (auto& scene : asset.scenes) { m_storage.data.trees.push_back(Tree::Data{.roots = std::move(scene.root_nodes)}); }
 
 	return load(asset.start_scene);

@@ -1,4 +1,5 @@
 #pragma once
+#include <facade/scene/node_data.hpp>
 #include <facade/scene/transform.hpp>
 #include <facade/util/byte_buffer.hpp>
 #include <facade/util/colour_space.hpp>
@@ -126,14 +127,7 @@ struct Texture {
 	ColourSpace colour_space{ColourSpace::eSrgb};
 };
 
-struct Node {
-	enum class Type { eNone, eMesh, eCamera };
-
-	Transform transform{};
-	std::vector<std::size_t> children{};
-	std::size_t index{};
-	Type type{};
-};
+using Node = NodeData;
 
 struct Scene {
 	std::vector<std::size_t> root_nodes{};

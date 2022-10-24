@@ -3,6 +3,7 @@
 #include <facade/scene/transform.hpp>
 #include <facade/util/type_id.hpp>
 #include <memory>
+#include <span>
 #include <unordered_map>
 #include <vector>
 
@@ -36,8 +37,12 @@ class Node {
 
 	Id<Node> id() const { return m_id; }
 
+	std::span<Node> children() { return m_children; }
+	std::span<Node const> children() const { return m_children; }
+
 	Transform transform{};
 	std::vector<Transform> instances{};
+	std::string name{};
 
   private:
 	struct Hasher {

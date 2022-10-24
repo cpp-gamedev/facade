@@ -84,4 +84,16 @@ class MainMenu : public MenuBar {
 	explicit MainMenu();
 	~MainMenu();
 };
+
+///
+/// \brief RAII Dear ImGui StyleVar stack
+///
+class StyleVar : public Pinned {
+  public:
+	explicit StyleVar(int index, glm::vec2 value);
+	explicit StyleVar(int index, float value);
+	~StyleVar();
+
+	explicit operator bool() const { return true; }
+};
 } // namespace facade::editor

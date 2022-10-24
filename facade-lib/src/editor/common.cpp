@@ -42,4 +42,8 @@ Menu::Menu(NotClosed<MenuBar>, char const* label, bool enabled) : Openable(ImGui
 Menu::~Menu() {
 	if (m_open) { ImGui::EndMenu(); }
 }
+
+StyleVar::StyleVar(int index, glm::vec2 value) { ImGui::PushStyleVar(index, {value.x, value.y}); }
+StyleVar::StyleVar(int index, float value) { ImGui::PushStyleVar(index, value); }
+StyleVar::~StyleVar() { ImGui::PopStyleVar(); }
 } // namespace facade::editor

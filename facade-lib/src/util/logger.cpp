@@ -4,6 +4,11 @@
 #include <mutex>
 #include <thread>
 #include <unordered_map>
+#include <vector>
+
+#if defined(_WIN32)
+#include <Windows.h>
+#endif
 
 namespace facade {
 namespace {
@@ -33,7 +38,20 @@ struct GetThreadId {
 	}
 };
 
+struct Storage {
+	struct Buffer {
+		std::size_t limit{};
+		std::size_t extra{};
+
+		std::vector<logger::Entry> entries{};
+	};
+
+	Buffer buffer{};
+	std::mutex mutex{};
+};
+
 GetThreadId get_thread_id{};
+Storage g_storage{};
 } // namespace
 
 int logger::thread_id() { return get_thread_id(); }
@@ -43,8 +61,29 @@ std::string logger::format(Level level, std::string_view const message) {
 					   fmt::arg("message", message), fmt::arg("timestamp", make_timestamp()));
 }
 
-void logger::log_to(Pipe pipe, Entry const& entry) {
+void logger::log_to(Pipe pipe, Entry entry) {
 	auto* fd = pipe == Pipe::eStdErr ? stderr : stdout;
 	std::fprintf(fd, "%s\n", entry.message.c_str());
+	auto lock = std::scoped_lock{g_storage.mutex};
+#if defined(_WIN32)
+	OutputDebugStringA(entry.message.c_str());
+	OutputDebugStringA("\n");
+#endif
+	g_storage.buffer.entries.push_back(std::move(entry));
+}
+
+void logger::access_buffer(Accessor& accessor) {
+	auto lock = std::scoped_lock{g_storage.mutex};
+	accessor(g_storage.buffer.entries);
+}
+
+logger::Instance::Instance(std::size_t buffer_limit, std::size_t buffer_extra) {
+	auto lock = std::scoped_lock{g_storage.mutex};
+	g_storage.buffer = Storage::Buffer{buffer_limit, buffer_extra};
+}
+
+logger::Instance::~Instance() {
+	auto lock = std::scoped_lock{g_storage.mutex};
+	g_storage.buffer.entries.clear();
 }
 } // namespace facade

@@ -1,22 +1,35 @@
 #pragma once
 #include <fmt/format.h>
 #include <facade/defines.hpp>
+#include <facade/util/pinned.hpp>
+#include <span>
 
 namespace facade::logger {
 enum class Pipe : std::uint8_t { eStdOut, eStdErr };
 enum class Level : std::uint8_t { eError, eWarn, eInfo, eDebug, eCOUNT_ };
 inline constexpr char levels_v[] = {'E', 'W', 'I', 'D'};
 
+inline std::string g_format{"[T{thread}] [{level}] {message} [{timestamp}]"};
+
 struct Entry {
 	std::string message{};
 	Level level{};
 };
 
-inline std::string g_format{"[T{thread}] [{level}] {message} [{timestamp}]"};
+struct Accessor {
+	virtual void operator()(std::span<Entry const> entries) = 0;
+};
 
 int thread_id();
 std::string format(Level level, std::string_view const message);
-void log_to(Pipe pipe, Entry const& entry);
+void log_to(Pipe pipe, Entry entry);
+void access_buffer(Accessor& accessor);
+
+class Instance : public Pinned {
+  public:
+	Instance(std::size_t buffer_limit = 500, std::size_t buffer_extra = 100);
+	~Instance();
+};
 
 template <typename... Args>
 std::string format(Level level, fmt::format_string<Args...> fmt, Args const&... args) {

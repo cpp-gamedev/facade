@@ -129,6 +129,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/facade/editor/common.hpp
   include/facade/editor/inspector.hpp
   include/facade/editor/log.hpp
+  include/facade/editor/scene_tree.hpp
 
   src/util/data_provider.cpp
   src/util/geometry.cpp
@@ -172,4 +173,5 @@ target_sources(${PROJECT_NAME} PRIVATE
   src/editor/common.cpp
   src/editor/inspector.cpp
   src/editor/log.cpp
+  src/editor/scene_tree.cpp
 )

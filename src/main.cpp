@@ -19,6 +19,7 @@
 
 #include <facade/editor/inspector.hpp>
 #include <facade/editor/log.hpp>
+#include <facade/editor/scene_tree.hpp>
 
 #include <bin/shaders.hpp>
 
@@ -118,7 +119,6 @@ static constexpr auto test_json_v = R"(
 
 struct MainMenu {
 	struct {
-		bool inspector{};
 		bool stats{};
 		bool tree{};
 	} windows{};
@@ -129,12 +129,7 @@ struct MainMenu {
 		Id<Node> id{};
 	} inspecting{};
 
-	void inspector(Scene& scene) {
-		if (!scene.find_node(inspecting.id)) { uninspect(); }
-
-		ImGui::SetNextWindowSize({400.0f, 400.0f}, ImGuiCond_Once);
-		if (auto window = editor::Window{inspecting.name.c_str(), &windows.inspector}) { editor::SceneInspector{window, scene}.inspect(inspecting.id); }
-	}
+	editor::Inspectee inspectee{};
 
 	static constexpr std::string_view vsync_status(vk::PresentModeKHR const mode) {
 		switch (mode) {
@@ -163,6 +158,13 @@ struct MainMenu {
 		logger::info("Requesting present mode: [{}]", present_mode_str(next_mode));
 	}
 
+	void inspector(Scene& scene) {
+		bool show = true;
+		ImGui::SetNextWindowSize({400.0f, 400.0f}, ImGuiCond_Once);
+		if (auto window = editor::Window{inspectee.name.c_str(), &show}) { editor::SceneInspector{window, scene}.inspect(inspectee.id); }
+		if (!show) { inspectee = {}; }
+	}
+
 	void stats(Engine const& engine, float const dt) {
 		ImGui::SetNextWindowSize({200.0f, 200.0f}, ImGuiCond_Once);
 		if (auto window = editor::Window{"Frame Stats", &windows.stats}) {
@@ -180,9 +182,7 @@ struct MainMenu {
 
 	void tree(Scene& scene) {
 		ImGui::SetNextWindowSize({250.0f, 350.0f}, ImGuiCond_Once);
-		if (auto window = editor::Window{"Scene", &windows.tree}) {
-			for (auto& node : scene.roots()) { walk(node); }
-		}
+		if (auto window = editor::Window{"Scene", &windows.tree}) { editor::SceneTree{scene}.render(window, inspectee); }
 	}
 
 	static FixedString<128> node_name(Node const& node) {
@@ -196,7 +196,6 @@ struct MainMenu {
 		inspecting.id = node.id();
 		inspecting.name = node_name(node);
 		inspecting.name += FixedString{"###Node"};
-		windows.inspector = true;
 	}
 
 	void uninspect() { inspecting = {.name = "[Node]###Node"}; }
@@ -232,7 +231,7 @@ struct MainMenu {
 		}
 
 		if (windows.tree) { tree(scene); }
-		if (windows.inspector) { inspector(scene); }
+		if (inspectee) { inspector(scene); }
 		if (windows.stats) { stats(engine, dt); }
 		if (log.show) { log.render(); }
 	}

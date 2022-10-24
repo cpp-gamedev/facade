@@ -10,7 +10,7 @@ class Scene;
 
 namespace editor {
 ///
-/// \brief ImGui helper to inspect / reflect various properties
+/// \brief Stateless ImGui helper to inspect / reflect various properties
 ///
 class Inspector {
   public:

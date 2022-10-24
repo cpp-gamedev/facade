@@ -28,9 +28,25 @@ target_link_libraries(${PROJECT_NAME}
   PRIVATE
   ${target_prefix}::stb-image
   ${target_prefix}::compile-options
-  ${target_prefix}::pch
+
   Threads::Threads
 )
+
+string(TOUPPER ${target_prefix} target_prefix_upper)
+
+if(${${target_prefix_upper}_PCH})
+  target_precompile_headers(${PROJECT_NAME} PRIVATE
+    <fmt/format.h>
+    <algorithm>
+    <atomic>
+    <functional>
+    <memory>
+    <mutex>
+    <string>
+    <vector>
+    <unordered_map>
+  )
+endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL Linux)
   target_link_libraries(${PROJECT_NAME} PRIVATE pthread)

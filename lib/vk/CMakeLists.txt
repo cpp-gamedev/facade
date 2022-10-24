@@ -25,8 +25,25 @@ target_link_libraries(${PROJECT_NAME}
   PRIVATE
   spirv-cross-glsl
   ${target_prefix}::compile-options
-  ${target_prefix}::pch
 )
+
+string(TOUPPER ${target_prefix} target_prefix_upper)
+
+if(${${target_prefix_upper}_PCH})
+  target_precompile_headers(${PROJECT_NAME} PRIVATE
+    <vulkan/vulkan.hpp>
+    <vk_mem_alloc.h>
+    <fmt/format.h>
+    <algorithm>
+    <atomic>
+    <functional>
+    <memory>
+    <mutex>
+    <string>
+    <vector>
+    <unordered_map>
+  )
+endif()
 
 target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/vk/buffer.hpp

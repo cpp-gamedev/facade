@@ -9,6 +9,7 @@ set(target_prefix facade)
 project(facade)
 
 option(FACADE_BUILD_SHADERS "Build facade shaders" ON)
+option(FACADE_PCH "Use PCH" ON)
 
 if(FACADE_BUILD_SHADERS)
   find_program(glslc glslc)
@@ -57,7 +58,12 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
   facade::context
   facade::editor
   facade::compile-options
-  facade::pch
 )
+
+string(TOUPPER ${target_prefix} target_prefix_upper)
+
+if(${${target_prefix_upper}_PCH})
+  target_precompile_headers(${PROJECT_NAME} REUSE_FROM ${target_prefix}-vk)
+endif()
 
 target_include_directories(${PROJECT_NAME} PRIVATE src)

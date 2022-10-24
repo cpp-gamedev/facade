@@ -6,8 +6,6 @@ string(TOUPPER ${target_prefix} define_prefix)
 
 project(${target_prefix}-interface)
 
-option(${target_prefix}_PCH "Use PCH" ON)
-
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
 try_compile(has_make_unique_for_overwrite "${CMAKE_CURRENT_BINARY_DIR}" SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/make_unique_for_overwrite.cpp")
 
@@ -41,29 +39,4 @@ endif()
 
 if(CMAKE_GENERATOR MATCHES "^(Visual Studio)")
   target_compile_options(${target_prefix}-compile-options INTERFACE /MP)
-endif()
-
-add_library(${target_prefix}-pch INTERFACE)
-add_library(${target_prefix}::pch ALIAS ${target_prefix}-pch)
-
-if(${${target_prefix}_PCH})
-  # Single PCH is shared across all targets, so it links to all dependencies
-  target_link_libraries(${target_prefix}-pch INTERFACE
-    ${target_prefix}::vma
-    fmt::fmt
-  )
-
-  target_precompile_headers(${target_prefix}-pch INTERFACE
-    <vulkan/vulkan.hpp>
-    <vk_mem_alloc.h>
-    <fmt/format.h>
-    <algorithm>
-    <atomic>
-    <functional>
-    <memory>
-    <mutex>
-    <string>
-    <vector>
-    <unordered_map>
-  )
 endif()

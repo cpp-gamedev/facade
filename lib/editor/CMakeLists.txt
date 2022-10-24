@@ -24,8 +24,13 @@ target_link_libraries(${PROJECT_NAME}
 
   PRIVATE
   ${target_prefix}::compile-options
-  ${target_prefix}::pch
 )
+
+string(TOUPPER ${target_prefix} target_prefix_upper)
+
+if(${${target_prefix_upper}_PCH})
+  target_precompile_headers(${PROJECT_NAME} REUSE_FROM ${target_prefix}-vk)
+endif()
 
 target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/editor/common.hpp

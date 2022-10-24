@@ -65,6 +65,7 @@ target_compile_definitions(${PROJECT_NAME}
 target_sources(${PROJECT_NAME} PRIVATE
   include/facade/defines.hpp
 
+  include/facade/util/async_queue.hpp
   include/facade/util/byte_buffer.hpp
   include/facade/util/colour_space.hpp
   include/facade/util/data_provider.hpp

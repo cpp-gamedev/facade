@@ -1,6 +1,9 @@
+#include <facade/util/async_queue.hpp>
 #include <facade/util/logger.hpp>
 #include <chrono>
 #include <cstdio>
+#include <filesystem>
+#include <fstream>
 #include <mutex>
 #include <thread>
 #include <unordered_map>
@@ -12,6 +15,8 @@
 
 namespace facade {
 namespace {
+namespace fs = std::filesystem;
+
 struct Timestamp {
 	char buffer[32]{};
 	operator char const*() const { return buffer; }
@@ -38,6 +43,45 @@ struct GetThreadId {
 	}
 };
 
+class FileLogger : Pinned {
+  public:
+	FileLogger(char const* path) : m_path(fs::absolute(path)), m_thread(std::jthread{[this](std::stop_token const& stop) { log_to_file(stop); }}) {}
+
+	~FileLogger() {
+		m_thread.request_stop();
+		flush_residue(queue.release());
+	}
+
+	AsyncQueue<logger::Entry> queue{};
+
+  private:
+	void prepare_file() {
+		if (fs::exists(m_path)) {
+			auto backup_path = m_path;
+			backup_path += ".bak";
+			if (fs::exists(backup_path)) { fs::remove(backup_path); }
+			fs::rename(m_path, backup_path);
+		}
+	}
+
+	void flush_residue(std::deque<logger::Entry> const& residue) {
+		auto file = std::ofstream{m_path, std::ios::app};
+		if (!file) { return; }
+		for (auto const& [message, _] : residue) { file << message << '\n'; }
+	}
+
+	void log_to_file(std::stop_token const& stop) {
+		prepare_file();
+		while (auto entry = queue.pop(stop)) {
+			auto file = std::ofstream{m_path, std::ios::app};
+			file << entry->message << '\n';
+		}
+	}
+
+	fs::path m_path{};
+	std::jthread m_thread{};
+};
+
 struct Storage {
 	struct Buffer {
 		std::size_t limit{};
@@ -47,6 +91,7 @@ struct Storage {
 	};
 
 	Buffer buffer{};
+	std::optional<FileLogger> file_logger{};
 	std::mutex mutex{};
 };
 
@@ -69,6 +114,7 @@ void logger::log_to(Pipe pipe, Entry entry) {
 	OutputDebugStringA(entry.message.c_str());
 	OutputDebugStringA("\n");
 #endif
+	if (g_storage.file_logger) { g_storage.file_logger->queue.push(entry); }
 	g_storage.buffer.entries.push_back(std::move(entry));
 }
 
@@ -80,10 +126,12 @@ void logger::access_buffer(Accessor& accessor) {
 logger::Instance::Instance(std::size_t buffer_limit, std::size_t buffer_extra) {
 	auto lock = std::scoped_lock{g_storage.mutex};
 	g_storage.buffer = Storage::Buffer{buffer_limit, buffer_extra};
+	g_storage.file_logger.emplace("facade.log");
 }
 
 logger::Instance::~Instance() {
 	auto lock = std::scoped_lock{g_storage.mutex};
+	g_storage.file_logger.reset();
 	g_storage.buffer.entries.clear();
 }
 } // namespace facade

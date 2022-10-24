@@ -25,8 +25,8 @@ class FixedString {
 
 	template <std::size_t N>
 	void append(FixedString<N> const& rhs) {
-		auto const dsize = std::min(Capacity - m_size, rhs.m_size);
-		std::memcpy(m_buffer + m_size, rhs.m_buffer, dsize);
+		auto const dsize = std::min(Capacity - m_size, rhs.size());
+		std::memcpy(m_buffer + m_size, rhs.data(), dsize);
 		m_size += dsize;
 	}
 

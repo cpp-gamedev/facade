@@ -117,6 +117,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/facade/scene/id.hpp
   include/facade/scene/lights.hpp
   include/facade/scene/material.hpp
+  include/facade/scene/node_data.hpp
   include/facade/scene/node.hpp
   include/facade/scene/rect.hpp
   include/facade/scene/renderer.hpp

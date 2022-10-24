@@ -605,7 +605,7 @@ Asset Asset::parse(dj::Json const& json, DataProvider const& provider) {
 			type = camera ? Node::Type::eCamera : Node::Type::eMesh;
 			index = camera ? camera.as<std::size_t>() : mesh.as<std::size_t>();
 		}
-		ret.nodes.push_back(Node{transform(node), children(node["children"]), index, type});
+		ret.nodes.push_back(Node{node["name"].as<std::string>(), transform(node), children(node["children"]), index, type});
 	}
 
 	auto const& scenes = json["scenes"].array_view();

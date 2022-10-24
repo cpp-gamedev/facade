@@ -63,6 +63,7 @@ bool Inspector::inspect(char const* label, glm::quat& out_quat) const {
 
 bool Inspector::inspect(Transform& out_transform) const {
 	auto ret = Modified{};
+	ImGui::Separator();
 	if (auto tn = TreeNode{"Transform"}) {
 		auto vec3 = out_transform.position();
 		if (ret(inspect("Position", vec3))) { out_transform.set_position(vec3); }
@@ -117,6 +118,7 @@ bool SceneInspector::inspect(Id<Mesh> mesh_id) const {
 	auto ret = Modified{};
 	auto* mesh = m_scene.find_mesh(mesh_id);
 	if (!mesh) { return ret.value; }
+	ImGui::Separator();
 	if (auto tn = TreeNode{FixedString{"Mesh ({})", mesh_id}.c_str()})
 		for (std::size_t i = 0; i < mesh->primitives.size(); ++i) {
 			if (auto tn = TreeNode{FixedString{"Primitive {}", i}.c_str()}) {

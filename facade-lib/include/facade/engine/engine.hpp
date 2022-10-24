@@ -10,7 +10,7 @@ class Scene;
 struct Window;
 
 struct EngineCreateInfo {
-	glm::uvec2 extent{800, 800};
+	glm::uvec2 extent{1280, 800};
 	char const* title{"facade"};
 	std::uint8_t msaa_samples{2};
 	bool auto_show{false};

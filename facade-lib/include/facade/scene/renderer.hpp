@@ -24,6 +24,10 @@ struct FrameStats {
 	/// \brief Framerate (until previous frame)
 	///
 	std::uint32_t fps{};
+	///
+	/// \brief Current present mode
+	///
+	vk::PresentModeKHR mode{};
 };
 
 struct RendererCreateInfo {

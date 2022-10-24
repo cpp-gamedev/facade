@@ -65,6 +65,7 @@ target_compile_definitions(${PROJECT_NAME}
 target_sources(${PROJECT_NAME} PRIVATE
   include/facade/defines.hpp
 
+  include/facade/util/async_queue.hpp
   include/facade/util/byte_buffer.hpp
   include/facade/util/colour_space.hpp
   include/facade/util/data_provider.hpp
@@ -84,9 +85,6 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/facade/util/type_id.hpp
   include/facade/util/unique.hpp
   include/facade/util/visitor.hpp
-
-  include/facade/glfw/glfw.hpp
-  include/facade/glfw/input.hpp
 
   include/facade/vk/buffer.hpp
   include/facade/vk/cmd.hpp
@@ -109,10 +107,10 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/facade/vk/vma.hpp
   include/facade/vk/wsi.hpp
 
-  include/facade/dear_imgui/dear_imgui.hpp
+  include/facade/glfw/glfw.hpp
+  include/facade/glfw/input.hpp
 
-  include/facade/engine/engine.hpp
-  include/facade/engine/renderer.hpp
+  include/facade/dear_imgui/dear_imgui.hpp
 
   include/facade/scene/camera.hpp
   include/facade/scene/fly_cam.hpp
@@ -121,19 +119,21 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/facade/scene/material.hpp
   include/facade/scene/node.hpp
   include/facade/scene/rect.hpp
+  include/facade/scene/renderer.hpp
   include/facade/scene/scene.hpp
   include/facade/scene/transform.hpp
 
+  include/facade/engine/engine.hpp
+
   include/facade/editor/common.hpp
   include/facade/editor/inspector.hpp
+  include/facade/editor/log.hpp
 
   src/util/data_provider.cpp
   src/util/geometry.cpp
   src/util/image.cpp
   src/util/logger.cpp
   src/util/time.cpp
-
-  src/glfw/glfw.cpp
 
   src/vk/buffer.cpp
   src/vk/cmd.cpp
@@ -153,19 +153,22 @@ target_sources(${PROJECT_NAME} PRIVATE
   src/vk/vk.cpp
   src/vk/vma.cpp
 
+  src/glfw/glfw.cpp
+
   src/dear_imgui/dear_imgui.cpp
 
   src/detail/gltf.cpp
   src/detail/gltf.hpp
 
-  src/engine/engine.cpp
-  src/engine/renderer.cpp
-
   src/scene/camera.cpp
   src/scene/material.cpp
+  src/scene/renderer.cpp
   src/scene/scene.cpp
   src/scene/transform.cpp
 
+  src/engine/engine.cpp
+
   src/editor/common.cpp
   src/editor/inspector.cpp
+  src/editor/log.cpp
 )

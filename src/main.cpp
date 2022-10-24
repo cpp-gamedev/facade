@@ -11,15 +11,18 @@
 
 #include <djson/json.hpp>
 
-#include <facade/engine/engine.hpp>
-#include <facade/engine/renderer.hpp>
-
 #include <facade/scene/fly_cam.hpp>
+#include <facade/scene/renderer.hpp>
 #include <facade/scene/scene.hpp>
 
+#include <facade/engine/engine.hpp>
+
 #include <facade/editor/inspector.hpp>
+#include <facade/editor/log.hpp>
 
 #include <bin/shaders.hpp>
+
+#include <iostream>
 
 using namespace facade;
 
@@ -113,6 +116,86 @@ static constexpr auto test_json_v = R"(
 }
 )";
 
+struct MainMenu {
+	struct {
+		bool inspector{};
+		bool stats{};
+	} windows{};
+
+	editor::Log log{};
+
+	void inspector(Scene& scene) {
+		ImGui::SetNextWindowSize({250.0f, 100.0f}, ImGuiCond_Once);
+		if (auto window = editor::Window{"Node", &windows.inspector}) {
+			static auto s_input = int{};
+			ImGui::InputInt("Id", &s_input);
+			editor::SceneInspector{window, scene}.inspect(Id<Node>{static_cast<std::size_t>(s_input)});
+		}
+	}
+
+	static constexpr std::string_view vsync_status(vk::PresentModeKHR const mode) {
+		switch (mode) {
+		case vk::PresentModeKHR::eFifo: return "On";
+		case vk::PresentModeKHR::eFifoRelaxed: return "Adaptive";
+		case vk::PresentModeKHR::eImmediate: return "Off";
+		case vk::PresentModeKHR::eMailbox: return "Double-buffered";
+		default: return "Unsupported";
+		}
+	}
+
+	void change_vsync(Engine const& engine) const {
+		static constexpr vk::PresentModeKHR modes[] = {vk::PresentModeKHR::eFifo, vk::PresentModeKHR::eFifoRelaxed, vk::PresentModeKHR::eMailbox,
+													   vk::PresentModeKHR::eImmediate};
+		static std::size_t index{0};
+		auto const next_mode = [&] {
+			while (true) {
+				index = (index + 1) % std::size(modes);
+				auto const ret = modes[index];
+				if (!engine.renderer().is_supported(ret)) { continue; }
+				return ret;
+			}
+			throw Error{"Invariant violated"};
+		}();
+		engine.renderer().request_mode(next_mode);
+		logger::info("Requesting present mode: [{}]", present_mode_str(next_mode));
+	}
+
+	void stats(Engine const& engine, float const dt) {
+		ImGui::SetNextWindowSize({200.0f, 200.0f}, ImGuiCond_Once);
+		if (auto window = editor::Window{"Frame Stats", &windows.stats}) {
+			auto const& stats = engine.renderer().frame_stats();
+			ImGui::Text("%s", FixedString{"Counter: {}", stats.frame_counter}.c_str());
+			ImGui::Text("%s", FixedString{"Triangles: {}", stats.triangles}.c_str());
+			ImGui::Text("%s", FixedString{"Draw calls: {}", stats.draw_calls}.c_str());
+			ImGui::Text("%s", FixedString{"FPS: {}", (stats.fps == 0 ? static_cast<std::uint32_t>(stats.frame_counter) : stats.fps)}.c_str());
+			ImGui::Text("%s", FixedString{"Frame time: {:.2f}ms", dt * 1000.0f}.c_str());
+			if (ImGui::SmallButton("Vsync")) { change_vsync(engine); }
+			ImGui::SameLine();
+			ImGui::Text("%s", vsync_status(stats.mode).data());
+		}
+	}
+
+	void display(Engine& engine, Scene& scene, float const dt) {
+		if (auto main = editor::MainMenu{}) {
+			if (auto file = editor::Menu{main, "File"}) {
+				ImGui::Separator();
+				if (ImGui::MenuItem("Exit")) { engine.request_stop(); }
+			}
+			if (auto window = editor::Menu{main, "Window"}) {
+				if (ImGui::MenuItem("Inspect")) { windows.inspector = true; }
+				if (ImGui::MenuItem("Stats")) { windows.stats = true; }
+				if (ImGui::MenuItem("Log")) { log.show = true; }
+				ImGui::Separator();
+				if (ImGui::MenuItem("Close All")) { windows = {}; }
+			}
+		}
+
+		if (windows.inspector) { inspector(scene); }
+		if (windows.stats) { stats(engine, dt); }
+		if (log.show) { log.render(); }
+	}
+};
+
 void run() {
 	auto engine = Engine{};
 
@@ -151,6 +234,8 @@ void run() {
 
 	float const drot_z[] = {100.0f, -150.0f};
 
+	auto main_menu = MainMenu{};
+
 	engine.show(true);
 	while (engine.running()) {
 		auto const dt = engine.next_frame();
@@ -181,46 +266,14 @@ void run() {
 			if (mouse_look) { fly_cam.rotate({input.mouse.delta_pos().x, -input.mouse.delta_pos().y}); }
 		}
 
+		// TEMP CODE
 		auto* node = scene.find_node(node_id);
 		node->instances[0].rotate(glm::radians(drot_z[0]) * dt, {0.0f, 1.0f, 0.0f});
 		node->instances[1].rotate(glm::radians(drot_z[1]) * dt, {1.0f, 0.0f, 0.0f});
 
-		// TEMP CODE
-		if (input.keyboard.pressed(GLFW_KEY_M)) {
-			static constexpr vk::PresentModeKHR modes[] = {vk::PresentModeKHR::eFifo, vk::PresentModeKHR::eFifoRelaxed, vk::PresentModeKHR::eMailbox,
-														   vk::PresentModeKHR::eImmediate};
-			static std::size_t index{0};
-			auto const next_mode = [&] {
-				while (true) {
-					index = (index + 1) % std::size(modes);
-					auto const ret = modes[index];
-					if (!engine.renderer().is_supported(ret)) { continue; }
-					return ret;
-				}
-				throw Error{"Invariant violated"};
-			}();
-			engine.renderer().request_mode(next_mode);
-			logger::info("Requesting present mode: [{}]", present_mode_str(next_mode));
-		}
-
 		ImGui::ShowDemoWindow();
 
-		ImGui::SetNextWindowSize({250.0f, 100.0f}, ImGuiCond_Once);
-		if (auto window = editor::Window{"Node"}) {
-			static auto s_input = int{};
-			ImGui::InputInt("Id", &s_input);
-			editor::SceneInspector{window, scene}.inspect(Id<Node>{static_cast<std::size_t>(s_input)});
-		}
-
-		ImGui::SetNextWindowSize({200.0f, 150.0f}, ImGuiCond_Once);
-		if (auto window = editor::Window("Frame Stats")) {
-			auto const& stats = engine.renderer().frame_stats();
-			ImGui::Text("%s", FixedString{"Counter: {}", stats.frame_counter}.c_str());
-			ImGui::Text("%s", FixedString{"Triangles: {}", stats.triangles}.c_str());
-			ImGui::Text("%s", FixedString{"Draw calls: {}", stats.draw_calls}.c_str());
-			ImGui::Text("%s", FixedString{"FPS: {}", (stats.fps == 0 ? static_cast<std::uint32_t>(stats.frame_counter) : stats.fps)}.c_str());
-			ImGui::Text("%s", FixedString{"Frame time: {:.2f}ms", dt * 1000.0f}.c_str());
-		}
+		main_menu.display(engine, scene, dt);
 		// TEMP CODE
 
 		engine.render(scene);
@@ -230,18 +283,21 @@ void run() {
 
 int main() {
 	try {
-		run();
-	} catch (InitError const& e) {
-		logger::error("Initialization failure: {}", e.what());
-		return EXIT_FAILURE;
-	} catch (Error const& e) {
-		logger::error("Runtime error: {}", e.what());
-		return EXIT_FAILURE;
-	} catch (std::exception const& e) {
-		logger::error("Fatal error: {}", e.what());
-		return EXIT_FAILURE;
-	} catch (...) {
-		logger::error("Unknown error");
-		return EXIT_FAILURE;
-	}
+		auto logger_instance = logger::Instance{};
+		try {
+			run();
+		} catch (InitError const& e) {
+			logger::error("Initialization failure: {}", e.what());
+			return EXIT_FAILURE;
+		} catch (Error const& e) {
+			logger::error("Runtime error: {}", e.what());
+			return EXIT_FAILURE;
+		} catch (std::exception const& e) {
+			logger::error("Fatal error: {}", e.what());
+			return EXIT_FAILURE;
+		} catch (...) {
+			logger::error("Unknown error");
+			return EXIT_FAILURE;
+		}
+	} catch (std::exception const& e) { std::cerr << e.what() << '\n'; }
 }

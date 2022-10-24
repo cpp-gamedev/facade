@@ -1,6 +1,6 @@
 #include <detail/gltf.hpp>
 #include <djson/json.hpp>
-#include <facade/engine/renderer.hpp>
+#include <facade/scene/renderer.hpp>
 #include <facade/scene/scene.hpp>
 #include <facade/util/error.hpp>
 #include <facade/util/logger.hpp>

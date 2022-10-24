@@ -12,11 +12,11 @@
 #include <facade/render/renderer.hpp>
 #include <facade/scene/fly_cam.hpp>
 
-#include <facade/facade.hpp>
-
 #include <facade/editor/inspector.hpp>
 #include <facade/editor/log.hpp>
 #include <facade/editor/scene_tree.hpp>
+
+#include <facade/context/context.hpp>
 
 #include <bin/shaders.hpp>
 

@@ -4,6 +4,8 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_DEBUG_POSTFIX "-d")
 
+set(target_prefix facade)
+
 project(facade)
 
 option(FACADE_BUILD_SHADERS "Build facade shaders" ON)
@@ -17,15 +19,8 @@ if(FACADE_BUILD_SHADERS)
   endif()
 endif()
 
-set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
-try_compile(has_make_unique_for_overwrite "${CMAKE_CURRENT_BINARY_DIR}" SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/cmake/src/make_unique_for_overwrite.cpp")
-
-add_subdirectory(ext)
-
-# add_subdirectory(cmake/interface)
 add_subdirectory(tools/embed_shader)
-
-add_subdirectory(facade-lib)
+add_subdirectory(lib)
 
 if(FACADE_BUILD_SHADERS)
   message(STATUS "Adding build step to embed shaders")
@@ -58,5 +53,11 @@ target_sources(${PROJECT_NAME} PRIVATE
   src/bin/unlit_frag.spv.hpp
 )
 
-target_link_libraries(${PROJECT_NAME} PRIVATE facade::lib facade::compile-options)
+target_link_libraries(${PROJECT_NAME} PRIVATE
+  facade::context
+  facade::editor
+  facade::compile-options
+  facade::pch
+)
+
 target_include_directories(${PROJECT_NAME} PRIVATE src)

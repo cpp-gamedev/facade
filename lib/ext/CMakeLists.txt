@@ -1,10 +1,14 @@
+if("${target_prefix}" STREQUAL "")
+  message(FATAL_ERROR "target_prefix unset")
+endif()
+
 file(ARCHIVE_EXTRACT INPUT "${CMAKE_CURRENT_SOURCE_DIR}/src.zip" DESTINATION "${CMAKE_CURRENT_SOURCE_DIR}")
 
 add_subdirectory(src/vk_dynamic)
-add_library(${PROJECT_NAME}::vk-dynamic ALIAS vk-dynamic)
+add_library(${target_prefix}::vk-dynamic ALIAS vk-dynamic)
 
 add_subdirectory(src/vma)
-add_library(${PROJECT_NAME}::vma ALIAS vma)
+add_library(${target_prefix}::vma ALIAS vma)
 
 set(GLFW_VULKAN_STATIC OFF)
 set(GLFW_INSTALL OFF)
@@ -38,10 +42,10 @@ set(SPIRV_CROSS_SKIP_INSTALL ON)
 add_subdirectory(src/spirv_cross)
 
 add_subdirectory(src/dear_imgui)
-add_library(${PROJECT_NAME}::dear_imgui ALIAS dear_imgui)
+add_library(${target_prefix}::dear_imgui ALIAS dear_imgui)
 
 add_subdirectory(src/stb)
-add_library(${PROJECT_NAME}::stb-image ALIAS stb-image)
+add_library(${target_prefix}::stb-image ALIAS stb-image)
 
 add_subdirectory(src/djson)
 

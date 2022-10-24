@@ -1,7 +1,11 @@
-project(facade-compile-options)
+if("${target_prefix}" STREQUAL "")
+  message(FATAL_ERROR "target_prefix unset")
+endif()
+
+project(${target_prefix}-compile-options)
 
 add_library(${PROJECT_NAME} INTERFACE)
-add_library(facade::compile-options ALIAS ${PROJECT_NAME})
+add_library(${target_prefix}::compile-options ALIAS ${PROJECT_NAME})
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL Clang OR CMAKE_CXX_COMPILER_ID STREQUAL GNU)
   target_compile_options(${PROJECT_NAME} INTERFACE

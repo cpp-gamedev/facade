@@ -32,6 +32,10 @@ target_link_libraries(${PROJECT_NAME}
   Threads::Threads
 )
 
+if(CMAKE_SYSTEM_NAME STREQUAL Linux)
+  target_link_libraries(${PROJECT_NAME} PRIVATE pthread)
+endif()
+
 target_compile_definitions(${PROJECT_NAME}
   PUBLIC
   GLM_FORCE_XYZW_ONLY

@@ -1,7 +1,7 @@
 file(ARCHIVE_EXTRACT INPUT "${CMAKE_CURRENT_SOURCE_DIR}/src.zip" DESTINATION "${CMAKE_CURRENT_SOURCE_DIR}")
 
 add_subdirectory(src/vk_dynamic)
-add_library(${PROJECT_NAME}::vk ALIAS vk-dynamic)
+add_library(${PROJECT_NAME}::vk-dynamic ALIAS vk-dynamic)
 
 add_subdirectory(src/vma)
 add_library(${PROJECT_NAME}::vma ALIAS vma)

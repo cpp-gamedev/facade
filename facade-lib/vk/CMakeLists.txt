@@ -29,31 +29,33 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 target_sources(${PROJECT_NAME} PRIVATE
-  include/facade/vk/buffer.hpp
-  include/facade/vk/cmd.hpp
-  include/facade/vk/defer.hpp
-  include/facade/vk/descriptor_set.hpp
-  include/facade/vk/drawer.hpp
-  include/facade/vk/gfx.hpp
-  include/facade/vk/pipeline.hpp
-  include/facade/vk/pipes.hpp
-  include/facade/vk/render_frame.hpp
-  include/facade/vk/render_pass.hpp
-  include/facade/vk/render_target.hpp
-  include/facade/vk/set_allocator.hpp
-  include/facade/vk/shader.hpp
-  include/facade/vk/spir_v.hpp
-  include/facade/vk/static_mesh.hpp
-  include/facade/vk/swapchain.hpp
-  include/facade/vk/texture.hpp
-  include/facade/vk/vk.hpp
-  include/facade/vk/vma.hpp
-  include/facade/vk/wsi.hpp
+  include/${target_prefix}/vk/buffer.hpp
+  include/${target_prefix}/vk/cmd.hpp
+  include/${target_prefix}/vk/defer.hpp
+  include/${target_prefix}/vk/descriptor_set.hpp
+  include/${target_prefix}/vk/drawer.hpp
+  include/${target_prefix}/vk/geometry.hpp
+  include/${target_prefix}/vk/gfx.hpp
+  include/${target_prefix}/vk/pipeline.hpp
+  include/${target_prefix}/vk/pipes.hpp
+  include/${target_prefix}/vk/render_frame.hpp
+  include/${target_prefix}/vk/render_pass.hpp
+  include/${target_prefix}/vk/render_target.hpp
+  include/${target_prefix}/vk/set_allocator.hpp
+  include/${target_prefix}/vk/shader.hpp
+  include/${target_prefix}/vk/spir_v.hpp
+  include/${target_prefix}/vk/static_mesh.hpp
+  include/${target_prefix}/vk/swapchain.hpp
+  include/${target_prefix}/vk/texture.hpp
+  include/${target_prefix}/vk/vk.hpp
+  include/${target_prefix}/vk/vma.hpp
+  include/${target_prefix}/vk/wsi.hpp
 
   src/buffer.cpp
   src/cmd.cpp
   src/descriptor_set.cpp
   src/drawer.cpp
+  src/geometry.cpp
   src/gfx.cpp
   src/pipeline.cpp
   src/pipes.cpp

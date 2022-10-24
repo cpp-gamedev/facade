@@ -1,6 +1,6 @@
 #include <facade/util/flex_array.hpp>
-#include <facade/util/geometry.hpp>
 #include <facade/util/nvec3.hpp>
+#include <facade/vk/geometry.hpp>
 #include <array>
 
 auto facade::make_cube(glm::vec3 size, glm::vec3 rgb, glm::vec3 const o) -> Geometry {

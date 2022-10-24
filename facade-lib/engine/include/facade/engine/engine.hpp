@@ -1,6 +1,5 @@
 #pragma once
 #include <facade/glfw/glfw.hpp>
-#include <facade/util/time.hpp>
 #include <facade/vk/shader.hpp>
 
 namespace facade {
@@ -27,12 +26,12 @@ class Engine {
 	explicit Engine(CreateInfo const& info = {});
 
 	bool add_shader(Shader shader);
-	void show(bool reset_dt);
-	void hide();
+	void show_window();
+	void hide_window();
 
 	bool running() const;
-	float next_frame();
-	void render(Scene& scene) const;
+	bool next_frame(vk::CommandBuffer& out);
+	void submit();
 	void request_stop();
 
 	void reload(CreateInfo const& info);
@@ -40,7 +39,7 @@ class Engine {
 	Glfw::Window window() const;
 	Gfx const& gfx() const;
 	Input const& input() const;
-	Renderer const& renderer() const;
+	Renderer& renderer() const;
 
   private:
 	struct Impl;

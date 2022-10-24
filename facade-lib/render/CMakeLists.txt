@@ -28,7 +28,7 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 target_sources(${PROJECT_NAME} PRIVATE
-  include/facade/render/renderer.hpp
+  include/${target_prefix}/render/renderer.hpp
 
   src/detail/dear_imgui.cpp
   src/detail/dear_imgui.hpp

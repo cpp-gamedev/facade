@@ -1,6 +1,5 @@
 #include <facade/engine/engine.hpp>
 #include <facade/render/renderer.hpp>
-#include <facade/scene/scene.hpp>
 #include <facade/vk/vk.hpp>
 
 namespace facade {
@@ -35,9 +34,6 @@ struct Engine::Impl {
 
 	Renderer renderer;
 
-	DeltaTime dt{};
-	std::optional<vk::CommandBuffer> cb{};
-
 	Impl(CreateInfo const& info)
 		: window(make_window(info.extent, info.title)), vulkan(GlfwWsi{window}), gfx{vulkan.gfx()},
 		  renderer(gfx, window, make_renderer_info(vulkan.gpu(), info.msaa_samples)) {}
@@ -48,46 +44,29 @@ Engine& Engine::operator=(Engine&&) noexcept = default;
 Engine::~Engine() noexcept = default;
 
 Engine::Engine(CreateInfo const& info) : m_impl(std::make_unique<Impl>(info)) {
-	if (info.auto_show) { show(true); }
+	if (info.auto_show) { show_window(); }
 }
 
 bool Engine::add_shader(Shader shader) { return m_impl->renderer.add_shader(shader); }
 
-void Engine::show(bool reset_dt) {
-	glfwShowWindow(m_impl->window.get());
-	if (reset_dt) { m_impl->dt = {}; }
-}
+void Engine::show_window() { glfwShowWindow(m_impl->window.get()); }
 
-void Engine::hide() { glfwHideWindow(m_impl->window.get()); }
+void Engine::hide_window() { glfwHideWindow(m_impl->window.get()); }
 
 bool Engine::running() const { return !glfwWindowShouldClose(m_impl->window.get()); }
 
-float Engine::next_frame() {
-	assert(!m_impl->cb);
+bool Engine::next_frame(vk::CommandBuffer& out) {
 	m_impl->window.get().glfw->poll_events();
-	auto cb = vk::CommandBuffer{};
-	if (!m_impl->renderer.next_frame({&cb, 1})) { return m_impl->dt(); }
-	m_impl->cb = cb;
-	return m_impl->dt();
+	if (!m_impl->renderer.next_frame({&out, 1})) { return false; }
+	return true;
 }
 
-void Engine::render(Scene& scene) const {
-	if (m_impl->cb) { scene.render(m_impl->renderer, *m_impl->cb); }
-	m_impl->renderer.render();
-	m_impl->cb.reset();
-}
+void Engine::submit() { m_impl->renderer.render(); }
 
 void Engine::request_stop() { glfwSetWindowShouldClose(m_impl->window.get(), GLFW_TRUE); }
-
-void Engine::reload(CreateInfo const& info) {
-	m_impl->gfx.device.waitIdle();
-	m_impl.reset();
-	m_impl = std::make_unique<Impl>(info);
-	show(true);
-}
 
 Gfx const& Engine::gfx() const { return m_impl->gfx; }
 Glfw::Window Engine::window() const { return m_impl->window; }
 Input const& Engine::input() const { return m_impl->window.get().state().input; }
-Renderer const& Engine::renderer() const { return m_impl->renderer; }
+Renderer& Engine::renderer() const { return m_impl->renderer; }
 } // namespace facade

@@ -28,16 +28,16 @@ target_link_libraries(${PROJECT_NAME}
 )
 
 target_sources(${PROJECT_NAME} PRIVATE
-  include/facade/scene/camera.hpp
-  include/facade/scene/fly_cam.hpp
-  include/facade/scene/id.hpp
-  include/facade/scene/lights.hpp
-  include/facade/scene/material.hpp
-  include/facade/scene/node_data.hpp
-  include/facade/scene/node.hpp
-  include/facade/scene/rect.hpp
-  include/facade/scene/scene.hpp
-  include/facade/scene/transform.hpp
+  include/${target_prefix}/scene/camera.hpp
+  include/${target_prefix}/scene/fly_cam.hpp
+  include/${target_prefix}/scene/id.hpp
+  include/${target_prefix}/scene/lights.hpp
+  include/${target_prefix}/scene/material.hpp
+  include/${target_prefix}/scene/node_data.hpp
+  include/${target_prefix}/scene/node.hpp
+  include/${target_prefix}/scene/rect.hpp
+  include/${target_prefix}/scene/scene.hpp
+  include/${target_prefix}/scene/transform.hpp
 
   src/detail/gltf.cpp
   src/detail/gltf.hpp

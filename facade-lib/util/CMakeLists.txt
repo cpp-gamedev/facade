@@ -56,7 +56,6 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/util/error.hpp
   include/${target_prefix}/util/fixed_string.hpp
   include/${target_prefix}/util/flex_array.hpp
-  include/${target_prefix}/util/geometry.hpp
   include/${target_prefix}/util/image.hpp
   include/${target_prefix}/util/logger.hpp
   include/${target_prefix}/util/mufo.hpp
@@ -69,7 +68,6 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/util/visitor.hpp
 
   src/data_provider.cpp
-  src/geometry.cpp
   src/image.cpp
   src/logger.cpp
   src/time.cpp

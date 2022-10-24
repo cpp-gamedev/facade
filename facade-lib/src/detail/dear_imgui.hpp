@@ -5,7 +5,7 @@
 #include <facade/vk/gfx.hpp>
 
 namespace facade {
-class DearImgui {
+class DearImGui {
   public:
 	struct CreateInfo {
 		Gfx gfx{};
@@ -15,14 +15,14 @@ class DearImgui {
 		ColourSpace swapchain{ColourSpace::eSrgb};
 	};
 
-	DearImgui(CreateInfo const& info);
-	~DearImgui();
+	DearImGui(CreateInfo const& info);
+	~DearImGui();
 
 	void new_frame();
 	void end_frame();
 	void render(vk::CommandBuffer cb);
 
-	DearImgui& operator=(DearImgui&&) = delete;
+	DearImGui& operator=(DearImGui&&) = delete;
 
   private:
 	vk::UniqueDescriptorPool m_pool{};

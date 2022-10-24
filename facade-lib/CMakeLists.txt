@@ -110,7 +110,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/facade/glfw/glfw.hpp
   include/facade/glfw/input.hpp
 
-  include/facade/dear_imgui/dear_imgui.hpp
+  include/facade/render/renderer.hpp
 
   include/facade/scene/camera.hpp
   include/facade/scene/fly_cam.hpp
@@ -120,7 +120,6 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/facade/scene/node_data.hpp
   include/facade/scene/node.hpp
   include/facade/scene/rect.hpp
-  include/facade/scene/renderer.hpp
   include/facade/scene/scene.hpp
   include/facade/scene/transform.hpp
 
@@ -157,14 +156,15 @@ target_sources(${PROJECT_NAME} PRIVATE
 
   src/glfw/glfw.cpp
 
-  src/dear_imgui/dear_imgui.cpp
+  src/detail/dear_imgui.cpp
+  src/detail/dear_imgui.hpp
+  src/render/renderer.cpp
 
   src/detail/gltf.cpp
   src/detail/gltf.hpp
 
   src/scene/camera.cpp
   src/scene/material.cpp
-  src/scene/renderer.cpp
   src/scene/scene.cpp
   src/scene/transform.cpp
 

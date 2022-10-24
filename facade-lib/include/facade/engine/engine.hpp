@@ -35,6 +35,8 @@ class Engine {
 	void render(Scene& scene) const;
 	void request_stop();
 
+	void reload(CreateInfo const& info);
+
 	Glfw::Window window() const;
 	Gfx const& gfx() const;
 	Input const& input() const;

@@ -1,5 +1,5 @@
 #include <facade/engine/engine.hpp>
-#include <facade/scene/renderer.hpp>
+#include <facade/render/renderer.hpp>
 #include <facade/scene/scene.hpp>
 #include <facade/vk/vk.hpp>
 
@@ -71,12 +71,19 @@ float Engine::next_frame() {
 	return m_impl->dt();
 }
 
-void Engine::request_stop() { glfwSetWindowShouldClose(m_impl->window.get(), GLFW_TRUE); }
-
 void Engine::render(Scene& scene) const {
 	if (m_impl->cb) { scene.render(m_impl->renderer, *m_impl->cb); }
 	m_impl->renderer.render();
 	m_impl->cb.reset();
+}
+
+void Engine::request_stop() { glfwSetWindowShouldClose(m_impl->window.get(), GLFW_TRUE); }
+
+void Engine::reload(CreateInfo const& info) {
+	m_impl->gfx.device.waitIdle();
+	m_impl.reset();
+	m_impl = std::make_unique<Impl>(info);
+	show(true);
 }
 
 Gfx const& Engine::gfx() const { return m_impl->gfx; }

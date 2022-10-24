@@ -1,9 +1,10 @@
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_vulkan.h>
 #include <imgui.h>
-#include <facade/dear_imgui/dear_imgui.hpp>
-#include <facade/scene/material.hpp>
+#include <detail/dear_imgui.hpp>
 #include <facade/vk/cmd.hpp>
+#include <glm/gtc/color_space.hpp>
+#include <glm/mat4x4.hpp>
 
 namespace facade {
 namespace {
@@ -22,17 +23,19 @@ vk::UniqueDescriptorPool make_pool(vk::Device const device) {
 	return device.createDescriptorPoolUnique(pool_info);
 }
 
+glm::vec4 to_linear(glm::vec4 const& srgb) { return glm::convertSRGBToLinear(srgb); }
+
 void correct_style() {
 	auto* colours = ImGui::GetStyle().Colors;
 	for (int i = 0; i < ImGuiCol_COUNT; ++i) {
 		auto& colour = colours[i];
-		auto const corrected = Material::to_linear(glm::vec4{colour.x, colour.y, colour.z, colour.w});
+		auto const corrected = to_linear(glm::vec4{colour.x, colour.y, colour.z, colour.w});
 		colour = {corrected.x, corrected.y, corrected.z, corrected.w};
 	}
 }
 } // namespace
 
-DearImgui::DearImgui(CreateInfo const& info) {
+DearImGui::DearImGui(CreateInfo const& info) {
 	m_pool = make_pool(info.gfx.device);
 
 	IMGUI_CHECKVERSION();
@@ -73,7 +76,7 @@ DearImgui::DearImgui(CreateInfo const& info) {
 	ImGui_ImplVulkan_DestroyFontUploadObjects();
 }
 
-DearImgui::~DearImgui() {
+DearImGui::~DearImGui() {
 	if (!m_pool) { return; }
 	m_pool.getOwner().waitIdle();
 	ImGui_ImplVulkan_Shutdown();
@@ -81,16 +84,16 @@ DearImgui::~DearImgui() {
 	ImGui::DestroyContext();
 }
 
-void DearImgui::new_frame() {
+void DearImGui::new_frame() {
 	ImGui_ImplVulkan_NewFrame();
 	ImGui_ImplGlfw_NewFrame();
 	ImGui::NewFrame();
 }
 
-void DearImgui::end_frame() {
+void DearImGui::end_frame() {
 	// ImGui::Render calls ImGui::EndFrame
 	ImGui::Render();
 }
 
-void DearImgui::render(vk::CommandBuffer const cb) { ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cb); }
+void DearImGui::render(vk::CommandBuffer const cb) { ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cb); }
 } // namespace facade

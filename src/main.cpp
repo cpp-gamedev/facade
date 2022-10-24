@@ -7,12 +7,10 @@
 #include <facade/util/geometry.hpp>
 #include <facade/util/logger.hpp>
 
-#include <facade/dear_imgui/dear_imgui.hpp>
-
 #include <djson/json.hpp>
 
+#include <facade/render/renderer.hpp>
 #include <facade/scene/fly_cam.hpp>
-#include <facade/scene/renderer.hpp>
 #include <facade/scene/scene.hpp>
 
 #include <facade/engine/engine.hpp>
@@ -24,6 +22,8 @@
 #include <bin/shaders.hpp>
 
 #include <iostream>
+
+#include <imgui.h>
 
 using namespace facade;
 
@@ -240,38 +240,43 @@ struct MainMenu {
 void run() {
 	auto engine = Engine{};
 
-	auto lit = shaders::lit();
-	lit.id = "default";
-	engine.add_shader(lit);
-	engine.add_shader(shaders::unlit());
-
 	struct DummyDataProvider : DataProvider {
 		ByteBuffer load(std::string_view) const override { return {}; }
 	};
 
-	auto scene = Scene{engine.gfx()};
-	scene.dir_lights.push_back(DirLight{.direction = glm::normalize(glm::vec3{-1.0f, -1.0f, -1.0f}), .diffuse = glm::vec3{5.0f}});
+	auto scene = std::optional<Scene>{};
 
 	auto material_id = Id<Material>{};
 	auto node_id = Id<Node>{};
 	auto post_scene_load = [&] {
-		scene.camera().transform.set_position({0.0f, 0.0f, 5.0f});
+		scene->camera().transform.set_position({0.0f, 0.0f, 5.0f});
 
 		auto material = std::make_unique<LitMaterial>();
 		material->albedo = {1.0f, 0.0f, 0.0f};
-		material_id = scene.add(std::move(material));
-		auto static_mesh_id = scene.add(StaticMesh{engine.gfx(), make_cubed_sphere(1.0f, 32)});
-		auto mesh_id = scene.add(Mesh{.primitives = {Mesh::Primitive{static_mesh_id, material_id}}});
+		material_id = scene->add(std::move(material));
+		auto static_mesh_id = scene->add(StaticMesh{engine.gfx(), make_cubed_sphere(1.0f, 32)});
+		auto mesh_id = scene->add(Mesh{.primitives = {Mesh::Primitive{static_mesh_id, material_id}}});
 
 		auto node = Node{};
 		node.attach(mesh_id);
 		node.instances.emplace_back().set_position({1.0f, -5.0f, -20.0f});
 		node.instances.emplace_back().set_position({-1.0f, 1.0f, 0.0f});
-		node_id = scene.add(std::move(node), 0);
+		node_id = scene->add(std::move(node), 0);
 	};
 
-	scene.load_gltf(dj::Json::parse(test_json_v), DummyDataProvider{});
-	post_scene_load();
+	auto init = [&] {
+		auto lit = shaders::lit();
+		lit.id = "default";
+		engine.add_shader(lit);
+		engine.add_shader(shaders::unlit());
+
+		scene.emplace(engine.gfx());
+		scene->dir_lights.push_back(DirLight{.direction = glm::normalize(glm::vec3{-1.0f, -1.0f, -1.0f}), .diffuse = glm::vec3{5.0f}});
+		scene->load_gltf(dj::Json::parse(test_json_v), DummyDataProvider{});
+		post_scene_load();
+	};
+
+	init();
 
 	float const drot_z[] = {100.0f, -150.0f};
 
@@ -289,14 +294,14 @@ void run() {
 
 		if (!state.file_drops.empty()) {
 			auto const& file = state.file_drops.front();
-			if (!load_gltf(scene, file)) {
+			if (!load_gltf(*scene, file)) {
 				logger::warn("Failed to load GLTF: [{}]", file);
 			} else {
 				post_scene_load();
 			}
 		}
 
-		auto& camera = scene.camera();
+		auto& camera = scene->camera();
 		if (auto fly_cam = FlyCam{camera.transform}) {
 			if (input.keyboard.held(GLFW_KEY_A) || input.keyboard.held(GLFW_KEY_LEFT)) { fly_cam.move_right(-dt); }
 			if (input.keyboard.held(GLFW_KEY_D) || input.keyboard.held(GLFW_KEY_RIGHT)) { fly_cam.move_right(dt); }
@@ -307,17 +312,25 @@ void run() {
 			if (mouse_look) { fly_cam.rotate({input.mouse.delta_pos().x, -input.mouse.delta_pos().y}); }
 		}
 
+		if (input.keyboard.pressed(GLFW_KEY_R)) {
+			logger::info("Reloading...");
+			scene.reset();
+			engine.reload({});
+			init();
+			continue;
+		}
+
 		// TEMP CODE
-		auto* node = scene.find_node(node_id);
+		auto* node = scene->find_node(node_id);
 		node->instances[0].rotate(glm::radians(drot_z[0]) * dt, {0.0f, 1.0f, 0.0f});
 		node->instances[1].rotate(glm::radians(drot_z[1]) * dt, {1.0f, 0.0f, 0.0f});
 
 		ImGui::ShowDemoWindow();
 
-		main_menu.display(engine, scene, dt);
+		main_menu.display(engine, *scene, dt);
 		// TEMP CODE
 
-		engine.render(scene);
+		engine.render(*scene);
 	}
 }
 } // namespace

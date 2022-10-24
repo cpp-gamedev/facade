@@ -1,5 +1,5 @@
-#include <facade/dear_imgui/dear_imgui.hpp>
-#include <facade/scene/renderer.hpp>
+#include <detail/dear_imgui.hpp>
+#include <facade/render/renderer.hpp>
 #include <facade/util/error.hpp>
 #include <facade/util/logger.hpp>
 #include <facade/util/time.hpp>
@@ -44,7 +44,7 @@ struct Renderer::Impl {
 	Pipes pipes;
 	RenderPass render_pass;
 	RenderFrames<> render_frames;
-	DearImgui dear_imgui;
+	DearImGui dear_imgui;
 
 	Shader::Db shader_db{};
 	std::optional<RenderTarget> render_target{};
@@ -73,7 +73,7 @@ struct Renderer::Impl {
 	Impl(Gfx gfx, Glfw::Window window, Renderer::CreateInfo const& info)
 		: gfx{gfx}, window{window}, swapchain{gfx, GlfwWsi{window}.make_surface(gfx.instance)}, pipes(gfx, info.samples),
 		  render_pass(gfx, info.samples, this->swapchain.info.imageFormat, depth_format(gfx.gpu)), render_frames(make_render_frames(gfx, info.command_buffers)),
-		  dear_imgui(DearImgui::CreateInfo{
+		  dear_imgui(DearImGui::CreateInfo{
 			  gfx,
 			  window,
 			  render_pass.render_pass(),

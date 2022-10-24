@@ -21,6 +21,8 @@
 
 #include <bin/shaders.hpp>
 
+#include <iostream>
+
 using namespace facade;
 
 namespace facade::editor {
@@ -332,20 +334,22 @@ void run() {
 } // namespace
 
 int main() {
-	auto logger_instance = logger::Instance{};
 	try {
-		run();
-	} catch (InitError const& e) {
-		logger::error("Initialization failure: {}", e.what());
-		return EXIT_FAILURE;
-	} catch (Error const& e) {
-		logger::error("Runtime error: {}", e.what());
-		return EXIT_FAILURE;
-	} catch (std::exception const& e) {
-		logger::error("Fatal error: {}", e.what());
-		return EXIT_FAILURE;
-	} catch (...) {
-		logger::error("Unknown error");
-		return EXIT_FAILURE;
-	}
+		auto logger_instance = logger::Instance{};
+		try {
+			run();
+		} catch (InitError const& e) {
+			logger::error("Initialization failure: {}", e.what());
+			return EXIT_FAILURE;
+		} catch (Error const& e) {
+			logger::error("Runtime error: {}", e.what());
+			return EXIT_FAILURE;
+		} catch (std::exception const& e) {
+			logger::error("Fatal error: {}", e.what());
+			return EXIT_FAILURE;
+		} catch (...) {
+			logger::error("Unknown error");
+			return EXIT_FAILURE;
+		}
+	} catch (std::exception const& e) { std::cerr << e.what() << '\n'; }
 }

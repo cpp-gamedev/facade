@@ -1,9 +1,14 @@
-project(facade-lib)
+set(target_prefix facade)
+
+project(${target_prefix}-lib)
+
+add_subdirectory(interface)
+add_subdirectory(util)
 
 find_package(Threads)
 
 add_library(${PROJECT_NAME})
-add_library(facade::lib ALIAS ${PROJECT_NAME})
+add_library(${target_prefix}::lib ALIAS ${PROJECT_NAME})
 
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
 
@@ -11,17 +16,16 @@ target_link_libraries(${PROJECT_NAME}
   PUBLIC
   glfw::glfw
   glm::glm
-  facade::vk
-  facade::vma
-  facade::dear_imgui
+  ${target_prefix}::vk
+  ${target_prefix}::vma
+  ${target_prefix}::dear_imgui
+  ${target_prefix}::util
   djson::djson
-  fmt::fmt
 
   PRIVATE
   spirv-cross-glsl
-  facade::compile-options
-  facade::stb-image
-  Threads::Threads
+  ${target_prefix}::compile-options
+  ${target_prefix}::pch
 )
 
 if(CMAKE_SYSTEM_NAME STREQUAL Linux)
@@ -50,41 +54,8 @@ target_include_directories(${PROJECT_NAME}
   src
 )
 
-target_compile_definitions(${PROJECT_NAME}
-  PUBLIC
-  GLM_FORCE_XYZW_ONLY
-  GLM_FORCE_RADIANS
-  GLM_FORCE_DEPTH_ZERO_TO_ONE
-  GLM_FORCE_SILENT_WARNINGS
-  GLM_ENABLE_EXPERIMENTAL
-  GLM_EXT_INCLUDED
-  $<$<CONFIG:Debug>:FACADE_DEBUG>
-  $<$<BOOL:${has_make_unique_for_overwrite}>:FACADE_MUFO>
-)
-
 target_sources(${PROJECT_NAME} PRIVATE
   include/facade/defines.hpp
-
-  include/facade/util/async_queue.hpp
-  include/facade/util/byte_buffer.hpp
-  include/facade/util/colour_space.hpp
-  include/facade/util/data_provider.hpp
-  include/facade/util/defer_queue.hpp
-  include/facade/util/enum_array.hpp
-  include/facade/util/error.hpp
-  include/facade/util/fixed_string.hpp
-  include/facade/util/flex_array.hpp
-  include/facade/util/geometry.hpp
-  include/facade/util/image.hpp
-  include/facade/util/logger.hpp
-  include/facade/util/mufo.hpp
-  include/facade/util/nvec3.hpp
-  include/facade/util/pinned.hpp
-  include/facade/util/ring_buffer.hpp
-  include/facade/util/time.hpp
-  include/facade/util/type_id.hpp
-  include/facade/util/unique.hpp
-  include/facade/util/visitor.hpp
 
   include/facade/vk/buffer.hpp
   include/facade/vk/cmd.hpp
@@ -129,12 +100,6 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/facade/editor/inspector.hpp
   include/facade/editor/log.hpp
   include/facade/editor/scene_tree.hpp
-
-  src/util/data_provider.cpp
-  src/util/geometry.cpp
-  src/util/image.cpp
-  src/util/logger.cpp
-  src/util/time.cpp
 
   src/vk/buffer.cpp
   src/vk/cmd.cpp

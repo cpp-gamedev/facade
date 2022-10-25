@@ -120,15 +120,14 @@ struct MainMenu {
 	struct {
 		bool stats{};
 		bool tree{};
+		bool log{};
+		bool imgui_demo{};
 	} windows{};
 
-	editor::Log log{};
 	struct {
-		FixedString<128> name{};
-		Id<Node> id{};
-	} inspecting{};
-
-	editor::Inspectee inspectee{};
+		editor::Log log{};
+		editor::Inspectee inspectee{};
+	} data{};
 
 	static constexpr std::string_view vsync_status(vk::PresentModeKHR const mode) {
 		switch (mode) {
@@ -160,12 +159,12 @@ struct MainMenu {
 	void inspector(Scene& scene) {
 		bool show = true;
 		ImGui::SetNextWindowSize({400.0f, 400.0f}, ImGuiCond_Once);
-		if (auto window = editor::Window{inspectee.name.c_str(), &show}) { editor::SceneInspector{window, scene}.inspect(inspectee.id); }
-		if (!show) { inspectee = {}; }
+		if (auto window = editor::Window{data.inspectee.name.c_str(), &show}) { editor::SceneInspector{window, scene}.inspect(data.inspectee.id); }
+		if (!show) { data.inspectee = {}; }
 	}
 
 	void stats(Engine const& engine, float const dt) {
-		ImGui::SetNextWindowSize({200.0f, 200.0f}, ImGuiCond_Once);
+		ImGui::SetNextWindowSize({250.0f, 200.0f}, ImGuiCond_Once);
 		if (auto window = editor::Window{"Frame Stats", &windows.stats}) {
 			auto const& stats = engine.renderer().frame_stats();
 			ImGui::Text("%s", FixedString{"Counter: {}", stats.frame_counter}.c_str());
@@ -173,6 +172,7 @@ struct MainMenu {
 			ImGui::Text("%s", FixedString{"Draw calls: {}", stats.draw_calls}.c_str());
 			ImGui::Text("%s", FixedString{"FPS: {}", (stats.fps == 0 ? static_cast<std::uint32_t>(stats.frame_counter) : stats.fps)}.c_str());
 			ImGui::Text("%s", FixedString{"Frame time: {:.2f}ms", dt * 1000.0f}.c_str());
+			ImGui::Text("%s", FixedString{"GPU: {}", stats.gpu_name}.c_str());
 			if (ImGui::SmallButton("Vsync")) { change_vsync(engine); }
 			ImGui::SameLine();
 			ImGui::Text("%s", vsync_status(stats.mode).data());
@@ -181,37 +181,12 @@ struct MainMenu {
 
 	void tree(Scene& scene) {
 		ImGui::SetNextWindowSize({250.0f, 350.0f}, ImGuiCond_Once);
-		if (auto window = editor::Window{"Scene", &windows.tree}) { editor::SceneTree{scene}.render(window, inspectee); }
+		if (auto window = editor::Window{"Scene", &windows.tree}) { editor::SceneTree{scene}.render(window, data.inspectee); }
 	}
 
-	static FixedString<128> node_name(Node const& node) {
-		auto ret = FixedString<128>{node.name};
-		if (ret.empty()) { ret = "(Unnamed)"; }
-		ret += FixedString{" ({})", node.id()};
-		return ret;
-	}
-
-	void mark_inspect(Node const& node) {
-		inspecting.id = node.id();
-		inspecting.name = node_name(node);
-		inspecting.name += FixedString{"###Node"};
-	}
-
-	void uninspect() { inspecting = {.name = "[Node]###Node"}; }
-
-	void walk(Node& node) {
-		auto flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
-		if (node.id() == inspecting.id) { flags |= ImGuiTreeNodeFlags_Selected; }
-		if (node.children().empty()) { flags |= ImGuiTreeNodeFlags_Leaf; }
-		auto tn = editor::TreeNode{node_name(node).c_str(), flags};
-		if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
-			mark_inspect(node);
-		} else if (ImGui::IsItemClicked(ImGuiMouseButton_Right)) {
-			uninspect();
-		}
-		if (tn) {
-			for (auto& child : node.children()) { walk(child); }
-		}
+	void log() {
+		ImGui::SetNextWindowSize({600.0f, 200.0f}, ImGuiCond_Once);
+		if (auto window = editor::Window{"Log", &windows.log}) { data.log.render(window); }
 	}
 
 	void display(Engine& engine, Scene& scene, float const dt) {
@@ -223,16 +198,20 @@ struct MainMenu {
 			if (auto window = editor::Menu{main, "Window"}) {
 				if (ImGui::MenuItem("Tree")) { windows.tree = true; }
 				if (ImGui::MenuItem("Stats")) { windows.stats = true; }
-				if (ImGui::MenuItem("Log")) { log.show = true; }
+				if (ImGui::MenuItem("Log")) { windows.log = true; }
+				if constexpr (debug_v) {
+					if (ImGui::MenuItem("ImGui demo")) { windows.imgui_demo = true; }
+				}
 				ImGui::Separator();
 				if (ImGui::MenuItem("Close All")) { windows = {}; }
 			}
 		}
 
 		if (windows.tree) { tree(scene); }
-		if (inspectee) { inspector(scene); }
+		if (data.inspectee) { inspector(scene); }
 		if (windows.stats) { stats(engine, dt); }
-		if (log.show) { log.render(); }
+		if (windows.log) { log(); }
+		if (windows.imgui_demo) { ImGui::ShowDemoWindow(&windows.imgui_demo); }
 	}
 };
 
@@ -320,8 +299,6 @@ void run() {
 		auto* node = context->scene.find_node(node_id);
 		node->instances[0].rotate(glm::radians(drot_z[0]) * dt, {0.0f, 1.0f, 0.0f});
 		node->instances[1].rotate(glm::radians(drot_z[1]) * dt, {1.0f, 0.0f, 0.0f});
-
-		ImGui::ShowDemoWindow();
 
 		main_menu.display(context->engine, context->scene, dt);
 		// TEMP CODE

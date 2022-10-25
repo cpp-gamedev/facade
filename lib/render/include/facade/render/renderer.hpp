@@ -8,6 +8,7 @@
 
 namespace facade {
 struct FrameStats {
+	std::string_view gpu_name{};
 	///
 	/// \brief Total frames so far
 	///

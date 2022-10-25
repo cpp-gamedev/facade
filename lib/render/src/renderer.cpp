@@ -66,6 +66,7 @@ struct Renderer::Impl {
 
 	struct {
 		FrameStats stats{};
+		std::string gpu_name{};
 		std::uint64_t triangles{};	// reset every frame
 		std::uint32_t draw_calls{}; // reset every frame
 	} stats{};
@@ -92,6 +93,8 @@ struct Renderer::Impl {
 
 Renderer::Renderer(Gfx gfx, Glfw::Window window, CreateInfo const& info) : m_impl{std::make_unique<Impl>(std::move(gfx), window, info)} {
 	m_impl->swapchain.refresh(Swapchain::Spec{window.framebuffer_extent()});
+	m_impl->stats.gpu_name = m_impl->gfx.gpu.getProperties().deviceName.data();
+	m_impl->stats.stats.gpu_name = m_impl->stats.gpu_name;
 }
 
 Renderer::Renderer(Renderer&&) noexcept = default;

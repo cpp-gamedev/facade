@@ -171,12 +171,13 @@ UniqueVma Vulkan::make_vma(vk::Instance instance, vk::PhysicalDevice gpu, vk::De
 	return ret;
 }
 
-Vulkan ::Vulkan(Wsi const& wsi) noexcept(false) {
+Vulkan::Vulkan(Wsi const& wsi) noexcept(false) {
 	instance = Vulkan::Instance::make(wsi.extensions(), Vulkan::eValidation);
 	auto surface = wsi.make_surface(*instance.instance);
 	device = Vulkan::Device::make(instance, *surface);
 	vma = Vulkan::make_vma(*instance.instance, device.gpu.device, *device.device);
 	shared = std::make_unique<Gfx::Shared>(*device.device, device.gpu.properties);
+	logger::info("Using GPU: [{}]", device.gpu.properties.deviceName.data());
 }
 
 Gfx Vulkan::gfx() const {

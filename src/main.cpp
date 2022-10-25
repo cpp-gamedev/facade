@@ -139,6 +139,19 @@ struct MainMenu {
 		}
 	}
 
+	static constexpr int to_int(vk::SampleCountFlagBits const samples) {
+		switch (samples) {
+		case vk::SampleCountFlagBits::e64: return 64;
+		case vk::SampleCountFlagBits::e32: return 32;
+		case vk::SampleCountFlagBits::e16: return 16;
+		case vk::SampleCountFlagBits::e8: return 8;
+		case vk::SampleCountFlagBits::e4: return 4;
+		case vk::SampleCountFlagBits::e2: return 2;
+		default:
+		case vk::SampleCountFlagBits::e1: return 1;
+		}
+	}
+
 	void change_vsync(Engine const& engine) const {
 		static constexpr vk::PresentModeKHR modes[] = {vk::PresentModeKHR::eFifo, vk::PresentModeKHR::eFifoRelaxed, vk::PresentModeKHR::eMailbox,
 													   vk::PresentModeKHR::eImmediate};
@@ -173,6 +186,7 @@ struct MainMenu {
 			ImGui::Text("%s", FixedString{"FPS: {}", (stats.fps == 0 ? static_cast<std::uint32_t>(stats.frame_counter) : stats.fps)}.c_str());
 			ImGui::Text("%s", FixedString{"Frame time: {:.2f}ms", dt * 1000.0f}.c_str());
 			ImGui::Text("%s", FixedString{"GPU: {}", stats.gpu_name}.c_str());
+			ImGui::Text("%s", FixedString{"MSAA: {}x", to_int(stats.msaa)}.c_str());
 			if (ImGui::SmallButton("Vsync")) { change_vsync(engine); }
 			ImGui::SameLine();
 			ImGui::Text("%s", vsync_status(stats.mode).data());

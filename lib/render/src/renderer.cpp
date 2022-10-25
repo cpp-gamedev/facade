@@ -1,4 +1,3 @@
-#include <detail/dear_imgui.hpp>
 #include <facade/render/renderer.hpp>
 #include <facade/util/error.hpp>
 #include <facade/util/logger.hpp>
@@ -55,7 +54,7 @@ struct Renderer::Impl {
 	Pipes pipes;
 	RenderPass render_pass;
 	RenderFrames<> render_frames;
-	DearImGui dear_imgui;
+	std::unique_ptr<Gui> gui{};
 
 	Shader::Db shader_db{};
 	std::optional<RenderTarget> render_target{};
@@ -82,17 +81,11 @@ struct Renderer::Impl {
 		std::uint32_t draw_calls{}; // reset every frame
 	} stats{};
 
-	Impl(Gfx gfx, Glfw::Window window, Renderer::CreateInfo const& info)
+	Impl(Gfx gfx, Glfw::Window window, std::unique_ptr<Gui> gui, Renderer::CreateInfo const& info)
 		: gfx{gfx}, supported_msaa(gfx.gpu.getProperties().limits.framebufferColorSampleCounts),
 		  msaa(get_samples(supported_msaa, info.desired_msaa)), window{window}, swapchain{gfx, GlfwWsi{window}.make_surface(gfx.instance)}, pipes(gfx, msaa),
 		  render_pass(gfx, msaa, this->swapchain.info.imageFormat, depth_format(gfx.gpu)), render_frames(make_render_frames(gfx, info.command_buffers)),
-		  dear_imgui(DearImGui::CreateInfo{
-			  gfx,
-			  window,
-			  render_pass.render_pass(),
-			  msaa,
-			  Swapchain::colour_space(swapchain.info.imageFormat),
-		  }) {}
+		  gui(std::move(gui)) {}
 
 	void next_frame() {
 		stats.stats.mode = swapchain.info.presentMode;
@@ -103,11 +96,13 @@ struct Renderer::Impl {
 	}
 };
 
-Renderer::Renderer(Gfx gfx, Glfw::Window window, CreateInfo const& info) : m_impl{std::make_unique<Impl>(std::move(gfx), window, info)} {
+Renderer::Renderer(Gfx gfx, Glfw::Window window, std::unique_ptr<Gui> gui, CreateInfo const& info)
+	: m_impl{std::make_unique<Impl>(std::move(gfx), window, std::move(gui), info)} {
 	m_impl->swapchain.refresh(Swapchain::Spec{window.framebuffer_extent()});
 	m_impl->stats.gpu_name = m_impl->gfx.gpu.getProperties().deviceName.data();
 	m_impl->stats.stats.gpu_name = m_impl->stats.gpu_name;
 	m_impl->stats.stats.msaa = m_impl->msaa;
+	if (m_impl->gui) { m_impl->gui->init(*this); }
 	logger::info("[Renderer] buffering (frames): [{}] | MSAA: [{}x] | max threads: [{}] |", buffering_v, to_int(m_impl->msaa), info.command_buffers);
 }
 
@@ -129,7 +124,7 @@ FrameStats const& Renderer::frame_stats() const { return m_impl->stats.stats; }
 
 bool Renderer::is_supported(vk::PresentModeKHR const mode) const { return m_impl->swapchain.supported_present_modes().contains(mode); }
 
-bool Renderer::request_mode(vk::PresentModeKHR const desired) const {
+bool Renderer::request_mode(vk::PresentModeKHR const desired) {
 	if (!is_supported(desired)) {
 		logger::error("Unsupported present mode requested: [{}]", present_mode_str(desired));
 		return false;
@@ -139,7 +134,7 @@ bool Renderer::request_mode(vk::PresentModeKHR const desired) const {
 	return true;
 }
 
-void Renderer::request_colour_space(ColourSpace desired) const {
+void Renderer::request_colour_space(ColourSpace desired) {
 	if (m_impl->swapchain.colour_space() == desired) { return; }
 	// queue up request to refresh swapchain at beginning of next frame
 	m_impl->requests.colour_space = desired;
@@ -161,9 +156,11 @@ bool Renderer::next_frame(std::span<vk::CommandBuffer> out) {
 	// already have an acquired image
 	if (m_impl->render_target) { return fill_and_return(); }
 
-	// ImGui NewFrame / EndFrame are called even if acquire / present fails
-	// this allows user code to unconditionally call ImGui:: code in a frame, regardless of whether it will be drawn / presented
-	m_impl->dear_imgui.new_frame();
+	if (m_impl->gui) {
+		// ImGui NewFrame / EndFrame are called even if acquire / present fails
+		// this allows user code to unconditionally call ImGui:: code in a frame, regardless of whether it will be drawn / presented
+		m_impl->gui->new_frame();
+	}
 
 	// check for pending swapchain refresh requests
 	if (m_impl->requests) {
@@ -212,16 +209,18 @@ Pipeline Renderer::bind_pipeline(vk::CommandBuffer cb, Pipeline::State const& st
 }
 
 bool Renderer::render() {
-	// ImGui NewFrame / EndFrame are called even if acquire / present fails
-	// this allows user code to unconditionally call ImGui:: code in a frame, regardless of whether it will be drawn / presented
-	m_impl->dear_imgui.end_frame();
+	if (m_impl->gui) {
+		// ImGui NewFrame / EndFrame are called even if acquire / present fails
+		// this allows user code to unconditionally call ImGui:: code in a frame, regardless of whether it will be drawn / presented
+		m_impl->gui->end_frame();
+	}
 	if (!m_impl->render_target) { return false; }
 
 	auto& frame = m_impl->render_frames.get();
 
 	auto const cbs = frame.secondary.span();
 	// perform the actual Dear ImGui render
-	m_impl->dear_imgui.render(cbs.front());
+	if (m_impl->gui) { m_impl->gui->render(cbs.front()); }
 	// end recording
 	for (auto cb : cbs) { cb.end(); }
 
@@ -269,4 +268,8 @@ void Renderer::draw(Pipeline& pipeline, StaticMesh const& mesh, std::span<glm::m
 Shader Renderer::add_shader(std::string id, SpirV vert, SpirV frag) { return m_impl->shader_db.add(std::move(id), std::move(vert), std::move(frag)); }
 bool Renderer::add_shader(Shader shader) { return m_impl->shader_db.add(std::move(shader)); }
 Shader Renderer::find_shader(std::string const& id) const { return m_impl->shader_db.find(id); }
+
+Gfx const& Renderer::gfx() const { return m_impl->gfx; }
+Glfw::Window Renderer::window() const { return m_impl->window; }
+vk::RenderPass Renderer::render_pass() const { return m_impl->render_pass.render_pass(); }
 } // namespace facade

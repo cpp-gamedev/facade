@@ -20,6 +20,7 @@ target_include_directories(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
   PUBLIC
   ${target_prefix}::render
+  ${target_prefix}::dear_imgui
 
   PRIVATE
   ${target_prefix}::compile-options
@@ -34,5 +35,7 @@ endif()
 target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/engine/engine.hpp
 
+  src/detail/dear_imgui.cpp
+  src/detail/dear_imgui.hpp
   src/engine.cpp
 )

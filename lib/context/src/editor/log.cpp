@@ -1,7 +1,6 @@
 #include <imgui.h>
 #include <imgui_internal.h>
-#include <facade/editor/common.hpp>
-#include <facade/editor/log.hpp>
+#include <facade/context/editor/log.hpp>
 #include <facade/util/fixed_string.hpp>
 
 namespace facade::editor {

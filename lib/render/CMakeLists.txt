@@ -20,7 +20,6 @@ target_include_directories(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
   PUBLIC
   ${target_prefix}::glfw
-  ${target_prefix}::dear_imgui
 
   PRIVATE
   ${target_prefix}::compile-options
@@ -35,7 +34,5 @@ endif()
 target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/render/renderer.hpp
 
-  src/detail/dear_imgui.cpp
-  src/detail/dear_imgui.hpp
   src/renderer.cpp
 )

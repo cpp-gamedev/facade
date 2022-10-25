@@ -35,5 +35,15 @@ endif()
 target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/context/context.hpp
 
+  include/${target_prefix}/context/editor/common.hpp
+  include/${target_prefix}/context/editor/inspector.hpp
+  include/${target_prefix}/context/editor/log.hpp
+  include/${target_prefix}/context/editor/scene_tree.hpp
+
   src/context.cpp
+
+  src/editor/common.cpp
+  src/editor/inspector.cpp
+  src/editor/log.cpp
+  src/editor/scene_tree.cpp
 )

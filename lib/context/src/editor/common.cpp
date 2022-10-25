@@ -1,5 +1,5 @@
 #include <imgui.h>
-#include <facade/editor/common.hpp>
+#include <facade/context/editor/common.hpp>
 #include <cassert>
 
 namespace facade::editor {
@@ -36,6 +36,14 @@ MainMenu::MainMenu() : MenuBar(ImGui::BeginMainMenuBar()) {}
 MainMenu::~MainMenu() {
 	if (m_open) { ImGui::EndMainMenuBar(); }
 }
+
+Popup::Popup(char const* id, int flags) : Openable(ImGui::BeginPopup(id, flags)) {}
+
+Popup::~Popup() {
+	if (m_open) { ImGui::EndPopup(); }
+}
+
+void Popup::close_current() { ImGui::CloseCurrentPopup(); }
 
 Menu::Menu(NotClosed<MenuBar>, char const* label, bool enabled) : Openable(ImGui::BeginMenu(label, enabled)) {}
 

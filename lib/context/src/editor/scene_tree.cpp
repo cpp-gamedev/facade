@@ -1,5 +1,5 @@
 #include <imgui.h>
-#include <facade/editor/scene_tree.hpp>
+#include <facade/context/editor/scene_tree.hpp>
 #include <facade/scene/scene.hpp>
 
 namespace facade::editor {

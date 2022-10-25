@@ -1,3 +1,4 @@
+#include <facade/glfw/glfw_wsi.hpp>
 #include <facade/render/renderer.hpp>
 #include <facade/util/error.hpp>
 #include <facade/util/logger.hpp>

@@ -4,7 +4,6 @@
 
 #include <facade/glfw/input.hpp>
 #include <facade/util/unique.hpp>
-#include <facade/vk/wsi.hpp>
 #include <glm/vec2.hpp>
 #include <memory>
 #include <vector>
@@ -44,15 +43,6 @@ struct Glfw::Window {
 	operator GLFWwindow*() const { return win; }
 
 	bool operator==(Window const& rhs) const { return win == rhs.win; }
-};
-
-struct GlfwWsi : Wsi {
-	Glfw::Window window{};
-
-	GlfwWsi(Glfw::Window window) : window(window) {}
-
-	std::vector<char const*> extensions() const final;
-	vk::UniqueSurfaceKHR make_surface(vk::Instance instance) const final;
 };
 
 struct Glfw::Deleter {

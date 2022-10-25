@@ -35,7 +35,5 @@ endif()
 target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/engine/engine.hpp
 
-  src/detail/dear_imgui.cpp
-  src/detail/dear_imgui.hpp
   src/engine.cpp
 )

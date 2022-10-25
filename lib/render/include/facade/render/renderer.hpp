@@ -39,7 +39,6 @@ struct FrameStats {
 struct RendererCreateInfo {
 	std::size_t command_buffers{1};
 	std::uint8_t desired_msaa{1};
-	std::unique_ptr<Gui> gui{};
 };
 
 class Renderer {

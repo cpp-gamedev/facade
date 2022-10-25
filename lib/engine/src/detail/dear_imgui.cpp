@@ -43,10 +43,8 @@ std::unique_ptr<DearImGui> DearImGui::make(CreateInfo const& create_info) {
 		logger::error("Attempt to create duplicate Dear ImGui instance denied");
 		return {};
 	}
-	return std::make_unique<DearImGui>(ConstructTag{}, create_info);
-}
-DearImGui::DearImGui(ConstructTag, CreateInfo const& info) {
-	m_pool = make_pool(info.gfx.device);
+
+	auto pool = make_pool(create_info.gfx.device);
 
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -55,7 +53,7 @@ DearImGui::DearImGui(ConstructTag, CreateInfo const& info) {
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;  // Enable Gamepad Controls
 
 	ImGui::StyleColorsDark();
-	if (info.swapchain == ColourSpace::eSrgb) { correct_style(); }
+	if (create_info.swapchain == ColourSpace::eSrgb) { correct_style(); }
 
 	auto loader = vk::DynamicLoader{};
 	auto get_fn = [&loader](char const* name) { return loader.getProcAddress<PFN_vkVoidFunction>(name); };
@@ -64,29 +62,31 @@ DearImGui::DearImGui(ConstructTag, CreateInfo const& info) {
 		return (*gf)(name);
 	};
 	ImGui_ImplVulkan_LoadFunctions(lambda, &get_fn);
-	ImGui_ImplGlfw_InitForVulkan(info.window, true);
+	ImGui_ImplGlfw_InitForVulkan(create_info.window, true);
 	ImGui_ImplVulkan_InitInfo init_info = {};
-	init_info.Instance = info.gfx.instance;
-	init_info.PhysicalDevice = info.gfx.gpu;
-	init_info.Device = info.gfx.device;
-	init_info.QueueFamily = info.gfx.queue_family;
-	init_info.Queue = info.gfx.queue;
-	init_info.DescriptorPool = *m_pool;
+	init_info.Instance = create_info.gfx.instance;
+	init_info.PhysicalDevice = create_info.gfx.gpu;
+	init_info.Device = create_info.gfx.device;
+	init_info.QueueFamily = create_info.gfx.queue_family;
+	init_info.Queue = create_info.gfx.queue;
+	init_info.DescriptorPool = *pool;
 	init_info.Subpass = 0;
 	init_info.MinImageCount = 2;
 	init_info.ImageCount = 2;
-	init_info.MSAASamples = static_cast<VkSampleCountFlagBits>(info.samples);
+	init_info.MSAASamples = static_cast<VkSampleCountFlagBits>(create_info.samples);
 
-	ImGui_ImplVulkan_Init(&init_info, info.render_pass);
+	ImGui_ImplVulkan_Init(&init_info, create_info.render_pass);
 
 	{
-		auto cmd = Cmd{info.gfx};
+		auto cmd = Cmd{create_info.gfx};
 		ImGui_ImplVulkan_CreateFontsTexture(cmd.cb);
 	}
 	ImGui_ImplVulkan_DestroyFontUploadObjects();
 
-	g_instance = this;
+	return std::unique_ptr<DearImGui>(new DearImGui{std::move(pool)});
 }
+
+DearImGui::DearImGui(vk::UniqueDescriptorPool pool) : m_pool(std::move(pool)) { g_instance = this; }
 
 DearImGui::~DearImGui() {
 	m_pool.getOwner().waitIdle();

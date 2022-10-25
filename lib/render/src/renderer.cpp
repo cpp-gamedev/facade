@@ -276,8 +276,4 @@ void Renderer::draw(Pipeline& pipeline, StaticMesh const& mesh, std::span<glm::m
 Shader Renderer::add_shader(std::string id, SpirV vert, SpirV frag) { return m_impl->shader_db.add(std::move(id), std::move(vert), std::move(frag)); }
 bool Renderer::add_shader(Shader shader) { return m_impl->shader_db.add(std::move(shader)); }
 Shader Renderer::find_shader(std::string const& id) const { return m_impl->shader_db.find(id); }
-
-Gfx const& Renderer::gfx() const { return m_impl->gfx; }
-Glfw::Window Renderer::window() const { return m_impl->window; }
-vk::RenderPass Renderer::render_pass() const { return m_impl->render_pass.render_pass(); }
 } // namespace facade

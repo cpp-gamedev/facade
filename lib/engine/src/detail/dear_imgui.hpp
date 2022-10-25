@@ -7,8 +7,6 @@
 
 namespace facade {
 class DearImGui : public Pinned {
-	struct ConstructTag {};
-
   public:
 	struct CreateInfo {
 		Gfx gfx{};
@@ -20,7 +18,6 @@ class DearImGui : public Pinned {
 
 	static std::unique_ptr<DearImGui> make(CreateInfo const& create_info);
 
-	DearImGui(ConstructTag, CreateInfo const& info);
 	~DearImGui();
 
 	void new_frame();
@@ -30,6 +27,8 @@ class DearImGui : public Pinned {
 	DearImGui& operator=(DearImGui&&) = delete;
 
   private:
+	DearImGui(vk::UniqueDescriptorPool pool);
+
 	vk::UniqueDescriptorPool m_pool{};
 };
 } // namespace facade

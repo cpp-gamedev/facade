@@ -75,10 +75,6 @@ class Renderer {
 	bool add_shader(Shader shader);
 	Shader find_shader(std::string const& id) const;
 
-	Gfx const& gfx() const;
-	Glfw::Window window() const;
-	vk::RenderPass render_pass() const;
-
   private:
 	struct Impl;
 	std::unique_ptr<Impl> m_impl{};

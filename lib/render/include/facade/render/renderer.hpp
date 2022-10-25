@@ -8,6 +8,7 @@
 
 namespace facade {
 struct FrameStats {
+	std::string_view gpu_name{};
 	///
 	/// \brief Total frames so far
 	///
@@ -28,11 +29,15 @@ struct FrameStats {
 	/// \brief Current present mode
 	///
 	vk::PresentModeKHR mode{};
+	///
+	/// \brief Multi-sampled anti-aliasing level
+	///
+	vk::SampleCountFlagBits msaa{};
 };
 
 struct RendererCreateInfo {
 	std::size_t command_buffers{1};
-	vk::SampleCountFlagBits samples{vk::SampleCountFlagBits::e1};
+	std::uint8_t desired_msaa{1};
 };
 
 class Renderer {
@@ -40,8 +45,7 @@ class Renderer {
 	using CreateInfo = RendererCreateInfo;
 
 	struct Info {
-		vk::PresentModeKHR mode{};
-		vk::SampleCountFlagBits samples{};
+		vk::SampleCountFlags supported_msaa{};
 		ColourSpace colour_space{};
 		std::size_t cbs_per_frame{};
 	};

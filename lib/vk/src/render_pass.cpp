@@ -67,11 +67,10 @@ vk::UniqueRenderPass create_render_pass(vk::Device device, vk::SampleCountFlagBi
 } // namespace
 
 RenderPass::RenderPass(Gfx const& gfx, vk::SampleCountFlagBits samples, vk::Format colour, vk::Format depth)
-	: m_gfx{gfx}, m_render_pass{create_render_pass(gfx.vma.device, samples, colour, depth)} {
+	: m_gfx{gfx}, m_render_pass{create_render_pass(gfx.vma.device, samples, colour, depth)}, m_samples(samples) {
 	m_colour.image = m_gfx.shared->defer_queue;
 	m_depth.image = m_gfx.shared->defer_queue;
 	m_depth.format = depth;
-	m_samples = samples;
 	if (m_samples > vk::SampleCountFlagBits::e1) { m_colour.format = colour; }
 }
 

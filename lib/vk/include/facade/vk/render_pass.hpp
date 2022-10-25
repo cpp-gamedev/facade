@@ -12,7 +12,6 @@ class RenderPass {
 	void bind(vk::CommandBuffer cb, vk::Pipeline pipeline);
 	void execute(Framebuffer const& framebuffer, vk::ClearColorValue const& clear);
 
-	vk::SampleCountFlagBits samples() const { return m_samples; }
 	vk::RenderPass render_pass() const { return *m_render_pass; }
 
   private:

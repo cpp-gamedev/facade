@@ -12,31 +12,17 @@ UniqueWin make_window(glm::ivec2 extent, char const* title) {
 	glfwSetWindowSize(ret.get(), extent.x, extent.y);
 	return ret;
 }
-
-constexpr auto get_samples(vk::SampleCountFlags supported, std::uint8_t desired) {
-	if (desired >= 32 && (supported & vk::SampleCountFlagBits::e32)) { return vk::SampleCountFlagBits::e32; }
-	if (desired >= 16 && (supported & vk::SampleCountFlagBits::e16)) { return vk::SampleCountFlagBits::e16; }
-	if (desired >= 8 && (supported & vk::SampleCountFlagBits::e8)) { return vk::SampleCountFlagBits::e8; }
-	if (desired >= 4 && (supported & vk::SampleCountFlagBits::e4)) { return vk::SampleCountFlagBits::e4; }
-	if (desired >= 2 && (supported & vk::SampleCountFlagBits::e2)) { return vk::SampleCountFlagBits::e2; }
-	return vk::SampleCountFlagBits::e1;
-}
-
-Renderer::CreateInfo make_renderer_info(Gpu const& gpu, std::uint8_t sample_count) {
-	return Renderer::CreateInfo{command_buffers_v, get_samples(gpu.properties.limits.framebufferColorSampleCounts, sample_count)};
-}
 } // namespace
 
 struct Engine::Impl {
 	UniqueWin window;
 	Vulkan vulkan;
 	Gfx gfx;
-
 	Renderer renderer;
 
 	Impl(CreateInfo const& info)
 		: window(make_window(info.extent, info.title)), vulkan(GlfwWsi{window}), gfx{vulkan.gfx()},
-		  renderer(gfx, window, make_renderer_info(vulkan.gpu(), info.msaa_samples)) {}
+		  renderer(gfx, window, Renderer::CreateInfo{command_buffers_v, info.msaa_samples}) {}
 };
 
 Engine::Engine(Engine&&) noexcept = default;

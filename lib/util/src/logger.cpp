@@ -84,8 +84,7 @@ class FileLogger : Pinned {
 
 struct Storage {
 	struct Buffer {
-		std::size_t limit{};
-		std::size_t extra{};
+		logger::BufferSize size{};
 
 		std::vector<logger::Entry> entries{};
 	};
@@ -118,14 +117,16 @@ void logger::log_to(Pipe pipe, Entry entry) {
 	g_storage.buffer.entries.push_back(std::move(entry));
 }
 
+logger::BufferSize const& logger::buffer_size() { return g_storage.buffer.size; }
+
 void logger::access_buffer(Accessor& accessor) {
 	auto lock = std::scoped_lock{g_storage.mutex};
 	accessor(g_storage.buffer.entries);
 }
 
-logger::Instance::Instance(std::size_t buffer_limit, std::size_t buffer_extra) {
+logger::Instance::Instance(logger::BufferSize const& buffer_size) {
 	auto lock = std::scoped_lock{g_storage.mutex};
-	g_storage.buffer = Storage::Buffer{buffer_limit, buffer_extra};
+	g_storage.buffer = Storage::Buffer{buffer_size};
 	g_storage.file_logger.emplace("facade.log");
 }
 

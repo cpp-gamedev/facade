@@ -17,6 +17,15 @@ vk::Format depth_format(vk::PhysicalDevice const gpu) {
 	return vk::Format::eD16Unorm;
 }
 
+constexpr auto get_samples(vk::SampleCountFlags supported, std::uint8_t desired) {
+	if (desired >= 32 && (supported & vk::SampleCountFlagBits::e32)) { return vk::SampleCountFlagBits::e32; }
+	if (desired >= 16 && (supported & vk::SampleCountFlagBits::e16)) { return vk::SampleCountFlagBits::e16; }
+	if (desired >= 8 && (supported & vk::SampleCountFlagBits::e8)) { return vk::SampleCountFlagBits::e8; }
+	if (desired >= 4 && (supported & vk::SampleCountFlagBits::e4)) { return vk::SampleCountFlagBits::e4; }
+	if (desired >= 2 && (supported & vk::SampleCountFlagBits::e2)) { return vk::SampleCountFlagBits::e2; }
+	return vk::SampleCountFlagBits::e1;
+}
+
 ///
 /// \brief Tracks frames per second
 ///
@@ -38,6 +47,8 @@ struct Fps {
 
 struct Renderer::Impl {
 	Gfx gfx;
+	vk::SampleCountFlags supported_msaa{};
+	vk::SampleCountFlagBits msaa{};
 	Glfw::Window window;
 	Swapchain swapchain;
 
@@ -66,18 +77,20 @@ struct Renderer::Impl {
 
 	struct {
 		FrameStats stats{};
+		std::string gpu_name{};
 		std::uint64_t triangles{};	// reset every frame
 		std::uint32_t draw_calls{}; // reset every frame
 	} stats{};
 
 	Impl(Gfx gfx, Glfw::Window window, Renderer::CreateInfo const& info)
-		: gfx{gfx}, window{window}, swapchain{gfx, GlfwWsi{window}.make_surface(gfx.instance)}, pipes(gfx, info.samples),
-		  render_pass(gfx, info.samples, this->swapchain.info.imageFormat, depth_format(gfx.gpu)), render_frames(make_render_frames(gfx, info.command_buffers)),
+		: gfx{gfx}, supported_msaa(gfx.gpu.getProperties().limits.framebufferColorSampleCounts),
+		  msaa(get_samples(supported_msaa, info.desired_msaa)), window{window}, swapchain{gfx, GlfwWsi{window}.make_surface(gfx.instance)}, pipes(gfx, msaa),
+		  render_pass(gfx, msaa, this->swapchain.info.imageFormat, depth_format(gfx.gpu)), render_frames(make_render_frames(gfx, info.command_buffers)),
 		  dear_imgui(DearImGui::CreateInfo{
 			  gfx,
 			  window,
 			  render_pass.render_pass(),
-			  info.samples,
+			  msaa,
 			  Swapchain::colour_space(swapchain.info.imageFormat),
 		  }) {}
 
@@ -92,6 +105,10 @@ struct Renderer::Impl {
 
 Renderer::Renderer(Gfx gfx, Glfw::Window window, CreateInfo const& info) : m_impl{std::make_unique<Impl>(std::move(gfx), window, info)} {
 	m_impl->swapchain.refresh(Swapchain::Spec{window.framebuffer_extent()});
+	m_impl->stats.gpu_name = m_impl->gfx.gpu.getProperties().deviceName.data();
+	m_impl->stats.stats.gpu_name = m_impl->stats.gpu_name;
+	m_impl->stats.stats.msaa = m_impl->msaa;
+	logger::info("[Renderer] buffering (frames): [{}] | MSAA: [{}x] | max threads: [{}] |", buffering_v, to_int(m_impl->msaa), info.command_buffers);
 }
 
 Renderer::Renderer(Renderer&&) noexcept = default;
@@ -100,8 +117,7 @@ Renderer::~Renderer() noexcept = default;
 
 auto Renderer::info() const -> Info {
 	return {
-		.mode = m_impl->swapchain.info.presentMode,
-		.samples = m_impl->render_pass.samples(),
+		.supported_msaa = m_impl->supported_msaa,
 		.colour_space = m_impl->swapchain.colour_space(),
 		.cbs_per_frame = m_impl->render_frames.get().secondary.size(),
 	};

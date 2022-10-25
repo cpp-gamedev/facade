@@ -16,6 +16,13 @@ struct Entry {
 	Level level{};
 };
 
+struct BufferSize {
+	std::size_t limit{500};
+	std::size_t delta{100};
+
+	constexpr std::size_t total() const { return limit + delta; }
+};
+
 struct Accessor {
 	virtual void operator()(std::span<Entry const> entries) = 0;
 };
@@ -23,11 +30,12 @@ struct Accessor {
 int thread_id();
 std::string format(Level level, std::string_view const message);
 void log_to(Pipe pipe, Entry entry);
+BufferSize const& buffer_size();
 void access_buffer(Accessor& accessor);
 
 class Instance : public Pinned {
   public:
-	Instance(std::size_t buffer_limit = 500, std::size_t buffer_extra = 100);
+	Instance(BufferSize const& buffer_size = {});
 	~Instance();
 };
 

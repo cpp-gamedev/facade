@@ -18,13 +18,13 @@ UniqueWin make_window(glm::ivec2 extent, char const* title) {
 struct GuiDearImGui : Gui {
 	std::unique_ptr<DearImGui> imgui{};
 
-	void init(Renderer const& renderer) final {
+	void init(InitInfo const& info) final {
 		auto const dici = DearImGui::CreateInfo{
-			.gfx = renderer.gfx(),
-			.window = renderer.window(),
-			.render_pass = renderer.render_pass(),
-			.samples = renderer.frame_stats().msaa,
-			.swapchain = renderer.info().colour_space,
+			.gfx = info.gfx,
+			.window = info.window,
+			.render_pass = info.render_pass,
+			.samples = info.msaa,
+			.swapchain = info.colour_space,
 		};
 		imgui = DearImGui::make(dici);
 	}

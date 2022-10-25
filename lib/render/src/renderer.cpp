@@ -102,7 +102,15 @@ Renderer::Renderer(Gfx gfx, Glfw::Window window, std::unique_ptr<Gui> gui, Creat
 	m_impl->stats.gpu_name = m_impl->gfx.gpu.getProperties().deviceName.data();
 	m_impl->stats.stats.gpu_name = m_impl->stats.gpu_name;
 	m_impl->stats.stats.msaa = m_impl->msaa;
-	if (m_impl->gui) { m_impl->gui->init(*this); }
+	if (m_impl->gui) {
+		m_impl->gui->init(Gui::InitInfo{
+			.gfx = gfx,
+			.window = window,
+			.render_pass = m_impl->render_pass.render_pass(),
+			.msaa = m_impl->msaa,
+			.colour_space = m_impl->swapchain.colour_space(),
+		});
+	}
 	logger::info("[Renderer] buffering (frames): [{}] | MSAA: [{}x] | max threads: [{}] |", buffering_v, to_int(m_impl->msaa), info.command_buffers);
 }
 

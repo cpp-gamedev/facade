@@ -30,6 +30,6 @@
 
 ## Building
 
-Using VSCode with CMake Tools or Visual Studio CMake is recommended: load a desired preset, configure, build, and debug/run. Modify the provided [launch.json](https://github.com/cpp-gamedev/facade/misc/launch.json) and place it in `.vscode/` for customized debugging.
+Using VSCode with CMake Tools or Visual Studio CMake is recommended: load a desired preset, configure, build, and debug/run. Modify the [launch.json](https://github.com/cpp-gamedev/facade/wiki/Development#vscode-launchjson-template) template provided in the wiki and place it in `.vscode/` for customized debugging.
 
 WIP

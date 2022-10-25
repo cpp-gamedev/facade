@@ -16,7 +16,7 @@ UniqueWin make_window(glm::ivec2 extent, char const* title) {
 }
 
 struct GuiDearImGui : Gui {
-	std::optional<DearImGui> imgui{};
+	std::unique_ptr<DearImGui> imgui{};
 
 	void init(Renderer const& renderer) final {
 		auto const dici = DearImGui::CreateInfo{
@@ -26,22 +26,19 @@ struct GuiDearImGui : Gui {
 			.samples = renderer.frame_stats().msaa,
 			.swapchain = renderer.info().colour_space,
 		};
-		imgui.emplace(dici);
+		imgui = DearImGui::make(dici);
 	}
 
 	void new_frame() final {
-		assert(imgui.has_value());
-		imgui->new_frame();
+		if (imgui) { imgui->new_frame(); }
 	}
 
 	void end_frame() final {
-		assert(imgui.has_value());
-		imgui->end_frame();
+		if (imgui) { imgui->end_frame(); }
 	}
 
 	void render(vk::CommandBuffer cb) final {
-		assert(imgui.has_value());
-		imgui->render(cb);
+		if (imgui) { imgui->render(cb); }
 	}
 };
 

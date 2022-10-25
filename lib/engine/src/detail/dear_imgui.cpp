@@ -2,6 +2,7 @@
 #include <backends/imgui_impl_vulkan.h>
 #include <imgui.h>
 #include <detail/dear_imgui.hpp>
+#include <facade/util/logger.hpp>
 #include <facade/vk/cmd.hpp>
 #include <glm/gtc/color_space.hpp>
 #include <glm/mat4x4.hpp>
@@ -33,9 +34,18 @@ void correct_style() {
 		colour = {corrected.x, corrected.y, corrected.z, corrected.w};
 	}
 }
+
+DearImGui const* g_instance{};
 } // namespace
 
-DearImGui::DearImGui(CreateInfo const& info) {
+std::unique_ptr<DearImGui> DearImGui::make(CreateInfo const& create_info) {
+	if (g_instance) {
+		logger::error("Attempt to create duplicate Dear ImGui instance denied");
+		return {};
+	}
+	return std::make_unique<DearImGui>(ConstructTag{}, create_info);
+}
+DearImGui::DearImGui(ConstructTag, CreateInfo const& info) {
 	m_pool = make_pool(info.gfx.device);
 
 	IMGUI_CHECKVERSION();
@@ -74,14 +84,16 @@ DearImGui::DearImGui(CreateInfo const& info) {
 		ImGui_ImplVulkan_CreateFontsTexture(cmd.cb);
 	}
 	ImGui_ImplVulkan_DestroyFontUploadObjects();
+
+	g_instance = this;
 }
 
 DearImGui::~DearImGui() {
-	if (!m_pool) { return; }
 	m_pool.getOwner().waitIdle();
 	ImGui_ImplVulkan_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
 	ImGui::DestroyContext();
+	g_instance = {};
 }
 
 void DearImGui::new_frame() {

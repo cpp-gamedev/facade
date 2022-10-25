@@ -177,7 +177,7 @@ Vulkan::Vulkan(Wsi const& wsi) noexcept(false) {
 	device = Vulkan::Device::make(instance, *surface);
 	vma = Vulkan::make_vma(*instance.instance, device.gpu.device, *device.device);
 	shared = std::make_unique<Gfx::Shared>(*device.device, device.gpu.properties);
-	logger::info("Using GPU: [{}]", device.gpu.properties.deviceName.data());
+	logger::info("[Device] GPU: [{}] |", device.gpu.properties.deviceName.data());
 }
 
 Gfx Vulkan::gfx() const {

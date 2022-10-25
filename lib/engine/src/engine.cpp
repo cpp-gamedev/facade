@@ -18,7 +18,6 @@ struct Engine::Impl {
 	UniqueWin window;
 	Vulkan vulkan;
 	Gfx gfx;
-
 	Renderer renderer;
 
 	Impl(CreateInfo const& info)

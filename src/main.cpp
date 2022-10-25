@@ -139,19 +139,6 @@ struct MainMenu {
 		}
 	}
 
-	static constexpr int to_int(vk::SampleCountFlagBits const samples) {
-		switch (samples) {
-		case vk::SampleCountFlagBits::e64: return 64;
-		case vk::SampleCountFlagBits::e32: return 32;
-		case vk::SampleCountFlagBits::e16: return 16;
-		case vk::SampleCountFlagBits::e8: return 8;
-		case vk::SampleCountFlagBits::e4: return 4;
-		case vk::SampleCountFlagBits::e2: return 2;
-		default:
-		case vk::SampleCountFlagBits::e1: return 1;
-		}
-	}
-
 	void change_vsync(Engine const& engine) const {
 		static constexpr vk::PresentModeKHR modes[] = {vk::PresentModeKHR::eFifo, vk::PresentModeKHR::eFifoRelaxed, vk::PresentModeKHR::eMailbox,
 													   vk::PresentModeKHR::eImmediate};
@@ -229,6 +216,13 @@ struct MainMenu {
 	}
 };
 
+void log_prologue() {
+	auto const now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+	char buf[32]{};
+	std::strftime(buf, sizeof(buf), "%F %Z", std::localtime(&now));
+	logger::info("facade v{}.{}.{} | {} |", 0, 0, 0, buf);
+}
+
 void run() {
 	auto context = std::optional<Context>{};
 
@@ -257,6 +251,8 @@ void run() {
 
 	auto init = [&] {
 		context.emplace();
+		log_prologue();
+
 		auto lit = shaders::lit();
 		lit.id = "default";
 		context->add_shader(lit);

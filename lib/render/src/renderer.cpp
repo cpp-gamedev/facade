@@ -108,6 +108,7 @@ Renderer::Renderer(Gfx gfx, Glfw::Window window, CreateInfo const& info) : m_imp
 	m_impl->stats.gpu_name = m_impl->gfx.gpu.getProperties().deviceName.data();
 	m_impl->stats.stats.gpu_name = m_impl->stats.gpu_name;
 	m_impl->stats.stats.msaa = m_impl->msaa;
+	logger::info("[Renderer] buffering (frames): [{}] | MSAA: [{}x] | max threads: [{}] |", buffering_v, to_int(m_impl->msaa), info.command_buffers);
 }
 
 Renderer::Renderer(Renderer&&) noexcept = default;

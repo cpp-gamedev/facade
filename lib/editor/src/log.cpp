@@ -10,9 +10,10 @@ void Log::render(NotClosed<Window> window) {
 	ImGui::SameLine();
 	float spacing = ImGui::GetStyle().ItemInnerSpacing.x;
 	ImGui::PushButtonRepeat(true);
-	if (ImGui::ArrowButton("##left", ImGuiDir_Left)) { m_display_count = std::clamp(m_display_count - 10, 0, 1000); }
+	auto const max_logs = static_cast<int>(logger::buffer_size().total());
+	if (ImGui::ArrowButton("##left", ImGuiDir_Left)) { m_display_count = std::clamp(m_display_count - 10, 0, max_logs); }
 	ImGui::SameLine(0.0f, spacing);
-	if (ImGui::ArrowButton("##right", ImGuiDir_Right)) { m_display_count = std::clamp(m_display_count + 10, 0, 1000); }
+	if (ImGui::ArrowButton("##right", ImGuiDir_Right)) { m_display_count = std::clamp(m_display_count + 10, 0, max_logs); }
 	ImGui::PopButtonRepeat();
 
 	static constexpr std::string_view levels_v[] = {"Error", "Warn", "Info", "Debug"};
@@ -38,8 +39,11 @@ void Log::render(NotClosed<Window> window) {
 		case logger::Level::eDebug: return ImVec4{0.5f, 0.5f, 0.5f, 1.0f};
 		}
 	};
+	auto span = std::span{m_list};
+	auto const max_size = static_cast<std::size_t>(m_display_count);
+	if (span.size() > max_size) { span = span.subspan(span.size() - max_size); }
 	if (auto style = editor::StyleVar{ImGuiStyleVar_ItemSpacing, glm::vec2{}}) {
-		for (auto const* entry : m_list) ImGui::TextColored(im_colour(entry->level), "%s", entry->message.c_str());
+		for (auto const* entry : span) ImGui::TextColored(im_colour(entry->level), "%s", entry->message.c_str());
 	}
 
 	if (m_auto_scroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY()) { ImGui::SetScrollHereY(1.0f); }
@@ -48,7 +52,6 @@ void Log::render(NotClosed<Window> window) {
 void Log::operator()(std::span<logger::Entry const> entries) {
 	m_list.clear();
 	for (auto const& entry : entries) {
-		if (m_list.size() >= static_cast<std::size_t>(m_display_count)) { break; }
 		if (!m_level_filter[entry.level]) { continue; }
 		m_list.push_back(&entry);
 	}

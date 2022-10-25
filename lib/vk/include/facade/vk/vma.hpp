@@ -8,7 +8,7 @@ template <typename T, typename U = T>
 using Pair = std::pair<T, U>;
 
 template <typename Type>
-concept BufferWrite = !std::is_pointer_v<Type> && std::is_trivially_destructible_v<Type>;
+concept BufferWrite = (!std::is_pointer_v<Type>) && std::is_trivially_destructible_v<Type>;
 
 constexpr vk::Format srgb_formats_v[] = {vk::Format::eR8G8B8A8Srgb, vk::Format::eB8G8R8A8Srgb, vk::Format::eA8B8G8R8SrgbPack32};
 constexpr vk::Format linear_formats_v[] = {vk::Format::eR8G8B8A8Unorm, vk::Format::eB8G8R8A8Unorm};
@@ -27,6 +27,19 @@ constexpr std::string_view present_mode_str(vk::PresentModeKHR const mode) {
 	case vk::PresentModeKHR::eMailbox: return "mailbox";
 	// Using any other present mode is undefined behaviour
 	default: return "(unsupported)";
+	}
+}
+
+constexpr int to_int(vk::SampleCountFlagBits const samples) {
+	switch (samples) {
+	case vk::SampleCountFlagBits::e64: return 64;
+	case vk::SampleCountFlagBits::e32: return 32;
+	case vk::SampleCountFlagBits::e16: return 16;
+	case vk::SampleCountFlagBits::e8: return 8;
+	case vk::SampleCountFlagBits::e4: return 4;
+	case vk::SampleCountFlagBits::e2: return 2;
+	default:
+	case vk::SampleCountFlagBits::e1: return 1;
 	}
 }
 

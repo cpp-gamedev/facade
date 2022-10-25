@@ -1,3 +1,4 @@
+#include <facade/util/logger.hpp>
 #include <facade/vk/swapchain.hpp>
 #include <cassert>
 #include <limits>
@@ -85,6 +86,7 @@ vk::Result Swapchain::refresh(Spec const& spec) {
 		m_storage.views.insert(m_gfx.vma.make_image_view(image, info.imageFormat));
 		m_storage.images.insert({image, *m_storage.views.span().back(), info.imageExtent});
 	}
+	logger::info("[Swapchain] images: [{}] | colour space: [{}] |", m_storage.images.size(), is_srgb(info.imageFormat) ? "sRGB" : "linear");
 	return ret;
 }
 

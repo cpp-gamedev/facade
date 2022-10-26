@@ -189,11 +189,11 @@ struct MainMenu {
 		if (auto window = editor::Window{"Log", &windows.log}) { data.log.render(window); }
 	}
 
-	void display(Engine& engine, Scene& scene, float const dt) {
+	void display(Context& context, Scene& scene, float const dt) {
 		if (auto main = editor::MainMenu{}) {
 			if (auto file = editor::Menu{main, "File"}) {
 				ImGui::Separator();
-				if (ImGui::MenuItem("Exit")) { engine.request_stop(); }
+				if (ImGui::MenuItem("Exit")) { context.request_stop(); }
 			}
 			if (auto window = editor::Menu{main, "Window"}) {
 				if (ImGui::MenuItem("Tree")) { windows.tree = true; }
@@ -209,7 +209,7 @@ struct MainMenu {
 
 		if (windows.tree) { tree(scene); }
 		if (data.inspectee) { inspector(scene); }
-		if (windows.stats) { stats(engine, dt); }
+		if (windows.stats) { stats(context.engine(), dt); }
 		if (windows.log) { log(); }
 		if (windows.imgui_demo) { ImGui::ShowDemoWindow(&windows.imgui_demo); }
 	}
@@ -237,7 +237,7 @@ void run() {
 		auto material = std::make_unique<LitMaterial>();
 		material->albedo = {1.0f, 0.0f, 0.0f};
 		material_id = context->scene.add(std::move(material));
-		auto static_mesh_id = context->scene.add(StaticMesh{context->engine.gfx(), make_cubed_sphere(1.0f, 32)});
+		auto static_mesh_id = context->scene.add(StaticMesh{context->engine().gfx(), make_cubed_sphere(1.0f, 32)});
 		auto mesh_id = context->scene.add(Mesh{.primitives = {Mesh::Primitive{static_mesh_id, material_id}}});
 
 		auto node = Node{};
@@ -270,12 +270,12 @@ void run() {
 
 	while (context->running()) {
 		auto const dt = context->next_frame();
-		auto const& state = context->engine.window().state();
+		auto const& state = context->state();
 		auto const& input = state.input;
 		bool const mouse_look = input.mouse.held(GLFW_MOUSE_BUTTON_RIGHT);
 
 		if (input.keyboard.pressed(GLFW_KEY_ESCAPE)) { context->request_stop(); }
-		glfwSetInputMode(context->engine.window(), GLFW_CURSOR, mouse_look ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+		glfwSetInputMode(context->window(), GLFW_CURSOR, mouse_look ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
 
 		if (!state.file_drops.empty()) {
 			auto const& file = state.file_drops.front();
@@ -309,7 +309,7 @@ void run() {
 		node->instances[0].rotate(glm::radians(drot_z[0]) * dt, {0.0f, 1.0f, 0.0f});
 		node->instances[1].rotate(glm::radians(drot_z[1]) * dt, {1.0f, 0.0f, 0.0f});
 
-		main_menu.display(context->engine, context->scene, dt);
+		main_menu.display(*context, context->scene, dt);
 		// TEMP CODE
 	}
 }

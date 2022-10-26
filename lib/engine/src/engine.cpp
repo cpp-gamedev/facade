@@ -4,6 +4,7 @@
 #include <facade/engine/engine.hpp>
 #include <facade/glfw/glfw_wsi.hpp>
 #include <facade/render/renderer.hpp>
+#include <facade/util/error.hpp>
 #include <facade/vk/cmd.hpp>
 #include <facade/vk/vk.hpp>
 #include <glm/gtc/color_space.hpp>
@@ -12,13 +13,6 @@
 namespace facade {
 namespace {
 static constexpr std::size_t command_buffers_v{1};
-
-UniqueWin make_window(glm::ivec2 extent, char const* title) {
-	auto ret = Glfw::Window::make();
-	glfwSetWindowTitle(ret.get(), title);
-	glfwSetWindowSize(ret.get(), extent.x, extent.y);
-	return ret;
-}
 
 vk::UniqueDescriptorPool make_pool(vk::Device const device) {
 	vk::DescriptorPoolSize pool_sizes[] = {
@@ -119,52 +113,44 @@ struct DearImGui : Gui {
 };
 
 struct RenderWindow {
-	UniqueWin window;
+	Glfw::Window window;
 	Vulkan vulkan;
 	Gfx gfx;
 	Renderer renderer;
-	std::uint8_t msaa;
 
-	RenderWindow(glm::uvec2 extent, char const* title, std::unique_ptr<Gui> gui, std::uint8_t msaa)
-		: window(make_window(extent, title)), vulkan(GlfwWsi{window}), gfx{vulkan.gfx()},
-		  renderer(gfx, window, std::move(gui), Renderer::CreateInfo{command_buffers_v, msaa}), msaa(msaa) {}
+	RenderWindow(Glfw::Window window, std::unique_ptr<Gui> gui, std::uint8_t msaa)
+		: window(window), vulkan(GlfwWsi{window}), gfx{vulkan.gfx()}, renderer(gfx, window, std::move(gui), Renderer::CreateInfo{command_buffers_v, msaa}) {}
 };
 } // namespace
 
 struct Engine::Impl {
 	RenderWindow window;
+	std::uint8_t msaa;
 
-	Impl(CreateInfo const& info) : window(info.extent, info.title, std::make_unique<DearImGui>(), info.msaa_samples) {}
+	Impl(Glfw::Window window, std::uint8_t msaa) : window(window, std::make_unique<DearImGui>(), msaa), msaa(msaa) { s_instance = this; }
+	~Impl() { s_instance = {}; }
+
+	Impl& operator=(Impl&&) = delete;
 };
 
 Engine::Engine(Engine&&) noexcept = default;
 Engine& Engine::operator=(Engine&&) noexcept = default;
 Engine::~Engine() noexcept = default;
 
-Engine::Engine(CreateInfo const& info) : m_impl(std::make_unique<Impl>(info)) {
-	if (info.auto_show) { show_window(); }
+bool Engine::is_instance_active() { return s_instance != nullptr; }
+
+Engine::Engine(Glfw::Window window, std::uint8_t desired_msaa) noexcept(false) {
+	if (s_instance) { throw Error{"Engine: active instance exists and has not been destroyed"}; }
+	m_impl = std::make_unique<Impl>(window, desired_msaa);
 }
 
-bool Engine::add_shader(Shader shader) { return m_impl->window.renderer.add_shader(shader); }
-
-void Engine::show_window() { glfwShowWindow(m_impl->window.window.get()); }
-
-void Engine::hide_window() { glfwHideWindow(m_impl->window.window.get()); }
-
-bool Engine::running() const { return !glfwWindowShouldClose(m_impl->window.window.get()); }
-
 bool Engine::next_frame(vk::CommandBuffer& out) {
-	m_impl->window.window.get().glfw->poll_events();
 	if (!m_impl->window.renderer.next_frame({&out, 1})) { return false; }
 	return true;
 }
 
 void Engine::submit() { m_impl->window.renderer.render(); }
 
-void Engine::request_stop() { glfwSetWindowShouldClose(m_impl->window.window.get(), GLFW_TRUE); }
-
 Gfx const& Engine::gfx() const { return m_impl->window.gfx; }
-Glfw::Window Engine::window() const { return m_impl->window.window; }
-Input const& Engine::input() const { return m_impl->window.window.get().state().input; }
 Renderer& Engine::renderer() const { return m_impl->window.renderer; }
 } // namespace facade

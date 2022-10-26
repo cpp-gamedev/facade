@@ -21,8 +21,12 @@ class Context {
 
   public:
 	using CreateInfo = ContextCreateInfo;
-
-	Context(CreateInfo const& create_info = {});
+	///
+	/// \brief Construct a Context instance
+	///
+	/// Throws if an instance already exists
+	///
+	Context(CreateInfo const& create_info = {}) noexcept(false);
 
 	///
 	/// \brief Register a shader for the renderer to look up during draws

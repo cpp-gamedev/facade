@@ -11,7 +11,7 @@ UniqueWin make_window(glm::ivec2 extent, char const* title) {
 }
 } // namespace
 
-Context::Context(CreateInfo const& create_info)
+Context::Context(CreateInfo const& create_info) noexcept(false)
 	: m_window(make_window(create_info.extent, create_info.title)), m_engine(m_window, create_info.msaa_samples), scene(m_engine.gfx()) {
 	if (create_info.auto_show) { show(true); }
 }

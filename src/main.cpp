@@ -189,7 +189,7 @@ struct MainMenu {
 		if (auto window = editor::Window{"Log", &windows.log}) { data.log.render(window); }
 	}
 
-	void display(Context& context, Scene& scene, float const dt) {
+	void display(Context& context, float const dt) {
 		if (auto main = editor::MainMenu{}) {
 			if (auto file = editor::Menu{main, "File"}) {
 				ImGui::Separator();
@@ -207,8 +207,8 @@ struct MainMenu {
 			}
 		}
 
-		if (windows.tree) { tree(scene); }
-		if (data.inspectee) { inspector(scene); }
+		if (windows.tree) { tree(context.scene); }
+		if (data.inspectee) { inspector(context.scene); }
 		if (windows.stats) { stats(context.engine(), dt); }
 		if (windows.log) { log(); }
 		if (windows.imgui_demo) { ImGui::ShowDemoWindow(&windows.imgui_demo); }
@@ -309,7 +309,7 @@ void run() {
 		node->instances[0].rotate(glm::radians(drot_z[0]) * dt, {0.0f, 1.0f, 0.0f});
 		node->instances[1].rotate(glm::radians(drot_z[1]) * dt, {1.0f, 0.0f, 0.0f});
 
-		main_menu.display(*context, context->scene, dt);
+		main_menu.display(*context, dt);
 		// TEMP CODE
 	}
 }

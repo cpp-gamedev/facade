@@ -249,7 +249,9 @@ bool Scene::select_camera(Id<Camera> id) {
 	return true;
 }
 
-Node& Scene::camera() {
+Node& Scene::camera() { return const_cast<Node&>(std::as_const(*this).camera()); }
+
+Node const& Scene::camera() const {
 	auto* ret = find_node(m_tree.camera);
 	assert(ret);
 	return *ret;

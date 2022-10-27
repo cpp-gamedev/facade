@@ -20,6 +20,7 @@ target_include_directories(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
   PUBLIC
   ${target_prefix}::render
+  ${target_prefix}::scene
   ${target_prefix}::dear_imgui
 
   PRIVATE
@@ -35,5 +36,15 @@ endif()
 target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/engine/engine.hpp
 
+  include/${target_prefix}/engine/editor/common.hpp
+  include/${target_prefix}/engine/editor/inspector.hpp
+  include/${target_prefix}/engine/editor/log.hpp
+  include/${target_prefix}/engine/editor/scene_tree.hpp
+
   src/engine.cpp
+
+  src/editor/common.cpp
+  src/editor/inspector.cpp
+  src/editor/log.cpp
+  src/editor/scene_tree.cpp
 )

@@ -41,6 +41,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/scene/node_data.hpp
   include/${target_prefix}/scene/node.hpp
   include/${target_prefix}/scene/rect.hpp
+  include/${target_prefix}/scene/scene_renderer.hpp
   include/${target_prefix}/scene/scene.hpp
   include/${target_prefix}/scene/transform.hpp
 
@@ -49,6 +50,7 @@ target_sources(${PROJECT_NAME} PRIVATE
 
   src/camera.cpp
   src/material.cpp
+  src/scene_renderer.cpp
   src/scene.cpp
   src/transform.cpp
 )

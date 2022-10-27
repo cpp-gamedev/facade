@@ -66,6 +66,7 @@ class Scene {
 	std::size_t camera_count() const { return m_storage.cameras.size(); }
 	bool select_camera(Id<Camera> id);
 	Node& camera();
+	Node const& camera() const;
 
 	vk::Sampler default_sampler() const { return m_sampler.sampler(); }
 	Texture make_texture(Image::View image) const;
@@ -127,5 +128,7 @@ class Scene {
 	Storage m_storage{};
 	std::string m_name{};
 	Tree m_tree{};
+
+	friend class SceneRenderer;
 };
 } // namespace facade

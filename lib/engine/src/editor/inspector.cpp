@@ -1,5 +1,5 @@
 #include <imgui.h>
-#include <facade/context/editor/inspector.hpp>
+#include <facade/engine/editor/inspector.hpp>
 #include <facade/scene/scene.hpp>
 #include <facade/util/fixed_string.hpp>
 #include <cassert>

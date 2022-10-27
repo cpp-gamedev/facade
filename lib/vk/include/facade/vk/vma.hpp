@@ -30,6 +30,16 @@ constexpr std::string_view present_mode_str(vk::PresentModeKHR const mode) {
 	}
 }
 
+constexpr std::string_view vsync_status(vk::PresentModeKHR const mode) {
+	switch (mode) {
+	case vk::PresentModeKHR::eFifo: return "On";
+	case vk::PresentModeKHR::eFifoRelaxed: return "Adaptive";
+	case vk::PresentModeKHR::eImmediate: return "Off";
+	case vk::PresentModeKHR::eMailbox: return "Double-buffered";
+	default: return "Unsupported";
+	}
+}
+
 constexpr int to_int(vk::SampleCountFlagBits const samples) {
 	switch (samples) {
 	case vk::SampleCountFlagBits::e64: return 64;

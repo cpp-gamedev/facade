@@ -55,7 +55,7 @@ struct Renderer::Impl {
 	Pipes pipes;
 	RenderPass render_pass;
 	RenderFrames<> render_frames;
-	std::unique_ptr<Gui> gui{};
+	Gui* gui{};
 
 	Shader::Db shader_db{};
 	std::optional<RenderTarget> render_target{};
@@ -82,11 +82,11 @@ struct Renderer::Impl {
 		std::uint32_t draw_calls{}; // reset every frame
 	} stats{};
 
-	Impl(Gfx gfx, Glfw::Window window, std::unique_ptr<Gui> gui, Renderer::CreateInfo const& info)
+	Impl(Gfx gfx, Glfw::Window window, Gui* gui, Renderer::CreateInfo const& info)
 		: gfx{gfx}, supported_msaa(gfx.gpu.getProperties().limits.framebufferColorSampleCounts),
 		  msaa(get_samples(supported_msaa, info.desired_msaa)), window{window}, swapchain{gfx, GlfwWsi{window}.make_surface(gfx.instance)}, pipes(gfx, msaa),
 		  render_pass(gfx, msaa, this->swapchain.info.imageFormat, depth_format(gfx.gpu)), render_frames(make_render_frames(gfx, info.command_buffers)),
-		  gui(std::move(gui)) {}
+		  gui(gui) {}
 
 	void next_frame() {
 		stats.stats.mode = swapchain.info.presentMode;
@@ -97,8 +97,7 @@ struct Renderer::Impl {
 	}
 };
 
-Renderer::Renderer(Gfx gfx, Glfw::Window window, std::unique_ptr<Gui> gui, CreateInfo const& info)
-	: m_impl{std::make_unique<Impl>(std::move(gfx), window, std::move(gui), info)} {
+Renderer::Renderer(Gfx gfx, Glfw::Window window, Gui* gui, CreateInfo const& info) : m_impl{std::make_unique<Impl>(std::move(gfx), window, gui, info)} {
 	m_impl->swapchain.refresh(Swapchain::Spec{window.framebuffer_extent()});
 	m_impl->stats.gpu_name = m_impl->gfx.gpu.getProperties().deviceName.data();
 	m_impl->stats.stats.gpu_name = m_impl->stats.gpu_name;
@@ -165,12 +164,6 @@ bool Renderer::next_frame(std::span<vk::CommandBuffer> out) {
 	// already have an acquired image
 	if (m_impl->render_target) { return fill_and_return(); }
 
-	if (m_impl->gui) {
-		// ImGui NewFrame / EndFrame are called even if acquire / present fails
-		// this allows user code to unconditionally call ImGui:: code in a frame, regardless of whether it will be drawn / presented
-		m_impl->gui->new_frame();
-	}
-
 	// check for pending swapchain refresh requests
 	if (m_impl->requests) {
 		auto const spec = [&] {
@@ -218,11 +211,6 @@ Pipeline Renderer::bind_pipeline(vk::CommandBuffer cb, Pipeline::State const& st
 }
 
 bool Renderer::render() {
-	if (m_impl->gui) {
-		// ImGui NewFrame / EndFrame are called even if acquire / present fails
-		// this allows user code to unconditionally call ImGui:: code in a frame, regardless of whether it will be drawn / presented
-		m_impl->gui->end_frame();
-	}
 	if (!m_impl->render_target) { return false; }
 
 	auto& frame = m_impl->render_frames.get();

@@ -3,6 +3,7 @@
 #include <imgui.h>
 #include <facade/defines.hpp>
 #include <facade/engine/engine.hpp>
+#include <facade/engine/scene_renderer.hpp>
 #include <facade/glfw/glfw_wsi.hpp>
 #include <facade/render/renderer.hpp>
 #include <facade/util/error.hpp>
@@ -15,15 +16,22 @@ namespace facade {
 namespace {
 static constexpr std::size_t command_buffers_v{1};
 
-bool determine_validation(Engine::Validation const desired) {
+bool determine_validation(Validation const desired) {
 	switch (desired) {
-	case Engine::Validation::eForceOff: return false;
-	case Engine::Validation::eForceOn: return true;
+	case Validation::eForceOff: return false;
+	case Validation::eForceOn: return true;
 	default: break;
 	}
 
 	// TODO: also enable if debugger detected
 	return debug_v;
+}
+
+UniqueWin make_window(glm::ivec2 extent, char const* title) {
+	auto ret = Glfw::Window::make();
+	glfwSetWindowTitle(ret.get(), title);
+	glfwSetWindowSize(ret.get(), extent.x, extent.y);
+	return ret;
 }
 
 vk::UniqueDescriptorPool make_pool(vk::Device const device) {
@@ -96,9 +104,13 @@ vk::UniqueDescriptorPool init_imgui(Gui::InitInfo const& create_info) {
 }
 
 struct DearImGui : Gui {
+	enum class State { eNewFrame, eEndFrame };
+
 	vk::UniqueDescriptorPool pool{};
+	State state{};
 
 	~DearImGui() override {
+		if (!pool) { return; }
 		pool.getOwner().waitIdle();
 		ImGui_ImplVulkan_Shutdown();
 		ImGui_ImplGlfw_Shutdown();
@@ -111,40 +123,52 @@ struct DearImGui : Gui {
 	}
 
 	void new_frame() final {
+		if (state == State::eEndFrame) { end_frame(); }
 		ImGui_ImplVulkan_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
+		state = State::eEndFrame;
 	}
 
 	void end_frame() final {
 		// ImGui::Render calls ImGui::EndFrame
 		ImGui::Render();
+		state = State::eNewFrame;
 	}
 
 	void render(vk::CommandBuffer cb) final { ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cb); }
 };
 
 struct RenderWindow {
-	Glfw::Window window;
+	UniqueWin window;
 	Vulkan vulkan;
 	Gfx gfx;
 	Renderer renderer;
+	std::unique_ptr<Gui> gui;
 
-	RenderWindow(Glfw::Window window, std::unique_ptr<Gui> gui, std::uint8_t msaa, bool validation)
-		: window(window), vulkan(GlfwWsi{window}, validation), gfx{vulkan.gfx()},
-		  renderer(gfx, window, std::move(gui), Renderer::CreateInfo{command_buffers_v, msaa}) {}
+	RenderWindow(UniqueWin window, std::unique_ptr<Gui> gui, std::uint8_t msaa, bool validation)
+		: window(std::move(window)), vulkan(GlfwWsi{this->window}, validation), gfx(vulkan.gfx()),
+		  renderer(gfx, this->window, gui.get(), Renderer::CreateInfo{command_buffers_v, msaa}), gui(std::move(gui)) {}
 };
 } // namespace
 
 struct Engine::Impl {
 	RenderWindow window;
-	std::uint8_t msaa;
+	SceneRenderer renderer;
+	Scene scene;
 
-	Impl(Glfw::Window window, std::uint8_t msaa, bool validation) : window(window, std::make_unique<DearImGui>(), msaa, validation), msaa(msaa) {
+	std::uint8_t msaa;
+	DeltaTime dt{};
+
+	Impl(UniqueWin window, std::uint8_t msaa, bool validation)
+		: window(std::move(window), std::make_unique<DearImGui>(), msaa, validation), renderer(this->window.gfx), scene(this->window.gfx), msaa(msaa) {
 		s_instance = this;
 	}
 
-	~Impl() { s_instance = {}; }
+	~Impl() {
+		window.gfx.device.waitIdle();
+		s_instance = {};
+	}
 
 	Impl& operator=(Impl&&) = delete;
 };
@@ -155,18 +179,42 @@ Engine::~Engine() noexcept = default;
 
 bool Engine::is_instance_active() { return s_instance != nullptr; }
 
-Engine::Engine(Glfw::Window window, Validation validation, std::uint8_t desired_msaa) noexcept(false) {
+Engine::Engine(CreateInfo const& info) noexcept(false) {
 	if (s_instance) { throw Error{"Engine: active instance exists and has not been destroyed"}; }
-	m_impl = std::make_unique<Impl>(window, desired_msaa, determine_validation(validation));
+	m_impl = std::make_unique<Impl>(make_window(info.extent, info.title), info.desired_msaa, determine_validation(info.validation));
+	if (info.auto_show) { show(true); }
 }
 
-bool Engine::next_frame(vk::CommandBuffer& out) {
-	if (!m_impl->window.renderer.next_frame({&out, 1})) { return false; }
-	return true;
+void Engine::add_shader(Shader shader) { m_impl->window.renderer.add_shader(std::move(shader)); }
+
+void Engine::show(bool reset_dt) {
+	glfwShowWindow(window());
+	if (reset_dt) { m_impl->dt = {}; }
 }
 
-void Engine::submit() { m_impl->window.renderer.render(); }
+void Engine::hide() { glfwHideWindow(window()); }
 
+bool Engine::running() const { return !glfwWindowShouldClose(window()); }
+
+float Engine::poll() {
+	window().glfw->poll_events();
+	m_impl->window.gui->new_frame();
+	return m_impl->dt();
+}
+
+void Engine::render() {
+	auto cb = vk::CommandBuffer{};
+	if (m_impl->window.renderer.next_frame({&cb, 1})) { m_impl->renderer.render(scene(), renderer(), cb); }
+	m_impl->window.gui->end_frame();
+	m_impl->window.renderer.render();
+}
+
+void Engine::request_stop() { glfwSetWindowShouldClose(window(), GLFW_TRUE); }
+
+Scene& Engine::scene() const { return m_impl->scene; }
 Gfx const& Engine::gfx() const { return m_impl->window.gfx; }
+Glfw::Window const& Engine::window() const { return m_impl->window.window; }
+Glfw::State const& Engine::state() const { return window().state(); }
+Input const& Engine::input() const { return state().input; }
 Renderer& Engine::renderer() const { return m_impl->window.renderer; }
 } // namespace facade

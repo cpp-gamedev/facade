@@ -51,7 +51,7 @@ class Renderer {
 		std::size_t cbs_per_frame{};
 	};
 
-	Renderer(Gfx gfx, Glfw::Window window, std::unique_ptr<Gui> gui, CreateInfo const& info = {});
+	Renderer(Gfx gfx, Glfw::Window window, Gui* gui, CreateInfo const& info = {});
 	Renderer(Renderer&&) noexcept;
 	Renderer& operator=(Renderer&&) noexcept;
 	~Renderer() noexcept;

@@ -1,6 +1,5 @@
 #include <detail/gltf.hpp>
 #include <djson/json.hpp>
-#include <facade/render/renderer.hpp>
 #include <facade/scene/scene.hpp>
 #include <facade/util/error.hpp>
 #include <facade/util/logger.hpp>
@@ -183,11 +182,7 @@ bool Scene::load_gltf(dj::Json const& root, DataProvider const& provider) noexce
 	return load(asset.start_scene);
 }
 
-Scene::Scene(Gfx const& gfx)
-	: m_gfx(gfx), m_sampler(gfx), m_view_proj(gfx, Buffer::Type::eUniform), m_dir_lights(gfx, Buffer::Type::eStorage),
-	  m_white(gfx, m_sampler.sampler(), Img1x1::make({0xff, 0xff, 0xff, 0xff}).view(), Texture::CreateInfo{.mip_mapped = false}) {
-	add_default_camera();
-}
+Scene::Scene(Gfx const& gfx) : m_gfx(gfx), m_sampler(gfx) { add_default_camera(); }
 
 Id<Camera> Scene::add(Camera camera) {
 	auto const id = m_storage.cameras.size();
@@ -227,7 +222,7 @@ Id<Mesh> Scene::add(Mesh mesh) {
 Id<Node> Scene::add(Node node, Id<Node> parent) {
 	check(node);
 	if (parent == id_v) { return add_unchecked(m_tree.roots, std::move(node)); }
-	if (auto* target = find_node(parent)) { return add_unchecked(target->m_children, std::move(node)); }
+	if (auto* target = find(parent)) { return add_unchecked(target->m_children, std::move(node)); }
 	throw Error{fmt::format("Scene {}: Invalid parent Node Id: {}", m_name, parent)};
 }
 
@@ -236,38 +231,28 @@ bool Scene::load(Id<Scene> id) {
 	return load_tree(id);
 }
 
-Node* Scene::find_node(Id<Node> id) { return const_cast<Node*>(std::as_const(*this).find_node(m_tree.roots, id)); }
-Node const* Scene::find_node(Id<Node> id) const { return find_node(m_tree.roots, id); }
+Ptr<Node> Scene::find(Id<Node> id) { return const_cast<Node*>(std::as_const(*this).find_node(m_tree.roots, id)); }
+Ptr<Node const> Scene::find(Id<Node> id) const { return find_node(m_tree.roots, id); }
 
-Material* Scene::find_material(Id<Material> id) const { return id >= m_storage.materials.size() ? nullptr : m_storage.materials[id].get(); }
+Ptr<Material> Scene::find(Id<Material> id) const { return id >= m_storage.materials.size() ? nullptr : m_storage.materials[id].get(); }
 
-Mesh const* Scene::find_mesh(Id<Mesh> id) const { return id >= m_storage.meshes.size() ? nullptr : &m_storage.meshes[id]; }
+Ptr<Mesh const> Scene::find(Id<Mesh> id) const { return id >= m_storage.meshes.size() ? nullptr : &m_storage.meshes[id]; }
 
-bool Scene::select_camera(Id<Camera> id) {
+bool Scene::select(Id<Camera> id) {
 	if (id >= camera_count()) { return false; }
 	*camera().find<Id<Camera>>() = id;
 	return true;
 }
 
-Node& Scene::camera() {
-	auto* ret = find_node(m_tree.camera);
+Node& Scene::camera() { return const_cast<Node&>(std::as_const(*this).camera()); }
+
+Node const& Scene::camera() const {
+	auto* ret = find(m_tree.camera);
 	assert(ret);
 	return *ret;
 }
 
 Texture Scene::make_texture(Image::View image) const { return Texture{m_gfx, default_sampler(), image}; }
-
-void Scene::write_view(Pipeline& out_pipeline) const {
-	auto& set0 = out_pipeline.next_set(0);
-	set0.update(0, m_view_proj.descriptor_buffer());
-	set0.update(1, m_dir_lights.descriptor_buffer());
-	out_pipeline.bind(set0);
-}
-
-void Scene::render(Renderer& renderer, vk::CommandBuffer cb) {
-	write_view(renderer.framebuffer_extent());
-	for (auto const& node : m_tree.roots) { render(renderer, cb, node); }
-}
 
 void Scene::add_default_camera() {
 	m_storage.cameras.push_back({});
@@ -302,57 +287,6 @@ Node const* Scene::find_node(std::span<Node const> nodes, Id<Node> id) {
 		if (auto const* ret = find_node(node.m_children, id)) { return ret; }
 	}
 	return nullptr;
-}
-
-void Scene::write_view(glm::vec2 const extent) {
-	auto const& cam_node = camera();
-	auto const* cam_id = cam_node.find<Id<Camera>>();
-	assert(cam_id);
-	auto const& cam = m_storage.cameras[*cam_id];
-	struct {
-		glm::mat4x4 mat_v;
-		glm::mat4x4 mat_p;
-		glm::vec4 pos_v;
-	} vp{
-		.mat_v = cam.view(cam_node.transform),
-		.mat_p = cam.projection(extent),
-		.pos_v = {cam_node.transform.position(), 1.0f},
-	};
-	m_view_proj.write(&vp, sizeof(vp));
-	m_dir_lights.write(dir_lights.data(), dir_lights.size() * sizeof(DirLight));
-}
-
-std::span<glm::mat4x4 const> Scene::make_instances(Node const& node, glm::mat4x4 const& parent) {
-	m_storage.instances.clear();
-	if (node.instances.empty()) {
-		m_storage.instances.reserve(1);
-		m_storage.instances.push_back(parent * node.transform.matrix());
-	} else {
-		m_storage.instances.reserve(node.instances.size());
-		for (auto const& transform : node.instances) { m_storage.instances.push_back(parent * node.transform.matrix() * transform.matrix()); }
-	}
-	return m_storage.instances;
-}
-
-void Scene::render(Renderer& renderer, vk::CommandBuffer cb, Node const& node, glm::mat4 const& parent) {
-	if (auto const* mesh_id = node.find<Id<Mesh>>()) {
-		static auto const s_default_material = LitMaterial{};
-		auto const& mesh = m_storage.meshes.at(*mesh_id);
-		for (auto const& primitive : mesh.primitives) {
-			auto const& material = primitive.material ? *m_storage.materials.at(primitive.material->value()) : static_cast<Material const&>(s_default_material);
-			auto pipeline = renderer.bind_pipeline(cb, {}, material.shader_id());
-
-			write_view(pipeline);
-			auto const store = TextureStore{m_storage.textures, m_white};
-			material.write_sets(pipeline, store);
-
-			auto const& static_mesh = m_storage.static_meshes.at(primitive.static_mesh);
-			auto const instances = make_instances(node, parent);
-			renderer.draw(pipeline, static_mesh, instances);
-		}
-	}
-
-	for (auto const& child : node.m_children) { render(renderer, cb, child, parent * node.transform.matrix()); }
 }
 
 void Scene::check(Mesh const& mesh) const noexcept(false) {

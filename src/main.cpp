@@ -12,10 +12,10 @@
 #include <facade/render/renderer.hpp>
 #include <facade/scene/fly_cam.hpp>
 
-#include <facade/context/context.hpp>
-#include <facade/context/editor/inspector.hpp>
-#include <facade/context/editor/log.hpp>
-#include <facade/context/editor/scene_tree.hpp>
+#include <facade/engine/editor/inspector.hpp>
+#include <facade/engine/editor/log.hpp>
+#include <facade/engine/editor/scene_tree.hpp>
+#include <facade/engine/engine.hpp>
 
 #include <bin/shaders.hpp>
 
@@ -128,16 +128,6 @@ struct MainMenu {
 		editor::Inspectee inspectee{};
 	} data{};
 
-	static constexpr std::string_view vsync_status(vk::PresentModeKHR const mode) {
-		switch (mode) {
-		case vk::PresentModeKHR::eFifo: return "On";
-		case vk::PresentModeKHR::eFifoRelaxed: return "Adaptive";
-		case vk::PresentModeKHR::eImmediate: return "Off";
-		case vk::PresentModeKHR::eMailbox: return "Double-buffered";
-		default: return "Unsupported";
-		}
-	}
-
 	void change_vsync(Engine const& engine) const {
 		static constexpr vk::PresentModeKHR modes[] = {vk::PresentModeKHR::eFifo, vk::PresentModeKHR::eFifoRelaxed, vk::PresentModeKHR::eMailbox,
 													   vk::PresentModeKHR::eImmediate};
@@ -189,11 +179,11 @@ struct MainMenu {
 		if (auto window = editor::Window{"Log", &windows.log}) { data.log.render(window); }
 	}
 
-	void display(Context& context, float const dt) {
+	void display(Engine& engine, float const dt) {
 		if (auto main = editor::MainMenu{}) {
 			if (auto file = editor::Menu{main, "File"}) {
 				ImGui::Separator();
-				if (ImGui::MenuItem("Exit")) { context.request_stop(); }
+				if (ImGui::MenuItem("Exit")) { engine.request_stop(); }
 			}
 			if (auto window = editor::Menu{main, "Window"}) {
 				if (ImGui::MenuItem("Tree")) { windows.tree = true; }
@@ -207,9 +197,9 @@ struct MainMenu {
 			}
 		}
 
-		if (windows.tree) { tree(context.scene); }
-		if (data.inspectee) { inspector(context.scene); }
-		if (windows.stats) { stats(context.engine(), dt); }
+		if (windows.tree) { tree(engine.scene()); }
+		if (data.inspectee) { inspector(engine.scene()); }
+		if (windows.stats) { stats(engine, dt); }
 		if (windows.log) { log(); }
 		if (windows.imgui_demo) { ImGui::ShowDemoWindow(&windows.imgui_demo); }
 	}
@@ -223,7 +213,7 @@ void log_prologue() {
 }
 
 void run() {
-	auto context = std::optional<Context>{};
+	auto engine = std::optional<Engine>{};
 
 	struct DummyDataProvider : DataProvider {
 		ByteBuffer load(std::string_view) const override { return {}; }
@@ -232,33 +222,35 @@ void run() {
 	auto material_id = Id<Material>{};
 	auto node_id = Id<Node>{};
 	auto post_scene_load = [&] {
-		context->scene.camera().transform.set_position({0.0f, 0.0f, 5.0f});
+		engine->scene().camera().transform.set_position({0.0f, 0.0f, 5.0f});
 
 		auto material = std::make_unique<LitMaterial>();
 		material->albedo = {1.0f, 0.0f, 0.0f};
-		material_id = context->scene.add(std::move(material));
-		auto static_mesh_id = context->scene.add(StaticMesh{context->engine().gfx(), make_cubed_sphere(1.0f, 32)});
-		auto mesh_id = context->scene.add(Mesh{.primitives = {Mesh::Primitive{static_mesh_id, material_id}}});
+		material_id = engine->scene().add(std::move(material));
+		auto static_mesh_id = engine->scene().add(StaticMesh{engine->gfx(), make_cubed_sphere(1.0f, 32)});
+		auto mesh_id = engine->scene().add(Mesh{.primitives = {Mesh::Primitive{static_mesh_id, material_id}}});
 
 		auto node = Node{};
 		node.attach(mesh_id);
 		node.instances.emplace_back().set_position({1.0f, -5.0f, -20.0f});
 		node.instances.emplace_back().set_position({-1.0f, 1.0f, 0.0f});
-		node_id = context->scene.add(std::move(node), 0);
-		context->show(true);
+		node_id = engine->scene().add(std::move(node), 0);
+		engine->show(true);
 	};
 
 	auto init = [&] {
-		context.emplace();
+		engine.emplace();
 		log_prologue();
 
 		auto lit = shaders::lit();
 		lit.id = "default";
-		context->add_shader(lit);
-		context->add_shader(shaders::unlit());
+		engine->add_shader(lit);
+		engine->add_shader(shaders::unlit());
 
-		context->scene.dir_lights.push_back(DirLight{.direction = glm::normalize(glm::vec3{-1.0f, -1.0f, -1.0f}), .diffuse = glm::vec3{5.0f}});
-		context->scene.load_gltf(dj::Json::parse(test_json_v), DummyDataProvider{});
+		auto scene = Scene{engine->gfx()};
+		scene.dir_lights.push_back(DirLight{.direction = glm::normalize(glm::vec3{-1.0f, -1.0f, -1.0f}), .diffuse = glm::vec3{5.0f}});
+		scene.load_gltf(dj::Json::parse(test_json_v), DummyDataProvider{});
+		engine->scene() = std::move(scene);
 		post_scene_load();
 	};
 
@@ -268,25 +260,26 @@ void run() {
 
 	auto main_menu = MainMenu{};
 
-	while (context->running()) {
-		auto const dt = context->next_frame();
-		auto const& state = context->state();
+	while (engine->running()) {
+		auto const dt = engine->poll();
+		auto const& state = engine->state();
 		auto const& input = state.input;
 		bool const mouse_look = input.mouse.held(GLFW_MOUSE_BUTTON_RIGHT);
 
-		if (input.keyboard.pressed(GLFW_KEY_ESCAPE)) { context->request_stop(); }
-		glfwSetInputMode(context->window(), GLFW_CURSOR, mouse_look ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+		if (input.keyboard.pressed(GLFW_KEY_ESCAPE)) { engine->request_stop(); }
+		glfwSetInputMode(engine->window(), GLFW_CURSOR, mouse_look ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
 
 		if (!state.file_drops.empty()) {
-			auto const& file = state.file_drops.front();
-			if (!load_gltf(context->scene, file)) {
-				logger::warn("Failed to load GLTF: [{}]", file);
-			} else {
-				post_scene_load();
-			}
+			auto load = [file = state.file_drops.front(), &engine] {
+				auto scene = Scene{engine->gfx()};
+				if (!load_gltf(scene, file)) { logger::warn("Failed to load GLTF: [{}]", file); }
+				scene.dir_lights.push_back(DirLight{.direction = glm::normalize(glm::vec3{-1.0f, -1.0f, -1.0f}), .diffuse = glm::vec3{5.0f}});
+				return scene;
+			};
+			load();
 		}
 
-		auto& camera = context->scene.camera();
+		auto& camera = engine->scene().camera();
 		if (auto fly_cam = FlyCam{camera.transform}) {
 			if (input.keyboard.held(GLFW_KEY_A) || input.keyboard.held(GLFW_KEY_LEFT)) { fly_cam.move_right(-dt); }
 			if (input.keyboard.held(GLFW_KEY_D) || input.keyboard.held(GLFW_KEY_RIGHT)) { fly_cam.move_right(dt); }
@@ -299,18 +292,21 @@ void run() {
 
 		if (input.keyboard.pressed(GLFW_KEY_R)) {
 			logger::info("Reloading...");
-			context.reset();
+			engine.reset();
 			init();
 			continue;
 		}
 
 		// TEMP CODE
-		auto* node = context->scene.find_node(node_id);
-		node->instances[0].rotate(glm::radians(drot_z[0]) * dt, {0.0f, 1.0f, 0.0f});
-		node->instances[1].rotate(glm::radians(drot_z[1]) * dt, {1.0f, 0.0f, 0.0f});
+		if (auto* node = engine->scene().find(node_id)) {
+			node->instances[0].rotate(glm::radians(drot_z[0]) * dt, {0.0f, 1.0f, 0.0f});
+			node->instances[1].rotate(glm::radians(drot_z[1]) * dt, {1.0f, 0.0f, 0.0f});
+		}
 
-		main_menu.display(*context, dt);
+		main_menu.display(*engine, dt);
 		// TEMP CODE
+
+		engine->render();
 	}
 }
 } // namespace

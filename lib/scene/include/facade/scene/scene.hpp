@@ -8,6 +8,7 @@
 #include <facade/scene/transform.hpp>
 #include <facade/util/enum_array.hpp>
 #include <facade/util/image.hpp>
+#include <facade/util/ptr.hpp>
 #include <facade/vk/buffer.hpp>
 #include <facade/vk/static_mesh.hpp>
 #include <facade/vk/texture.hpp>
@@ -22,8 +23,6 @@ class Json;
 }
 
 namespace facade {
-class Renderer;
-
 struct Mesh {
 	struct Primitive {
 		Id<StaticMesh> static_mesh{};
@@ -56,22 +55,20 @@ class Scene {
 	std::size_t scene_count() const { return m_storage.data.trees.size(); }
 	bool load(Id<Scene> id);
 
-	Node const* find_node(Id<Node> id) const;
-	Node* find_node(Id<Node> id);
-	Material* find_material(Id<Material> id) const;
-	Mesh const* find_mesh(Id<Mesh> id) const;
+	Ptr<Node const> find(Id<Node> id) const;
+	Ptr<Node> find(Id<Node> id);
+	Ptr<Material> find(Id<Material> id) const;
+	Ptr<Mesh const> find(Id<Mesh> id) const;
 	std::span<Node> roots() { return m_tree.roots; }
 	std::span<Node const> roots() const { return m_tree.roots; }
 
 	std::size_t camera_count() const { return m_storage.cameras.size(); }
-	bool select_camera(Id<Camera> id);
+	bool select(Id<Camera> id);
 	Node& camera();
+	Node const& camera() const;
 
 	vk::Sampler default_sampler() const { return m_sampler.sampler(); }
 	Texture make_texture(Image::View image) const;
-
-	void write_view(Pipeline& out_pipeline) const;
-	void render(Renderer& renderer, vk::CommandBuffer cb);
 
 	std::vector<DirLight> dir_lights{};
 
@@ -112,20 +109,15 @@ class Scene {
 	Id<Node> add_unchecked(std::vector<Node>& out, Node&& node);
 	static Node const* find_node(std::span<Node const> nodes, Id<Node> id);
 
-	void write_view(glm::vec2 extent);
-	std::span<glm::mat4x4 const> make_instances(Node const& node, glm::mat4x4 const& parent);
-	void render(Renderer& renderer, vk::CommandBuffer cb, Node const& node, glm::mat4 const& parent = glm::mat4{1.0f});
-
 	void check(Mesh const& mesh) const noexcept(false);
 	void check(Node const& node) const noexcept(false);
 
 	Gfx m_gfx;
 	Sampler m_sampler;
-	Buffer m_view_proj;
-	Buffer m_dir_lights;
-	Texture m_white;
 	Storage m_storage{};
 	std::string m_name{};
 	Tree m_tree{};
+
+	friend class SceneRenderer;
 };
 } // namespace facade

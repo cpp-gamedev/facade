@@ -63,6 +63,7 @@ class Node {
 	Id<Node> m_id{};
 
 	friend class Scene;
+	friend class SceneRenderer;
 };
 // } // namespace refactor
 } // namespace facade

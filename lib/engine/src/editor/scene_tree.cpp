@@ -37,7 +37,7 @@ void walk(Node& node, Inspectee& inout) {
 
 bool SceneTree::render(NotClosed<Window>, Inspectee& inout) const {
 	auto const in = inout.id;
-	if (!m_scene.find_node(in)) { inout = {}; }
+	if (!m_scene.find(in)) { inout = {}; }
 	for (auto& root : m_scene.roots()) { walk(root, inout); }
 	return inout.id != in;
 }

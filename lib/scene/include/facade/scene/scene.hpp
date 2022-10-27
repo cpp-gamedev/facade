@@ -8,6 +8,7 @@
 #include <facade/scene/transform.hpp>
 #include <facade/util/enum_array.hpp>
 #include <facade/util/image.hpp>
+#include <facade/util/ptr.hpp>
 #include <facade/vk/buffer.hpp>
 #include <facade/vk/static_mesh.hpp>
 #include <facade/vk/texture.hpp>
@@ -54,15 +55,15 @@ class Scene {
 	std::size_t scene_count() const { return m_storage.data.trees.size(); }
 	bool load(Id<Scene> id);
 
-	Node const* find_node(Id<Node> id) const;
-	Node* find_node(Id<Node> id);
-	Material* find_material(Id<Material> id) const;
-	Mesh const* find_mesh(Id<Mesh> id) const;
+	Ptr<Node const> find(Id<Node> id) const;
+	Ptr<Node> find(Id<Node> id);
+	Ptr<Material> find(Id<Material> id) const;
+	Ptr<Mesh const> find(Id<Mesh> id) const;
 	std::span<Node> roots() { return m_tree.roots; }
 	std::span<Node const> roots() const { return m_tree.roots; }
 
 	std::size_t camera_count() const { return m_storage.cameras.size(); }
-	bool select_camera(Id<Camera> id);
+	bool select(Id<Camera> id);
 	Node& camera();
 	Node const& camera() const;
 

@@ -222,7 +222,7 @@ Id<Mesh> Scene::add(Mesh mesh) {
 Id<Node> Scene::add(Node node, Id<Node> parent) {
 	check(node);
 	if (parent == id_v) { return add_unchecked(m_tree.roots, std::move(node)); }
-	if (auto* target = find_node(parent)) { return add_unchecked(target->m_children, std::move(node)); }
+	if (auto* target = find(parent)) { return add_unchecked(target->m_children, std::move(node)); }
 	throw Error{fmt::format("Scene {}: Invalid parent Node Id: {}", m_name, parent)};
 }
 
@@ -231,14 +231,14 @@ bool Scene::load(Id<Scene> id) {
 	return load_tree(id);
 }
 
-Node* Scene::find_node(Id<Node> id) { return const_cast<Node*>(std::as_const(*this).find_node(m_tree.roots, id)); }
-Node const* Scene::find_node(Id<Node> id) const { return find_node(m_tree.roots, id); }
+Ptr<Node> Scene::find(Id<Node> id) { return const_cast<Node*>(std::as_const(*this).find_node(m_tree.roots, id)); }
+Ptr<Node const> Scene::find(Id<Node> id) const { return find_node(m_tree.roots, id); }
 
-Material* Scene::find_material(Id<Material> id) const { return id >= m_storage.materials.size() ? nullptr : m_storage.materials[id].get(); }
+Ptr<Material> Scene::find(Id<Material> id) const { return id >= m_storage.materials.size() ? nullptr : m_storage.materials[id].get(); }
 
-Mesh const* Scene::find_mesh(Id<Mesh> id) const { return id >= m_storage.meshes.size() ? nullptr : &m_storage.meshes[id]; }
+Ptr<Mesh const> Scene::find(Id<Mesh> id) const { return id >= m_storage.meshes.size() ? nullptr : &m_storage.meshes[id]; }
 
-bool Scene::select_camera(Id<Camera> id) {
+bool Scene::select(Id<Camera> id) {
 	if (id >= camera_count()) { return false; }
 	*camera().find<Id<Camera>>() = id;
 	return true;
@@ -247,7 +247,7 @@ bool Scene::select_camera(Id<Camera> id) {
 Node& Scene::camera() { return const_cast<Node&>(std::as_const(*this).camera()); }
 
 Node const& Scene::camera() const {
-	auto* ret = find_node(m_tree.camera);
+	auto* ret = find(m_tree.camera);
 	assert(ret);
 	return *ret;
 }

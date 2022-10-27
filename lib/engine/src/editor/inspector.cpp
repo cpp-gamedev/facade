@@ -93,7 +93,7 @@ bool SceneInspector::inspect([[maybe_unused]] TreeNode const& node, LitMaterial&
 }
 
 bool SceneInspector::inspect(Id<Material> material_id) const {
-	auto* material = m_scene.find_material(material_id);
+	auto* material = m_scene.find(material_id);
 	if (!material) { return false; }
 	if (auto* unlit = dynamic_cast<UnlitMaterial*>(material)) {
 		if (auto tn = TreeNode{FixedString{"Material (Unlit) ({})", material_id}.c_str()}) { return inspect(tn, *unlit); }
@@ -107,7 +107,7 @@ bool SceneInspector::inspect(Id<Material> material_id) const {
 
 bool SceneInspector::inspect(Id<Node> node_id) const {
 	auto ret = Modified{};
-	auto* node = m_scene.find_node(node_id);
+	auto* node = m_scene.find(node_id);
 	if (!node) { return false; }
 	ret(inspect(node->transform));
 	if (auto const* mesh_id = node->find<Id<Mesh>>()) { ret(inspect(*mesh_id)); }
@@ -116,7 +116,7 @@ bool SceneInspector::inspect(Id<Node> node_id) const {
 
 bool SceneInspector::inspect(Id<Mesh> mesh_id) const {
 	auto ret = Modified{};
-	auto* mesh = m_scene.find_mesh(mesh_id);
+	auto* mesh = m_scene.find(mesh_id);
 	if (!mesh) { return ret.value; }
 	ImGui::Separator();
 	if (auto tn = TreeNode{FixedString{"Mesh ({})", mesh_id}.c_str()})

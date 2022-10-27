@@ -158,7 +158,6 @@ struct Engine::Impl {
 	Scene scene;
 
 	std::uint8_t msaa;
-	DeltaTime dt{};
 
 	Impl(UniqueWin window, std::uint8_t msaa, bool validation)
 		: window(std::move(window), std::make_unique<DearImGui>(), msaa, validation), renderer(this->window.gfx), scene(this->window.gfx), msaa(msaa) {
@@ -189,17 +188,17 @@ void Engine::add_shader(Shader shader) { m_impl->window.renderer.add_shader(std:
 
 void Engine::show(bool reset_dt) {
 	glfwShowWindow(window());
-	if (reset_dt) { m_impl->dt = {}; }
+	if (reset_dt) { m_impl->window.window.get().glfw->reset_dt(); }
 }
 
 void Engine::hide() { glfwHideWindow(window()); }
 
 bool Engine::running() const { return !glfwWindowShouldClose(window()); }
 
-float Engine::poll() {
-	window().glfw->poll_events();
+auto Engine::poll() -> State const& {
 	m_impl->window.gui->new_frame();
-	return m_impl->dt();
+	m_impl->window.window.get().glfw->poll_events();
+	return m_impl.get()->window.window.get().state();
 }
 
 void Engine::render() {
@@ -211,10 +210,13 @@ void Engine::render() {
 
 void Engine::request_stop() { glfwSetWindowShouldClose(window(), GLFW_TRUE); }
 
+glm::uvec2 Engine::window_extent() const { return m_impl->window.window.get().window_extent(); }
+glm::uvec2 Engine::framebuffer_extent() const { return m_impl->window.window.get().framebuffer_extent(); }
+
 Scene& Engine::scene() const { return m_impl->scene; }
 Gfx const& Engine::gfx() const { return m_impl->window.gfx; }
-Glfw::Window const& Engine::window() const { return m_impl->window.window; }
-Glfw::State const& Engine::state() const { return window().state(); }
+GLFWwindow* Engine::window() const { return m_impl->window.window.get(); }
+Glfw::State const& Engine::state() const { return m_impl->window.window.get().state(); }
 Input const& Engine::input() const { return state().input; }
 Renderer& Engine::renderer() const { return m_impl->window.renderer; }
 } // namespace facade

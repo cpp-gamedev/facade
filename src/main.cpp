@@ -261,9 +261,9 @@ void run() {
 	auto main_menu = MainMenu{};
 
 	while (engine->running()) {
-		auto const dt = engine->poll();
-		auto const& state = engine->state();
+		auto const& state = engine->poll();
 		auto const& input = state.input;
+		auto const dt = state.dt;
 		bool const mouse_look = input.mouse.held(GLFW_MOUSE_BUTTON_RIGHT);
 
 		if (input.keyboard.pressed(GLFW_KEY_ESCAPE)) { engine->request_stop(); }
@@ -271,7 +271,10 @@ void run() {
 
 		if (!state.file_drops.empty()) {
 			auto load = [file = state.file_drops.front(), &engine] {
+				auto name = file;
+				if (auto i = name.find_last_of('/'); i != std::string::npos) { name = name.substr(i + 1); }
 				auto scene = Scene{engine->gfx()};
+				logger::info("Loading GLTF [{}]...", name);
 				if (!load_gltf(scene, file)) { logger::warn("Failed to load GLTF: [{}]", file); }
 				scene.dir_lights.push_back(DirLight{.direction = glm::normalize(glm::vec3{-1.0f, -1.0f, -1.0f}), .diffuse = glm::vec3{5.0f}});
 				return scene;

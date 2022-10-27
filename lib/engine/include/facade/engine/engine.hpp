@@ -28,6 +28,7 @@ struct EngineCreateInfo {
 class Engine {
   public:
 	using CreateInfo = EngineCreateInfo;
+	using State = Glfw::State;
 
 	Engine(Engine&&) noexcept;
 	Engine& operator=(Engine&&) noexcept;
@@ -66,7 +67,7 @@ class Engine {
 	///
 	/// \brief Poll events and obtain delta time
 	///
-	float poll();
+	State const& poll();
 	///
 	/// \brief Render the scene
 	///
@@ -77,12 +78,15 @@ class Engine {
 	///
 	void request_stop();
 
+	glm::uvec2 window_extent() const;
+	glm::uvec2 framebuffer_extent() const;
+
 	Scene& scene() const;
 	Gfx const& gfx() const;
-	Glfw::Window const& window() const;
-	Glfw::State const& state() const;
+	State const& state() const;
 	Input const& input() const;
 	Renderer& renderer() const;
+	GLFWwindow* window() const;
 
   private:
 	struct Impl;

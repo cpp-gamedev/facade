@@ -86,7 +86,8 @@ vk::Result Swapchain::refresh(Spec const& spec) {
 		m_storage.views.insert(m_gfx.vma.make_image_view(image, info.imageFormat));
 		m_storage.images.insert({image, *m_storage.views.span().back(), info.imageExtent});
 	}
-	logger::info("[Swapchain] images: [{}] | colour space: [{}] |", m_storage.images.size(), is_srgb(info.imageFormat) ? "sRGB" : "linear");
+	logger::info("[Swapchain] extent: [{}x{}] | images: [{}] | colour space: [{}] | vsync: [{}]", spec.extent.x, spec.extent.y, m_storage.images.size(),
+				 is_srgb(info.imageFormat) ? "sRGB" : "linear", vsync_status(info.presentMode));
 	return ret;
 }
 

@@ -64,9 +64,9 @@ class Engine {
 	///
 	bool running() const;
 	///
-	/// \brief Begin a new frame and obtain time elapsed since the previous one
+	/// \brief Poll events and obtain delta time
 	///
-	float next_frame();
+	float poll();
 	///
 	/// \brief Render the scene
 	///

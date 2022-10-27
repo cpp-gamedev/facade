@@ -104,7 +104,10 @@ vk::UniqueDescriptorPool init_imgui(Gui::InitInfo const& create_info) {
 }
 
 struct DearImGui : Gui {
+	enum class State { eNewFrame, eEndFrame };
+
 	vk::UniqueDescriptorPool pool{};
+	State state{};
 
 	~DearImGui() override {
 		if (!pool) { return; }
@@ -120,14 +123,17 @@ struct DearImGui : Gui {
 	}
 
 	void new_frame() final {
+		if (state == State::eEndFrame) { end_frame(); }
 		ImGui_ImplVulkan_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
+		state = State::eEndFrame;
 	}
 
 	void end_frame() final {
 		// ImGui::Render calls ImGui::EndFrame
 		ImGui::Render();
+		state = State::eNewFrame;
 	}
 
 	void render(vk::CommandBuffer cb) final { ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cb); }
@@ -153,7 +159,6 @@ struct Engine::Impl {
 
 	std::uint8_t msaa;
 	DeltaTime dt{};
-	vk::CommandBuffer cb{};
 
 	Impl(UniqueWin window, std::uint8_t msaa, bool validation)
 		: window(std::move(window), std::make_unique<DearImGui>(), msaa, validation), renderer(this->window.gfx), scene(this->window.gfx), msaa(msaa) {
@@ -191,15 +196,15 @@ void Engine::hide() { glfwHideWindow(window()); }
 
 bool Engine::running() const { return !glfwWindowShouldClose(window()); }
 
-float Engine::next_frame() {
+float Engine::poll() {
 	window().glfw->poll_events();
 	m_impl->window.gui->new_frame();
-	if (!m_impl->window.renderer.next_frame({&m_impl->cb, 1})) { m_impl->cb = vk::CommandBuffer{}; }
 	return m_impl->dt();
 }
 
 void Engine::render() {
-	if (m_impl->cb) { m_impl->renderer.render(scene(), renderer(), m_impl->cb); }
+	auto cb = vk::CommandBuffer{};
+	if (m_impl->window.renderer.next_frame({&cb, 1})) { m_impl->renderer.render(scene(), renderer(), cb); }
 	m_impl->window.gui->end_frame();
 	m_impl->window.renderer.render();
 }

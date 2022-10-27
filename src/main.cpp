@@ -128,16 +128,6 @@ struct MainMenu {
 		editor::Inspectee inspectee{};
 	} data{};
 
-	static constexpr std::string_view vsync_status(vk::PresentModeKHR const mode) {
-		switch (mode) {
-		case vk::PresentModeKHR::eFifo: return "On";
-		case vk::PresentModeKHR::eFifoRelaxed: return "Adaptive";
-		case vk::PresentModeKHR::eImmediate: return "Off";
-		case vk::PresentModeKHR::eMailbox: return "Double-buffered";
-		default: return "Unsupported";
-		}
-	}
-
 	void change_vsync(Engine const& engine) const {
 		static constexpr vk::PresentModeKHR modes[] = {vk::PresentModeKHR::eFifo, vk::PresentModeKHR::eFifoRelaxed, vk::PresentModeKHR::eMailbox,
 													   vk::PresentModeKHR::eImmediate};
@@ -271,7 +261,7 @@ void run() {
 	auto main_menu = MainMenu{};
 
 	while (engine->running()) {
-		auto const dt = engine->next_frame();
+		auto const dt = engine->poll();
 		auto const& state = engine->state();
 		auto const& input = state.input;
 		bool const mouse_look = input.mouse.held(GLFW_MOUSE_BUTTON_RIGHT);

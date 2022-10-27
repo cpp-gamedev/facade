@@ -164,12 +164,6 @@ bool Renderer::next_frame(std::span<vk::CommandBuffer> out) {
 	// already have an acquired image
 	if (m_impl->render_target) { return fill_and_return(); }
 
-	if (m_impl->gui) {
-		// ImGui NewFrame / EndFrame are called even if acquire / present fails
-		// this allows user code to unconditionally call ImGui:: code in a frame, regardless of whether it will be drawn / presented
-		// m_impl->gui->new_frame();
-	}
-
 	// check for pending swapchain refresh requests
 	if (m_impl->requests) {
 		auto const spec = [&] {
@@ -217,11 +211,6 @@ Pipeline Renderer::bind_pipeline(vk::CommandBuffer cb, Pipeline::State const& st
 }
 
 bool Renderer::render() {
-	if (m_impl->gui) {
-		// ImGui NewFrame / EndFrame are called even if acquire / present fails
-		// this allows user code to unconditionally call ImGui:: code in a frame, regardless of whether it will be drawn / presented
-		// m_impl->gui->end_frame();
-	}
 	if (!m_impl->render_target) { return false; }
 
 	auto& frame = m_impl->render_frames.get();

@@ -3,9 +3,9 @@
 #include <imgui.h>
 #include <facade/defines.hpp>
 #include <facade/engine/engine.hpp>
+#include <facade/engine/scene_renderer.hpp>
 #include <facade/glfw/glfw_wsi.hpp>
 #include <facade/render/renderer.hpp>
-#include <facade/scene/scene_renderer.hpp>
 #include <facade/util/error.hpp>
 #include <facade/vk/cmd.hpp>
 #include <facade/vk/vk.hpp>

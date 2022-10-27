@@ -22,8 +22,6 @@ class Json;
 }
 
 namespace facade {
-class Renderer;
-
 struct Mesh {
 	struct Primitive {
 		Id<StaticMesh> static_mesh{};
@@ -71,9 +69,6 @@ class Scene {
 	vk::Sampler default_sampler() const { return m_sampler.sampler(); }
 	Texture make_texture(Image::View image) const;
 
-	void write_view(Pipeline& out_pipeline) const;
-	void render(Renderer& renderer, vk::CommandBuffer cb);
-
 	std::vector<DirLight> dir_lights{};
 
   private:
@@ -113,18 +108,11 @@ class Scene {
 	Id<Node> add_unchecked(std::vector<Node>& out, Node&& node);
 	static Node const* find_node(std::span<Node const> nodes, Id<Node> id);
 
-	void write_view(glm::vec2 extent);
-	std::span<glm::mat4x4 const> make_instances(Node const& node, glm::mat4x4 const& parent);
-	void render(Renderer& renderer, vk::CommandBuffer cb, Node const& node, glm::mat4 const& parent = glm::mat4{1.0f});
-
 	void check(Mesh const& mesh) const noexcept(false);
 	void check(Node const& node) const noexcept(false);
 
 	Gfx m_gfx;
 	Sampler m_sampler;
-	Buffer m_view_proj;
-	Buffer m_dir_lights;
-	Texture m_white;
 	Storage m_storage{};
 	std::string m_name{};
 	Tree m_tree{};

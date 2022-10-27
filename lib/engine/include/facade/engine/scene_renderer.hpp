@@ -1,4 +1,5 @@
 #pragma once
+#include <facade/render/renderer.hpp>
 #include <facade/scene/scene.hpp>
 
 namespace facade {

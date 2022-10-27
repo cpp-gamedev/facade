@@ -1,5 +1,4 @@
-#include <facade/render/renderer.hpp>
-#include <facade/scene/scene_renderer.hpp>
+#include <facade/engine/scene_renderer.hpp>
 
 namespace facade {
 namespace {

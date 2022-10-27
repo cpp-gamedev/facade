@@ -15,6 +15,8 @@ struct Window;
 ///
 class Engine {
   public:
+	enum class Validation : std::uint8_t { eDefault, eForceOn, eForceOff };
+
 	Engine(Engine&&) noexcept;
 	Engine& operator=(Engine&&) noexcept;
 	~Engine() noexcept;
@@ -29,7 +31,7 @@ class Engine {
 	///
 	/// Throws if an instance already exists
 	///
-	explicit Engine(Glfw::Window window, std::uint8_t desired_msaa = 2) noexcept(false);
+	explicit Engine(Glfw::Window window, Validation validation = Validation::eDefault, std::uint8_t desired_msaa = 2) noexcept(false);
 
 	///
 	/// \brief Begin next frame's render pass

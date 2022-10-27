@@ -1,6 +1,7 @@
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_vulkan.h>
 #include <imgui.h>
+#include <facade/defines.hpp>
 #include <facade/engine/engine.hpp>
 #include <facade/glfw/glfw_wsi.hpp>
 #include <facade/render/renderer.hpp>
@@ -13,6 +14,17 @@
 namespace facade {
 namespace {
 static constexpr std::size_t command_buffers_v{1};
+
+bool determine_validation(Engine::Validation const desired) {
+	switch (desired) {
+	case Engine::Validation::eForceOff: return false;
+	case Engine::Validation::eForceOn: return true;
+	default: break;
+	}
+
+	// TODO: also enable if debugger detected
+	return debug_v;
+}
 
 vk::UniqueDescriptorPool make_pool(vk::Device const device) {
 	vk::DescriptorPoolSize pool_sizes[] = {
@@ -118,8 +130,9 @@ struct RenderWindow {
 	Gfx gfx;
 	Renderer renderer;
 
-	RenderWindow(Glfw::Window window, std::unique_ptr<Gui> gui, std::uint8_t msaa)
-		: window(window), vulkan(GlfwWsi{window}), gfx{vulkan.gfx()}, renderer(gfx, window, std::move(gui), Renderer::CreateInfo{command_buffers_v, msaa}) {}
+	RenderWindow(Glfw::Window window, std::unique_ptr<Gui> gui, std::uint8_t msaa, bool validation)
+		: window(window), vulkan(GlfwWsi{window}, validation), gfx{vulkan.gfx()},
+		  renderer(gfx, window, std::move(gui), Renderer::CreateInfo{command_buffers_v, msaa}) {}
 };
 } // namespace
 
@@ -127,7 +140,10 @@ struct Engine::Impl {
 	RenderWindow window;
 	std::uint8_t msaa;
 
-	Impl(Glfw::Window window, std::uint8_t msaa) : window(window, std::make_unique<DearImGui>(), msaa), msaa(msaa) { s_instance = this; }
+	Impl(Glfw::Window window, std::uint8_t msaa, bool validation) : window(window, std::make_unique<DearImGui>(), msaa, validation), msaa(msaa) {
+		s_instance = this;
+	}
+
 	~Impl() { s_instance = {}; }
 
 	Impl& operator=(Impl&&) = delete;
@@ -139,9 +155,9 @@ Engine::~Engine() noexcept = default;
 
 bool Engine::is_instance_active() { return s_instance != nullptr; }
 
-Engine::Engine(Glfw::Window window, std::uint8_t desired_msaa) noexcept(false) {
+Engine::Engine(Glfw::Window window, Validation validation, std::uint8_t desired_msaa) noexcept(false) {
 	if (s_instance) { throw Error{"Engine: active instance exists and has not been destroyed"}; }
-	m_impl = std::make_unique<Impl>(window, desired_msaa);
+	m_impl = std::make_unique<Impl>(window, desired_msaa, determine_validation(validation));
 }
 
 bool Engine::next_frame(vk::CommandBuffer& out) {

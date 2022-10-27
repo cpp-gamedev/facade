@@ -185,7 +185,9 @@ bool Scene::load_gltf(dj::Json const& root, DataProvider const& provider) noexce
 
 Scene::Scene(Gfx const& gfx)
 	: m_gfx(gfx), m_sampler(gfx), m_view_proj(gfx, Buffer::Type::eUniform), m_dir_lights(gfx, Buffer::Type::eStorage),
-	  m_white(gfx, m_sampler.sampler(), Img1x1::make({0xff, 0xff, 0xff, 0xff}).view(), Texture::CreateInfo{.mip_mapped = false}) {}
+	  m_white(gfx, m_sampler.sampler(), Img1x1::make({0xff, 0xff, 0xff, 0xff}).view(), Texture::CreateInfo{.mip_mapped = false}) {
+	add_default_camera();
+}
 
 Id<Camera> Scene::add(Camera camera) {
 	auto const id = m_storage.cameras.size();
@@ -265,6 +267,13 @@ void Scene::write_view(Pipeline& out_pipeline) const {
 void Scene::render(Renderer& renderer, vk::CommandBuffer cb) {
 	write_view(renderer.framebuffer_extent());
 	for (auto const& node : m_tree.roots) { render(renderer, cb, node); }
+}
+
+void Scene::add_default_camera() {
+	m_storage.cameras.push_back({});
+	auto node = Node{};
+	node.attach<Id<Camera>>(0);
+	m_tree.camera = add_unchecked(m_tree.roots, std::move(node));
 }
 
 bool Scene::load_tree(Id<Scene> id) {

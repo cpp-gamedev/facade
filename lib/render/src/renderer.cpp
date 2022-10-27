@@ -248,7 +248,10 @@ bool Renderer::render() {
 	frame.primary.end();
 
 	// submit commands
-	frame.submit(m_impl->gfx.queue);
+	{
+		auto lock = std::scoped_lock{m_impl->gfx.shared->mutex};
+		frame.submit(m_impl->gfx.queue);
+	}
 	// present image
 	m_impl->swapchain.present(m_impl->window.framebuffer_extent(), *frame.sync.present);
 

@@ -171,8 +171,10 @@ UniqueVma Vulkan::make_vma(vk::Instance instance, vk::PhysicalDevice gpu, vk::De
 	return ret;
 }
 
-Vulkan::Vulkan(Wsi const& wsi) noexcept(false) {
-	instance = Vulkan::Instance::make(wsi.extensions(), Vulkan::eValidation);
+Vulkan::Vulkan(Wsi const& wsi, bool request_validation) noexcept(false) {
+	auto flags = std::uint32_t{};
+	if (request_validation) { flags |= eValidation; }
+	instance = Vulkan::Instance::make(wsi.extensions(), flags);
 	auto surface = wsi.make_surface(*instance.instance);
 	device = Vulkan::Device::make(instance, *surface);
 	vma = Vulkan::make_vma(*instance.instance, device.gpu.device, *device.device);

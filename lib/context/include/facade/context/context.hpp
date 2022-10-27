@@ -9,6 +9,7 @@ struct ContextCreateInfo {
 	char const* title{"facade"};
 	std::uint8_t msaa_samples{2};
 	bool auto_show{false};
+	Engine::Validation validation{Engine::Validation::eDefault};
 };
 
 ///

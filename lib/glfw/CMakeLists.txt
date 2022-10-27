@@ -35,8 +35,10 @@ if(${${target_prefix_upper}_PCH})
 endif()
 
 target_sources(${PROJECT_NAME} PRIVATE
+  include/${target_prefix}/glfw/glfw_wsi.hpp
   include/${target_prefix}/glfw/glfw.hpp
   include/${target_prefix}/glfw/input.hpp
 
+  src/glfw_wsi.cpp
   src/glfw.cpp
 )

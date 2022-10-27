@@ -81,18 +81,6 @@ std::vector<char const*> Glfw::vk_extensions() const {
 	return ret;
 }
 
-std::vector<char const*> GlfwWsi::extensions() const {
-	if (!window) { return {}; }
-	return window.glfw->vk_extensions();
-}
-
-vk::UniqueSurfaceKHR GlfwWsi::make_surface(vk::Instance const instance) const {
-	if (!window || !instance) { return {}; }
-	auto ret = VkSurfaceKHR{};
-	if (glfwCreateWindowSurface(instance, window.win, {}, &ret) != VK_SUCCESS) { throw InitError{"Failed to create Vulkan Surface"}; }
-	return vk::UniqueSurfaceKHR{vk::SurfaceKHR{ret}, instance};
-}
-
 glm::uvec2 Glfw::Window::window_extent() const {
 	auto ret = glm::ivec2{};
 	glfwGetWindowSize(win, &ret.x, &ret.y);

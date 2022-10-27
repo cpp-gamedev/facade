@@ -20,6 +20,7 @@ target_include_directories(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
   PUBLIC
   ${target_prefix}::render
+  ${target_prefix}::dear_imgui
 
   PRIVATE
   ${target_prefix}::compile-options

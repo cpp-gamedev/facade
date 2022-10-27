@@ -106,6 +106,7 @@ class Scene {
 		Id<Node> next_node{};
 	};
 
+	void add_default_camera();
 	bool load_tree(Id<Scene> id);
 	Id<Mesh> add_unchecked(Mesh mesh);
 	Id<Node> add_unchecked(std::vector<Node>& out, Node&& node);

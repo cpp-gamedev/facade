@@ -37,7 +37,7 @@ class Vulkan {
 
 	static UniqueVma make_vma(vk::Instance instance, vk::PhysicalDevice gpu, vk::Device device);
 
-	Vulkan(Wsi const& wsi) noexcept(false);
+	Vulkan(Wsi const& wsi, bool request_validation) noexcept(false);
 
 	Gfx gfx() const;
 	Gpu const& gpu() const { return device.gpu; }

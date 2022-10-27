@@ -1,5 +1,6 @@
 #pragma once
 #include <facade/glfw/glfw.hpp>
+#include <facade/render/gui.hpp>
 #include <facade/util/colour_space.hpp>
 #include <facade/vk/gfx.hpp>
 #include <facade/vk/pipeline.hpp>
@@ -50,7 +51,7 @@ class Renderer {
 		std::size_t cbs_per_frame{};
 	};
 
-	Renderer(Gfx gfx, Glfw::Window window, CreateInfo const& info = {});
+	Renderer(Gfx gfx, Glfw::Window window, std::unique_ptr<Gui> gui, CreateInfo const& info = {});
 	Renderer(Renderer&&) noexcept;
 	Renderer& operator=(Renderer&&) noexcept;
 	~Renderer() noexcept;
@@ -60,8 +61,8 @@ class Renderer {
 	FrameStats const& frame_stats() const;
 
 	bool is_supported(vk::PresentModeKHR mode) const;
-	bool request_mode(vk::PresentModeKHR desired) const;
-	void request_colour_space(ColourSpace desired) const;
+	bool request_mode(vk::PresentModeKHR desired);
+	void request_colour_space(ColourSpace desired);
 
 	bool next_frame(std::span<vk::CommandBuffer> out);
 	Pipeline bind_pipeline(vk::CommandBuffer cb, Pipeline::State const& state = {}, std::string const& shader_id = "default");

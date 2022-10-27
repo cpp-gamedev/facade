@@ -1,5 +1,5 @@
 #pragma once
-#include <facade/editor/common.hpp>
+#include <facade/context/editor/common.hpp>
 #include <facade/scene/id.hpp>
 #include <facade/util/fixed_string.hpp>
 

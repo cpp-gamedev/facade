@@ -8,41 +8,46 @@ class Renderer;
 class Scene;
 struct Window;
 
-struct EngineCreateInfo {
-	glm::uvec2 extent{1280, 800};
-	char const* title{"facade"};
-	std::uint8_t msaa_samples{2};
-	bool auto_show{false};
-};
-
+///
+/// \brief Owns a Vulkan and Renderer instance
+///
+/// Only one active instance is supported
+///
 class Engine {
   public:
-	using CreateInfo = EngineCreateInfo;
+	enum class Validation : std::uint8_t { eDefault, eForceOn, eForceOff };
 
 	Engine(Engine&&) noexcept;
 	Engine& operator=(Engine&&) noexcept;
 	~Engine() noexcept;
 
-	explicit Engine(CreateInfo const& info = {});
+	///
+	/// \brief Check if an instance of Engine is active
+	///
+	static bool is_instance_active();
 
-	bool add_shader(Shader shader);
-	void show_window();
-	void hide_window();
+	///
+	/// \brief Construct an Engine instance
+	///
+	/// Throws if an instance already exists
+	///
+	explicit Engine(Glfw::Window window, Validation validation = Validation::eDefault, std::uint8_t desired_msaa = 2) noexcept(false);
 
-	bool running() const;
+	///
+	/// \brief Begin next frame's render pass
+	///
 	bool next_frame(vk::CommandBuffer& out);
+	///
+	/// \brief Submit render pass
+	///
 	void submit();
-	void request_stop();
 
-	void reload(CreateInfo const& info);
-
-	Glfw::Window window() const;
 	Gfx const& gfx() const;
-	Input const& input() const;
 	Renderer& renderer() const;
 
   private:
 	struct Impl;
+	inline static Impl const* s_instance{};
 	std::unique_ptr<Impl> m_impl{};
 };
 } // namespace facade

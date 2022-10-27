@@ -86,6 +86,17 @@ class MainMenu : public MenuBar {
 };
 
 ///
+/// \brief RAII Dear ImGui Popup
+///
+class Popup : public Openable {
+  public:
+	explicit Popup(char const* id, int flags = {});
+	~Popup();
+
+	static void close_current();
+};
+
+///
 /// \brief RAII Dear ImGui StyleVar stack
 ///
 class StyleVar : public Pinned {

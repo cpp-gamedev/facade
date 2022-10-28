@@ -37,11 +37,13 @@ MainMenu::~MainMenu() {
 	if (m_open) { ImGui::EndMainMenuBar(); }
 }
 
-Popup::Popup(char const* id, int flags) : Openable(ImGui::BeginPopup(id, flags)) {}
+Popup::Popup(char const* id, bool modal, int flags) : Openable(modal ? ImGui::BeginPopupModal(id, {}, flags) : ImGui::BeginPopup(id, flags)) {}
 
 Popup::~Popup() {
 	if (m_open) { ImGui::EndPopup(); }
 }
+
+void Popup::open(char const* id) { ImGui::OpenPopup(id); }
 
 void Popup::close_current() { ImGui::CloseCurrentPopup(); }
 

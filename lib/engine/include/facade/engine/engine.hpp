@@ -2,6 +2,7 @@
 #include <facade/glfw/glfw.hpp>
 #include <facade/scene/scene.hpp>
 #include <facade/util/time.hpp>
+#include <facade/util/unique_task.hpp>
 #include <facade/vk/shader.hpp>
 
 namespace facade {
@@ -28,6 +29,7 @@ struct EngineCreateInfo {
 class Engine {
   public:
 	using CreateInfo = EngineCreateInfo;
+	using State = Glfw::State;
 
 	Engine(Engine&&) noexcept;
 	Engine& operator=(Engine&&) noexcept;
@@ -64,9 +66,9 @@ class Engine {
 	///
 	bool running() const;
 	///
-	/// \brief Poll events and obtain delta time
+	/// \brief Poll events and obtain updated state
 	///
-	float poll();
+	State const& poll();
 	///
 	/// \brief Render the scene
 	///
@@ -77,14 +79,29 @@ class Engine {
 	///
 	void request_stop();
 
+	///
+	/// \brief Load a GLTF scene asynchronously
+	///
+	/// Subsequent requests will be rejected if one is in flight
+	///
+	bool load_async(std::string gltf_json_path, UniqueTask<void()> on_loaded = {});
+	///
+	/// \brief Obtain status of in-flight async load request (if active)
+	///
+	LoadStatus load_status() const;
+
+	glm::uvec2 window_extent() const;
+	glm::uvec2 framebuffer_extent() const;
+
 	Scene& scene() const;
-	Gfx const& gfx() const;
-	Glfw::Window const& window() const;
-	Glfw::State const& state() const;
+	State const& state() const;
 	Input const& input() const;
 	Renderer& renderer() const;
+	GLFWwindow* window() const;
 
   private:
+	void update_load_request();
+
 	struct Impl;
 	inline static Impl const* s_instance{};
 	std::unique_ptr<Impl> m_impl{};

@@ -18,6 +18,7 @@ struct Glfw {
 
 	std::vector<char const*> vk_extensions() const;
 	void poll_events();
+	void reset_dt();
 
 	bool operator==(Glfw const&) const = default;
 };
@@ -27,6 +28,9 @@ using UniqueWin = Unique<Glfw::Window, Glfw::Deleter>;
 struct Glfw::State {
 	Input input{};
 	std::vector<std::string> file_drops{};
+	float dt{};
+
+	static std::string to_filename(std::string_view path);
 };
 
 struct Glfw::Window {

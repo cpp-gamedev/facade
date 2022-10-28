@@ -2,6 +2,7 @@
 #include <facade/scene/camera.hpp>
 #include <facade/scene/id.hpp>
 #include <facade/scene/lights.hpp>
+#include <facade/scene/load_status.hpp>
 #include <facade/scene/material.hpp>
 #include <facade/scene/node.hpp>
 #include <facade/scene/node_data.hpp>
@@ -12,7 +13,7 @@
 #include <facade/vk/buffer.hpp>
 #include <facade/vk/static_mesh.hpp>
 #include <facade/vk/texture.hpp>
-#include <functional>
+#include <atomic>
 #include <memory>
 #include <optional>
 #include <span>
@@ -36,28 +37,39 @@ struct DataProvider;
 
 class Scene {
   public:
+	struct Tree {
+		struct Data {
+			std::vector<std::size_t> roots{};
+		};
+
+		std::vector<Node> roots{};
+		Id<Node> camera{};
+		Id<Tree> id{};
+	};
+
 	static constexpr auto id_v = Id<Node>{0};
 
 	explicit Scene(Gfx const& gfx);
 
-	bool load_gltf(dj::Json const& root, DataProvider const& provider) noexcept(false);
-	bool load_gltf(std::string_view path);
+	bool load_gltf(dj::Json const& root, DataProvider const& provider, std::atomic<LoadStatus>* out_status = {}) noexcept(false);
 
 	Id<Camera> add(Camera camera);
 	Id<Sampler> add(Sampler sampler);
 	Id<Material> add(std::unique_ptr<Material> material);
-	Id<StaticMesh> add(StaticMesh mesh);
-	Id<Image> add(Image image);
+	Id<StaticMesh> add(Geometry const& geometry);
+	Id<Texture> add(Image::View image, Id<Sampler> sampler, ColourSpace colour_space = ColourSpace::eSrgb);
 	Id<Mesh> add(Mesh mesh);
 	Id<Node> add(Node node, Id<Node> parent);
 
-	Id<Scene> id() const { return m_tree.id; }
-	std::size_t scene_count() const { return m_storage.data.trees.size(); }
-	bool load(Id<Scene> id);
+	Id<Tree> tree_id() const { return m_tree.id; }
+	std::size_t tree_count() const { return m_storage.data.trees.size(); }
+	bool load(Id<Tree> id);
 
 	Ptr<Node const> find(Id<Node> id) const;
 	Ptr<Node> find(Id<Node> id);
 	Ptr<Material> find(Id<Material> id) const;
+	Ptr<StaticMesh const> find(Id<StaticMesh> id) const;
+	Ptr<Texture const> find(Id<Texture> id) const;
 	Ptr<Mesh const> find(Id<Mesh> id) const;
 	std::span<Node> roots() { return m_tree.roots; }
 	std::span<Node const> roots() const { return m_tree.roots; }
@@ -75,16 +87,6 @@ class Scene {
   private:
 	struct TreeBuilder;
 
-	struct Tree {
-		struct Data {
-			std::vector<std::size_t> roots{};
-		};
-
-		std::vector<Node> roots{};
-		Id<Node> camera{};
-		Id<Scene> id{};
-	};
-
 	struct Data {
 		std::vector<NodeData> nodes{};
 		std::vector<Tree::Data> trees{};
@@ -95,16 +97,15 @@ class Scene {
 		std::vector<Sampler> samplers{};
 		std::vector<std::unique_ptr<Material>> materials{};
 		std::vector<StaticMesh> static_meshes{};
-		std::vector<Image> images{};
 		std::vector<Texture> textures{};
 		std::vector<Mesh> meshes{};
-		std::vector<glm::mat4x4> instances{};
+
 		Data data{};
 		Id<Node> next_node{};
 	};
 
 	void add_default_camera();
-	bool load_tree(Id<Scene> id);
+	bool load_tree(Id<Tree> id);
 	Id<Mesh> add_unchecked(Mesh mesh);
 	Id<Node> add_unchecked(std::vector<Node>& out, Node&& node);
 	static Node const* find_node(std::span<Node const> nodes, Id<Node> id);

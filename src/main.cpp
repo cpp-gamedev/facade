@@ -26,12 +26,6 @@
 using namespace facade;
 
 namespace {
-bool load_gltf(Scene& out, std::string_view path) {
-	auto const provider = FileDataProvider::mount_parent_dir(path);
-	auto json = dj::Json::from_file(path.data());
-	return out.load_gltf(json, provider);
-}
-
 static constexpr auto test_json_v = R"(
 {
   "scene": 0,
@@ -221,21 +215,20 @@ void run() {
 
 	auto material_id = Id<Material>{};
 	auto node_id = Id<Node>{};
-	auto post_scene_load = [&] {
-		engine->scene().camera().transform.set_position({0.0f, 0.0f, 5.0f});
+	auto post_scene_load = [&](Scene& scene) {
+		scene.camera().transform.set_position({0.0f, 0.0f, 5.0f});
 
 		auto material = std::make_unique<LitMaterial>();
 		material->albedo = {1.0f, 0.0f, 0.0f};
-		material_id = engine->scene().add(std::move(material));
-		auto static_mesh_id = engine->scene().add(StaticMesh{engine->gfx(), make_cubed_sphere(1.0f, 32)});
-		auto mesh_id = engine->scene().add(Mesh{.primitives = {Mesh::Primitive{static_mesh_id, material_id}}});
+		material_id = scene.add(std::move(material));
+		auto static_mesh_id = scene.add(make_cubed_sphere(1.0f, 32));
+		auto mesh_id = scene.add(Mesh{.primitives = {Mesh::Primitive{static_mesh_id, material_id}}});
 
 		auto node = Node{};
 		node.attach(mesh_id);
 		node.instances.emplace_back().set_position({1.0f, -5.0f, -20.0f});
 		node.instances.emplace_back().set_position({-1.0f, 1.0f, 0.0f});
-		node_id = engine->scene().add(std::move(node), 0);
-		engine->show(true);
+		node_id = scene.add(std::move(node), 0);
 	};
 
 	auto init = [&] {
@@ -247,11 +240,11 @@ void run() {
 		engine->add_shader(lit);
 		engine->add_shader(shaders::unlit());
 
-		auto scene = Scene{engine->gfx()};
+		auto& scene = engine->scene();
 		scene.dir_lights.push_back(DirLight{.direction = glm::normalize(glm::vec3{-1.0f, -1.0f, -1.0f}), .diffuse = glm::vec3{5.0f}});
 		scene.load_gltf(dj::Json::parse(test_json_v), DummyDataProvider{});
-		engine->scene() = std::move(scene);
-		post_scene_load();
+		post_scene_load(engine->scene());
+		engine->show(true);
 	};
 
 	init();
@@ -260,23 +253,31 @@ void run() {
 
 	auto main_menu = MainMenu{};
 
+	struct {
+		LoadStatus status{};
+		std::string title{};
+	} loading{};
+
 	while (engine->running()) {
-		auto const dt = engine->poll();
-		auto const& state = engine->state();
+		auto const& state = engine->poll();
 		auto const& input = state.input;
+		auto const dt = state.dt;
 		bool const mouse_look = input.mouse.held(GLFW_MOUSE_BUTTON_RIGHT);
 
 		if (input.keyboard.pressed(GLFW_KEY_ESCAPE)) { engine->request_stop(); }
 		glfwSetInputMode(engine->window(), GLFW_CURSOR, mouse_look ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
 
 		if (!state.file_drops.empty()) {
-			auto load = [file = state.file_drops.front(), &engine] {
-				auto scene = Scene{engine->gfx()};
-				if (!load_gltf(scene, file)) { logger::warn("Failed to load GLTF: [{}]", file); }
-				scene.dir_lights.push_back(DirLight{.direction = glm::normalize(glm::vec3{-1.0f, -1.0f, -1.0f}), .diffuse = glm::vec3{5.0f}});
-				return scene;
-			};
-			load();
+			engine->load_async(state.file_drops.front(), [&] { post_scene_load(engine->scene()); });
+			loading.title = fmt::format("Loading {}...", state.to_filename(state.file_drops.front()));
+			editor::Popup::open(loading.title.c_str());
+		}
+		loading.status = engine->load_status();
+
+		if (auto popup = editor::Modal{loading.title.c_str()}) {
+			ImGui::Text("%s", load_status_str[loading.status].data());
+			ImGui::ProgressBar(load_progress(loading.status), ImVec2{400.0f, 0}, load_status_str[loading.status].data());
+			if (loading.status == LoadStatus::eNone) { editor::Popup::close_current(); }
 		}
 
 		auto& camera = engine->scene().camera();

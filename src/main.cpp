@@ -252,6 +252,7 @@ void run() {
 	float const drot_z[] = {100.0f, -150.0f};
 
 	auto main_menu = MainMenu{};
+	auto load_status = LoadStatus{};
 
 	while (engine->running()) {
 		auto const& state = engine->poll();
@@ -264,6 +265,14 @@ void run() {
 
 		if (!state.file_drops.empty()) {
 			engine->load_async(state.file_drops.front(), [&] { post_scene_load(engine->scene()); });
+			editor::Popup::open("Loading");
+		}
+		load_status = engine->load_status();
+
+		if (auto popup = editor::Popup{"Loading"}) {
+			ImGui::Text("Loading...");
+			ImGui::ProgressBar(load_progress(load_status), ImVec2{400.0f, 0}, load_status_str[load_status].data());
+			if (load_status == LoadStatus::eReady || load_status == LoadStatus::eNone) { editor::Popup::close_current(); }
 		}
 
 		auto& camera = engine->scene().camera();

@@ -93,6 +93,7 @@ class Popup : public Openable {
 	explicit Popup(char const* id, int flags = {});
 	~Popup();
 
+	static void open(char const* id);
 	static void close_current();
 };
 

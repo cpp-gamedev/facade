@@ -43,6 +43,8 @@ Popup::~Popup() {
 	if (m_open) { ImGui::EndPopup(); }
 }
 
+void Popup::open(char const* id) { ImGui::OpenPopup(id); }
+
 void Popup::close_current() { ImGui::CloseCurrentPopup(); }
 
 Menu::Menu(NotClosed<MenuBar>, char const* label, bool enabled) : Openable(ImGui::BeginMenu(label, enabled)) {}

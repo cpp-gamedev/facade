@@ -146,11 +146,17 @@ struct Scene::TreeBuilder {
 	}
 };
 
-bool Scene::load_gltf(dj::Json const& root, DataProvider const& provider) noexcept(false) {
-	auto asset = gltf::Asset::parse(root, provider);
-	if (asset.geometries.empty() || asset.scenes.empty()) { return false; }
+bool Scene::load_gltf(dj::Json const& root, DataProvider const& provider, std::atomic<LoadStatus>* out_status) noexcept(false) {
+	auto status = std::atomic<LoadStatus>{};
+	if (!out_status) { out_status = &status; }
+	auto asset = gltf::Asset::parse(root, provider, *out_status);
+	if (asset.geometries.empty() || asset.scenes.empty()) {
+		*out_status = LoadStatus::eReady;
+		return false;
+	}
 	if (asset.start_scene >= asset.scenes.size()) { throw Error{fmt::format("Invalid start scene: {}", asset.start_scene)}; }
 
+	*out_status = LoadStatus::eUploadingResources;
 	m_storage = {};
 	if (asset.cameras.empty()) {
 		add(Camera{.name = "default"});
@@ -175,7 +181,9 @@ bool Scene::load_gltf(dj::Json const& root, DataProvider const& provider) noexce
 	m_storage.data.nodes = std::move(asset.nodes);
 	for (auto& scene : asset.scenes) { m_storage.data.trees.push_back(Tree::Data{.roots = std::move(scene.root_nodes)}); }
 
-	return load(asset.start_scene);
+	auto const ret = load(asset.start_scene);
+	*out_status = LoadStatus::eReady;
+	return ret;
 }
 
 Scene::Scene(Gfx const& gfx) : m_gfx(gfx), m_sampler(gfx) { add_default_camera(); }

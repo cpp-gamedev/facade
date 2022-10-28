@@ -158,10 +158,10 @@ struct RenderWindow {
 		  renderer(gfx, this->window, gui.get(), Renderer::CreateInfo{command_buffers_v, msaa}), gui(std::move(gui)) {}
 };
 
-bool load_gltf(Scene& out_scene, char const* path) {
+bool load_gltf(Scene& out_scene, char const* path, std::atomic<LoadStatus>* out_status) {
 	auto const provider = FileDataProvider::mount_parent_dir(path);
 	auto json = dj::Json::from_file(path);
-	return out_scene.load_gltf(json, provider);
+	return out_scene.load_gltf(json, provider, out_status);
 }
 
 template <typename T>
@@ -178,6 +178,11 @@ template <typename T>
 bool busy(std::future<T> const& future) {
 	return future.valid() && future.wait_for(std::chrono::seconds{}) == std::future_status::deferred;
 }
+
+struct LoadRequest {
+	std::future<Scene> future{};
+	std::unique_ptr<std::atomic<LoadStatus>> status{};
+};
 } // namespace
 
 struct Engine::Impl {
@@ -187,10 +192,13 @@ struct Engine::Impl {
 
 	std::uint8_t msaa;
 
-	std::vector<std::future<Scene>> discard{};
-	std::future<Scene> future{};
 	std::mutex mutex{};
-	std::function<void()> on_loaded{};
+
+	struct {
+		std::vector<LoadRequest> discard{};
+		LoadRequest request{};
+		std::function<void()> on_loaded{};
+	} load{};
 
 	Impl(UniqueWin window, std::uint8_t msaa, bool validation)
 		: window(std::move(window), std::make_unique<DearImGui>(), msaa, validation), renderer(this->window.gfx), scene(this->window.gfx), msaa(msaa) {
@@ -198,6 +206,8 @@ struct Engine::Impl {
 	}
 
 	~Impl() {
+		load.discard.clear();
+		load.request = {};
 		window.gfx.device.waitIdle();
 		s_instance = {};
 	}
@@ -250,18 +260,25 @@ glm::uvec2 Engine::framebuffer_extent() const { return m_impl->window.window.get
 bool Engine::load_async(std::string gltf_json_path, std::function<void()> on_loaded) {
 	if (!fs::is_regular_file(gltf_json_path)) { return false; }
 	auto lock = std::scoped_lock{m_impl->mutex};
-	m_impl->on_loaded = std::move(on_loaded);
-	if (m_impl->future.valid()) { m_impl->discard.push_back(std::move(m_impl->future)); }
+	m_impl->load.on_loaded = std::move(on_loaded);
+	if (m_impl->load.request.future.valid()) { m_impl->load.discard.push_back(std::move(m_impl->load.request)); }
 	auto path = gltf_json_path;
 	if (auto const i = path.find_last_of('/'); i != std::string::npos) { path = path.substr(i + 1); }
 	logger::info("[Engine] Loading GLTF [{}]...", path);
+	if (!m_impl->load.request.status) { m_impl->load.request.status = std::make_unique<std::atomic<LoadStatus>>(); }
+	m_impl->load.request.status->store(LoadStatus::eStartingThread);
 	auto func = [this, path = std::move(gltf_json_path)] {
 		auto scene = Scene{m_impl->window.gfx};
-		if (!load_gltf(scene, path.c_str())) { logger::error("[Engine] Failed to load GLTF: [{}]", path); }
+		if (!load_gltf(scene, path.c_str(), m_impl->load.request.status.get())) { logger::error("[Engine] Failed to load GLTF: [{}]", path); }
 		return scene;
 	};
-	m_impl->future = std::async(std::launch::async, func);
+	m_impl->load.request.future = std::async(std::launch::async, func);
 	return true;
+}
+
+LoadStatus Engine::load_status() const {
+	if (!m_impl->load.request.status) { return LoadStatus::eNone; }
+	return m_impl->load.request.status->load();
 }
 
 Scene& Engine::scene() const { return m_impl->scene; }
@@ -272,15 +289,16 @@ Renderer& Engine::renderer() const { return m_impl->window.renderer; }
 
 void Engine::update_futures() {
 	auto lock = std::scoped_lock{m_impl->mutex};
-	std::erase_if(m_impl->discard, [](std::future<Scene> const& future) { return !busy(future); });
-	if (ready(m_impl->future)) {
-		m_impl->scene = m_impl->future.get();
+	std::erase_if(m_impl->load.discard, [](LoadRequest const& request) { return !busy(request.future); });
+	if (ready(m_impl->load.request.future)) {
+		m_impl->scene = m_impl->load.request.future.get();
 		// TODO: log time
 		logger::info("...GLTF loaded");
-		if (m_impl->on_loaded) {
-			m_impl->on_loaded();
-			m_impl->on_loaded = {};
+		if (m_impl->load.on_loaded) {
+			m_impl->load.on_loaded();
+			m_impl->load.on_loaded = {};
 		}
+		m_impl->load.request.status->store(LoadStatus::eNone);
 	}
 }
 } // namespace facade

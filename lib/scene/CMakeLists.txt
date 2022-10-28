@@ -37,6 +37,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/scene/fly_cam.hpp
   include/${target_prefix}/scene/id.hpp
   include/${target_prefix}/scene/lights.hpp
+  include/${target_prefix}/scene/load_status.hpp
   include/${target_prefix}/scene/material.hpp
   include/${target_prefix}/scene/node_data.hpp
   include/${target_prefix}/scene/node.hpp

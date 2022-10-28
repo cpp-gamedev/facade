@@ -80,6 +80,7 @@ class Engine {
 	void request_stop();
 
 	bool load_async(std::string gltf_json_path, std::function<void()> on_loaded = {});
+	LoadStatus load_status() const;
 
 	glm::uvec2 window_extent() const;
 	glm::uvec2 framebuffer_extent() const;

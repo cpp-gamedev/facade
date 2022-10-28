@@ -2,6 +2,7 @@
 #include <facade/scene/camera.hpp>
 #include <facade/scene/id.hpp>
 #include <facade/scene/lights.hpp>
+#include <facade/scene/load_status.hpp>
 #include <facade/scene/material.hpp>
 #include <facade/scene/node.hpp>
 #include <facade/scene/node_data.hpp>
@@ -51,7 +52,7 @@ class Scene {
 
 	explicit Scene(Gfx const& gfx);
 
-	bool load_gltf(dj::Json const& root, DataProvider const& provider) noexcept(false);
+	bool load_gltf(dj::Json const& root, DataProvider const& provider, std::atomic<LoadStatus>* out_status = {}) noexcept(false);
 
 	Id<Camera> add(Camera camera);
 	Id<Sampler> add(Sampler sampler);

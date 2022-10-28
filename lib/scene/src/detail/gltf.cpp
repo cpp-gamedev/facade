@@ -466,19 +466,27 @@ struct Data {
 			m.double_sided = json["doubleSided"].as_bool(dj::Boolean{m.double_sided}).value;
 		}
 
-		Storage parse(dj::Json const& scene) {
+		Storage parse(dj::Json const& scene, std::atomic<LoadStatus>& out_status) {
 			storage = {};
+			out_status = LoadStatus::eParsingBuffers;
 			for (auto const& b : scene["buffers"].array_view()) { buffer(b); }
+			out_status = LoadStatus::eParsingBufferViews;
 			for (auto const& bv : scene["bufferViews"].array_view()) { buffer_view(bv); }
+			out_status = LoadStatus::eParsingAccessors;
 			for (auto const& s : scene["accessors"].array_view()) { accessor(s); }
 
+			out_status = LoadStatus::eParsingCameras;
 			for (auto const& c : scene["cameras"].array_view()) { camera(c); }
+			out_status = LoadStatus::eParsingSamplers;
 			for (auto const& s : scene["samplers"].array_view()) { sampler(s); }
+			out_status = LoadStatus::eLoadingImages;
 			for (auto const& i : scene["images"].array_view()) { image(i); }
+			out_status = LoadStatus::eParsingTextures;
 			for (auto const& t : scene["textures"].array_view()) { texture(t); }
-			for (auto const& m : scene["materials"].array_view()) { material(m); }
-
+			out_status = LoadStatus::eParsingMeshes;
 			for (auto const& m : scene["meshes"].array_view()) { mesh(m); }
+			out_status = LoadStatus::eParsingMaterials;
+			for (auto const& m : scene["materials"].array_view()) { material(m); }
 
 			// Texture will use ColourSpace::sRGB by default; change non-colour textures to be linear
 			auto set_linear = [this](std::size_t index) { storage.textures.at(index).colour_space = ColourSpace::eLinear; };
@@ -573,10 +581,12 @@ std::vector<std::size_t> children(dj::Json const& json) {
 }
 } // namespace
 
-Asset Asset::parse(dj::Json const& json, DataProvider const& provider) {
+Asset Asset::parse(dj::Json const& json, DataProvider const& provider, std::atomic<LoadStatus>& out_status) {
 	auto ret = Asset{};
-	auto storage = Data::Parser{provider}.parse(json);
+	auto storage = Data::Parser{provider}.parse(json, out_status);
 	if (storage.accessors.empty()) { return {}; }
+
+	out_status = LoadStatus::eBuildingGeometry;
 	ret.cameras = std::move(storage.cameras);
 	ret.images = std::move(storage.images);
 	ret.materials = std::move(storage.materials);
@@ -593,6 +603,7 @@ Asset Asset::parse(dj::Json const& json, DataProvider const& provider) {
 		}
 	}
 
+	out_status = LoadStatus::eBuildingNodes;
 	auto const& nodes = json["nodes"].array_view();
 	ret.nodes.reserve(nodes.size());
 	for (auto const& node : nodes) {
@@ -608,6 +619,7 @@ Asset Asset::parse(dj::Json const& json, DataProvider const& provider) {
 		ret.nodes.push_back(Node{node["name"].as<std::string>(), transform(node), children(node["children"]), index, type});
 	}
 
+	out_status = LoadStatus::eBuildingScenes;
 	auto const& scenes = json["scenes"].array_view();
 	ret.scenes.reserve(scenes.size());
 	for (auto const& scene : scenes) {

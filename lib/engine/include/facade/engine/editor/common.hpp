@@ -90,11 +90,22 @@ class MainMenu : public MenuBar {
 ///
 class Popup : public Openable {
   public:
-	explicit Popup(char const* id, int flags = {});
+	explicit Popup(char const* id, int flags = {}) : Popup(id, false, flags) {}
 	~Popup();
 
 	static void open(char const* id);
 	static void close_current();
+
+  protected:
+	explicit Popup(char const* id, bool modal, int flags);
+};
+
+///
+/// \brief RAII Dear ImGui PopupModal
+///
+class Modal : public Popup {
+  public:
+	explicit Modal(char const* id, int flags = {}) : Popup(id, true, flags) {}
 };
 
 ///

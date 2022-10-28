@@ -29,6 +29,8 @@ struct Glfw::State {
 	Input input{};
 	std::vector<std::string> file_drops{};
 	float dt{};
+
+	static std::string to_filename(std::string_view path);
 };
 
 struct Glfw::Window {

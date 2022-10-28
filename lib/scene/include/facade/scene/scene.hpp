@@ -14,7 +14,6 @@
 #include <facade/vk/static_mesh.hpp>
 #include <facade/vk/texture.hpp>
 #include <atomic>
-#include <functional>
 #include <memory>
 #include <optional>
 #include <span>

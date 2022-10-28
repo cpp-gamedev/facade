@@ -19,7 +19,6 @@ enum class LoadStatus : std::uint8_t {
 	eBuildingNodes,
 	eBuildingScenes,
 	eUploadingResources,
-	eReady,
 	eCOUNT_,
 };
 
@@ -39,10 +38,9 @@ constexpr auto load_status_str = EnumArray<LoadStatus, std::string_view>{
 	"Building Nodes",
 	"Building Scenes",
 	"Uploading Resources",
-	"Ready",
 };
 
 static_assert(std::size(load_status_str.t) == static_cast<std::size_t>(LoadStatus::eCOUNT_));
 
-constexpr float load_progress(LoadStatus const stage) { return static_cast<float>(stage) / static_cast<float>(LoadStatus::eReady); }
+constexpr float load_progress(LoadStatus const stage) { return static_cast<float>(stage) / (static_cast<float>(LoadStatus::eCOUNT_) - 1.0f); }
 } // namespace facade

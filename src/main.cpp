@@ -252,7 +252,11 @@ void run() {
 	float const drot_z[] = {100.0f, -150.0f};
 
 	auto main_menu = MainMenu{};
-	auto load_status = LoadStatus{};
+
+	struct {
+		LoadStatus status{};
+		std::string title{};
+	} loading{};
 
 	while (engine->running()) {
 		auto const& state = engine->poll();
@@ -265,14 +269,15 @@ void run() {
 
 		if (!state.file_drops.empty()) {
 			engine->load_async(state.file_drops.front(), [&] { post_scene_load(engine->scene()); });
-			editor::Popup::open("Loading");
+			loading.title = fmt::format("Loading {}...", state.to_filename(state.file_drops.front()));
+			editor::Popup::open(loading.title.c_str());
 		}
-		load_status = engine->load_status();
+		loading.status = engine->load_status();
 
-		if (auto popup = editor::Popup{"Loading"}) {
-			ImGui::Text("Loading...");
-			ImGui::ProgressBar(load_progress(load_status), ImVec2{400.0f, 0}, load_status_str[load_status].data());
-			if (load_status == LoadStatus::eReady || load_status == LoadStatus::eNone) { editor::Popup::close_current(); }
+		if (auto popup = editor::Modal{loading.title.c_str()}) {
+			ImGui::Text("%s", load_status_str[loading.status].data());
+			ImGui::ProgressBar(load_progress(loading.status), ImVec2{400.0f, 0}, load_status_str[loading.status].data());
+			if (loading.status == LoadStatus::eNone) { editor::Popup::close_current(); }
 		}
 
 		auto& camera = engine->scene().camera();

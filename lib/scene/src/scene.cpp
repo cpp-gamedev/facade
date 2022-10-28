@@ -151,7 +151,7 @@ bool Scene::load_gltf(dj::Json const& root, DataProvider const& provider, std::a
 	if (!out_status) { out_status = &status; }
 	auto asset = gltf::Asset::parse(root, provider, *out_status);
 	if (asset.geometries.empty() || asset.scenes.empty()) {
-		*out_status = LoadStatus::eReady;
+		*out_status = LoadStatus::eNone;
 		return false;
 	}
 	if (asset.start_scene >= asset.scenes.size()) { throw Error{fmt::format("Invalid start scene: {}", asset.start_scene)}; }
@@ -182,7 +182,7 @@ bool Scene::load_gltf(dj::Json const& root, DataProvider const& provider, std::a
 	for (auto& scene : asset.scenes) { m_storage.data.trees.push_back(Tree::Data{.roots = std::move(scene.root_nodes)}); }
 
 	auto const ret = load(asset.start_scene);
-	*out_status = LoadStatus::eReady;
+	*out_status = LoadStatus::eNone;
 	return ret;
 }
 

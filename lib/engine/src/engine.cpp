@@ -180,8 +180,10 @@ bool busy(std::future<T> const& future) {
 }
 
 struct LoadRequest {
+	std::string path{};
 	std::future<Scene> future{};
-	std::unique_ptr<std::atomic<LoadStatus>> status{};
+	std::atomic<LoadStatus> status{};
+	float start_time{};
 };
 } // namespace
 
@@ -195,9 +197,8 @@ struct Engine::Impl {
 	std::mutex mutex{};
 
 	struct {
-		std::vector<LoadRequest> discard{};
 		LoadRequest request{};
-		std::function<void()> on_loaded{};
+		UniqueTask<void()> callback{};
 	} load{};
 
 	Impl(UniqueWin window, std::uint8_t msaa, bool validation)
@@ -206,8 +207,7 @@ struct Engine::Impl {
 	}
 
 	~Impl() {
-		load.discard.clear();
-		load.request = {};
+		load.request.future = {};
 		window.gfx.device.waitIdle();
 		s_instance = {};
 	}
@@ -257,19 +257,21 @@ void Engine::request_stop() { glfwSetWindowShouldClose(window(), GLFW_TRUE); }
 glm::uvec2 Engine::window_extent() const { return m_impl->window.window.get().window_extent(); }
 glm::uvec2 Engine::framebuffer_extent() const { return m_impl->window.window.get().framebuffer_extent(); }
 
-bool Engine::load_async(std::string gltf_json_path, std::function<void()> on_loaded) {
+bool Engine::load_async(std::string gltf_json_path, UniqueTask<void()> on_loaded) {
 	if (!fs::is_regular_file(gltf_json_path)) { return false; }
 	auto lock = std::scoped_lock{m_impl->mutex};
-	m_impl->load.on_loaded = std::move(on_loaded);
-	if (m_impl->load.request.future.valid()) { m_impl->load.discard.push_back(std::move(m_impl->load.request)); }
-	auto path = gltf_json_path;
-	if (auto const i = path.find_last_of('/'); i != std::string::npos) { path = path.substr(i + 1); }
-	logger::info("[Engine] Loading GLTF [{}]...", path);
-	if (!m_impl->load.request.status) { m_impl->load.request.status = std::make_unique<std::atomic<LoadStatus>>(); }
-	m_impl->load.request.status->store(LoadStatus::eStartingThread);
-	auto func = [this, path = std::move(gltf_json_path)] {
-		auto scene = Scene{m_impl->window.gfx};
-		if (!load_gltf(scene, path.c_str(), m_impl->load.request.status.get())) { logger::error("[Engine] Failed to load GLTF: [{}]", path); }
+	if (m_impl->load.request.future.valid()) {
+		logger::warn("[Engine] Denied attempt to load_async when a load request is already in flight");
+		return false;
+	}
+	m_impl->load.callback = std::move(on_loaded);
+	m_impl->load.request.path = std::move(gltf_json_path);
+	logger::info("[Engine] Loading GLTF [{}]...", State::to_filename(m_impl->load.request.path));
+	m_impl->load.request.status.store(LoadStatus::eStartingThread);
+	m_impl->load.request.start_time = time::since_start();
+	auto func = [path = m_impl->load.request.path, gfx = m_impl->window.gfx, status = &m_impl->load.request.status] {
+		auto scene = Scene{gfx};
+		if (!load_gltf(scene, path.c_str(), status)) { logger::error("[Engine] Failed to load GLTF: [{}]", path); }
 		return scene;
 	};
 	m_impl->load.request.future = std::async(std::launch::async, func);
@@ -277,8 +279,8 @@ bool Engine::load_async(std::string gltf_json_path, std::function<void()> on_loa
 }
 
 LoadStatus Engine::load_status() const {
-	if (!m_impl->load.request.status) { return LoadStatus::eNone; }
-	return m_impl->load.request.status->load();
+	auto lock = std::scoped_lock{m_impl->mutex};
+	return m_impl->load.request.status.load();
 }
 
 Scene& Engine::scene() const { return m_impl->scene; }
@@ -288,17 +290,17 @@ Input const& Engine::input() const { return state().input; }
 Renderer& Engine::renderer() const { return m_impl->window.renderer; }
 
 void Engine::update_futures() {
-	auto lock = std::scoped_lock{m_impl->mutex};
-	std::erase_if(m_impl->load.discard, [](LoadRequest const& request) { return !busy(request.future); });
+	auto lock = std::unique_lock{m_impl->mutex};
 	if (ready(m_impl->load.request.future)) {
 		m_impl->scene = m_impl->load.request.future.get();
-		// TODO: log time
-		logger::info("...GLTF loaded");
-		if (m_impl->load.on_loaded) {
-			m_impl->load.on_loaded();
-			m_impl->load.on_loaded = {};
-		}
-		m_impl->load.request.status->store(LoadStatus::eNone);
+		m_impl->load.request.status.store(LoadStatus::eNone);
+		logger::info("...GLTF [{}] loaded in [{:.2f}s]", State::to_filename(m_impl->load.request.path), time::since_start() - m_impl->load.request.start_time);
+		// move out the callback
+		auto callback = std::move(m_impl->load.callback);
+		// unlock mutex to prevent possible deadlock (eg callback calls load_gltf again)
+		lock.unlock();
+		// invoke callback
+		if (callback) { callback(); }
 	}
 }
 } // namespace facade

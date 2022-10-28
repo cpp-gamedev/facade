@@ -137,6 +137,7 @@ struct Scene::TreeBuilder {
 			// add node with default camera
 			assert(!out_scene.m_storage.cameras.empty());
 			auto node = Node{};
+			node.name = "camera";
 			// TODO
 			node.transform.set_position({0.0f, 0.0f, 5.0f});
 			node.attach(Id<Camera>{0});
@@ -267,8 +268,9 @@ Node const& Scene::camera() const {
 Texture Scene::make_texture(Image::View image) const { return Texture{m_gfx, default_sampler(), image}; }
 
 void Scene::add_default_camera() {
-	m_storage.cameras.push_back({});
+	m_storage.cameras.push_back(Camera{.name = "default"});
 	auto node = Node{};
+	node.name = "camera";
 	node.attach<Id<Camera>>(0);
 	m_tree.camera = add_unchecked(m_tree.roots, std::move(node));
 }

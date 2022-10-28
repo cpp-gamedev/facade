@@ -42,5 +42,5 @@ constexpr auto load_status_str = EnumArray<LoadStatus, std::string_view>{
 
 static_assert(std::size(load_status_str.t) == static_cast<std::size_t>(LoadStatus::eCOUNT_));
 
-constexpr float load_progress(LoadStatus const stage) { return static_cast<float>(stage) / (static_cast<float>(LoadStatus::eCOUNT_) - 1.0f); }
+constexpr float load_progress(LoadStatus const stage) { return static_cast<float>(stage) / static_cast<float>(LoadStatus::eCOUNT_); }
 } // namespace facade

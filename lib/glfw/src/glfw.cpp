@@ -14,6 +14,7 @@ std::mutex g_mutex{};
 
 struct {
 	std::unordered_map<GLFWwindow*, Glfw::State> states{};
+	// polling / dt is shared across all windows
 	DeltaTime dt{};
 } g_states{};
 

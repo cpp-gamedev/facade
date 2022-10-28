@@ -66,7 +66,7 @@ class Engine {
 	///
 	bool running() const;
 	///
-	/// \brief Poll events and obtain delta time
+	/// \brief Poll events and obtain updated state
 	///
 	State const& poll();
 	///
@@ -79,7 +79,15 @@ class Engine {
 	///
 	void request_stop();
 
+	///
+	/// \brief Load a GLTF scene asynchronously
+	///
+	/// Subsequent requests will be rejected if one is in flight
+	///
 	bool load_async(std::string gltf_json_path, UniqueTask<void()> on_loaded = {});
+	///
+	/// \brief Obtain status of in-flight async load request (if active)
+	///
 	LoadStatus load_status() const;
 
 	glm::uvec2 window_extent() const;
@@ -92,7 +100,7 @@ class Engine {
 	GLFWwindow* window() const;
 
   private:
-	void update_futures();
+	void update_load_request();
 
 	struct Impl;
 	inline static Impl const* s_instance{};

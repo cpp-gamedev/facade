@@ -1,18 +1,25 @@
 #include <backends/imgui_impl_glfw.h>
 #include <backends/imgui_impl_vulkan.h>
 #include <imgui.h>
+#include <djson/json.hpp>
 #include <facade/defines.hpp>
 #include <facade/engine/engine.hpp>
 #include <facade/engine/scene_renderer.hpp>
 #include <facade/glfw/glfw_wsi.hpp>
 #include <facade/render/renderer.hpp>
+#include <facade/util/data_provider.hpp>
 #include <facade/util/error.hpp>
+#include <facade/util/logger.hpp>
 #include <facade/vk/cmd.hpp>
 #include <facade/vk/vk.hpp>
 #include <glm/gtc/color_space.hpp>
 #include <glm/mat4x4.hpp>
+#include <filesystem>
+#include <future>
 
 namespace facade {
+namespace fs = std::filesystem;
+
 namespace {
 static constexpr std::size_t command_buffers_v{1};
 
@@ -150,6 +157,27 @@ struct RenderWindow {
 		: window(std::move(window)), vulkan(GlfwWsi{this->window}, validation), gfx(vulkan.gfx()),
 		  renderer(gfx, this->window, gui.get(), Renderer::CreateInfo{command_buffers_v, msaa}), gui(std::move(gui)) {}
 };
+
+bool load_gltf(Scene& out_scene, char const* path) {
+	auto const provider = FileDataProvider::mount_parent_dir(path);
+	auto json = dj::Json::from_file(path);
+	return out_scene.load_gltf(json, provider);
+}
+
+template <typename T>
+bool ready(std::future<T> const& future) {
+	return future.valid() && future.wait_for(std::chrono::seconds{}) == std::future_status::ready;
+}
+
+template <typename T>
+bool timeout(std::future<T> const& future) {
+	return future.valid() && future.wait_for(std::chrono::seconds{}) == std::future_status::timeout;
+}
+
+template <typename T>
+bool busy(std::future<T> const& future) {
+	return future.valid() && future.wait_for(std::chrono::seconds{}) == std::future_status::deferred;
+}
 } // namespace
 
 struct Engine::Impl {
@@ -158,6 +186,11 @@ struct Engine::Impl {
 	Scene scene;
 
 	std::uint8_t msaa;
+
+	std::vector<std::future<Scene>> discard{};
+	std::future<Scene> future{};
+	std::mutex mutex{};
+	std::function<void()> on_loaded{};
 
 	Impl(UniqueWin window, std::uint8_t msaa, bool validation)
 		: window(std::move(window), std::make_unique<DearImGui>(), msaa, validation), renderer(this->window.gfx), scene(this->window.gfx), msaa(msaa) {
@@ -196,6 +229,7 @@ void Engine::hide() { glfwHideWindow(window()); }
 bool Engine::running() const { return !glfwWindowShouldClose(window()); }
 
 auto Engine::poll() -> State const& {
+	update_futures();
 	m_impl->window.gui->new_frame();
 	m_impl->window.window.get().glfw->poll_events();
 	return m_impl.get()->window.window.get().state();
@@ -213,10 +247,40 @@ void Engine::request_stop() { glfwSetWindowShouldClose(window(), GLFW_TRUE); }
 glm::uvec2 Engine::window_extent() const { return m_impl->window.window.get().window_extent(); }
 glm::uvec2 Engine::framebuffer_extent() const { return m_impl->window.window.get().framebuffer_extent(); }
 
+bool Engine::load_async(std::string gltf_json_path, std::function<void()> on_loaded) {
+	if (!fs::is_regular_file(gltf_json_path)) { return false; }
+	auto lock = std::scoped_lock{m_impl->mutex};
+	m_impl->on_loaded = std::move(on_loaded);
+	if (m_impl->future.valid()) { m_impl->discard.push_back(std::move(m_impl->future)); }
+	auto path = gltf_json_path;
+	if (auto const i = path.find_last_of('/'); i != std::string::npos) { path = path.substr(i + 1); }
+	logger::info("[Engine] Loading GLTF [{}]...", path);
+	auto func = [this, path = std::move(gltf_json_path)] {
+		auto scene = Scene{m_impl->window.gfx};
+		if (!load_gltf(scene, path.c_str())) { logger::error("[Engine] Failed to load GLTF: [{}]", path); }
+		return scene;
+	};
+	m_impl->future = std::async(std::launch::async, func);
+	return true;
+}
+
 Scene& Engine::scene() const { return m_impl->scene; }
-Gfx const& Engine::gfx() const { return m_impl->window.gfx; }
 GLFWwindow* Engine::window() const { return m_impl->window.window.get(); }
 Glfw::State const& Engine::state() const { return m_impl->window.window.get().state(); }
 Input const& Engine::input() const { return state().input; }
 Renderer& Engine::renderer() const { return m_impl->window.renderer; }
+
+void Engine::update_futures() {
+	auto lock = std::scoped_lock{m_impl->mutex};
+	std::erase_if(m_impl->discard, [](std::future<Scene> const& future) { return !busy(future); });
+	if (ready(m_impl->future)) {
+		m_impl->scene = m_impl->future.get();
+		// TODO: log time
+		logger::info("...GLTF loaded");
+		if (m_impl->on_loaded) {
+			m_impl->on_loaded();
+			m_impl->on_loaded = {};
+		}
+	}
+}
 } // namespace facade

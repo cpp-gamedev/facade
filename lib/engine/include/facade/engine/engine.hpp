@@ -3,6 +3,7 @@
 #include <facade/scene/scene.hpp>
 #include <facade/util/time.hpp>
 #include <facade/vk/shader.hpp>
+#include <functional>
 
 namespace facade {
 struct Gfx;
@@ -78,17 +79,20 @@ class Engine {
 	///
 	void request_stop();
 
+	bool load_async(std::string gltf_json_path, std::function<void()> on_loaded = {});
+
 	glm::uvec2 window_extent() const;
 	glm::uvec2 framebuffer_extent() const;
 
 	Scene& scene() const;
-	Gfx const& gfx() const;
 	State const& state() const;
 	Input const& input() const;
 	Renderer& renderer() const;
 	GLFWwindow* window() const;
 
   private:
+	void update_futures();
+
 	struct Impl;
 	inline static Impl const* s_instance{};
 	std::unique_ptr<Impl> m_impl{};

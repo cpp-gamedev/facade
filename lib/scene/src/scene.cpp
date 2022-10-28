@@ -72,10 +72,6 @@ Mesh to_mesh(gltf::Mesh const& mesh) {
 	return ret;
 }
 
-Texture to_texture(Gfx const& gfx, vk::Sampler sampler, Image const& image, gltf::Texture const& texture) {
-	return Texture{gfx, sampler, image.view(), Texture::CreateInfo{.mip_mapped = true, .colour_space = texture.colour_space}};
-}
-
 struct Img1x1 {
 	std::byte bytes[4]{};
 
@@ -129,7 +125,7 @@ struct Scene::TreeBuilder {
 		if (set_cam) { camera = node_id; }
 	}
 
-	Tree operator()(Tree::Data const& tree, Id<Scene> id) {
+	Tree operator()(Tree::Data const& tree, Id<Tree> id) {
 		auto ret = Tree{.id = id};
 		for (auto const index : tree.roots) {
 			assert(index < in_gnodes.size());
@@ -162,10 +158,9 @@ bool Scene::load_gltf(dj::Json const& root, DataProvider const& provider) noexce
 		for (auto gltf_camera : asset.cameras) { add(to_camera(std::move(gltf_camera))); }
 	}
 
-	m_storage.images = std::move(asset.images);
 	for (auto const& sampler : asset.samplers) { add(to_sampler(m_gfx, sampler)); }
 	for (auto const& material : asset.materials) { add(to_material(material)); }
-	for (auto const& geometry : asset.geometries) { add(StaticMesh{m_gfx, geometry}); }
+	for (auto const& geometry : asset.geometries) { add(geometry); }
 	for (auto const& mesh : asset.meshes) { add(to_mesh(mesh)); }
 
 	auto get_sampler = [this](std::optional<std::size_t> sampler_id) {
@@ -173,7 +168,8 @@ bool Scene::load_gltf(dj::Json const& root, DataProvider const& provider) noexce
 		return m_storage.samplers[*sampler_id].sampler();
 	};
 	for (auto const& texture : asset.textures) {
-		m_storage.textures.push_back(to_texture(m_gfx, get_sampler(texture.sampler), m_storage.images.at(texture.source), texture));
+		auto const tci = Texture::CreateInfo{.mip_mapped = true, .colour_space = texture.colour_space};
+		m_storage.textures.emplace_back(m_gfx, get_sampler(texture.sampler), asset.images.at(texture.source), tci);
 	}
 
 	m_storage.data.nodes = std::move(asset.nodes);
@@ -202,16 +198,23 @@ Id<Material> Scene::add(std::unique_ptr<Material> material) {
 	return id;
 }
 
-Id<StaticMesh> Scene::add(StaticMesh mesh) {
+Id<StaticMesh> Scene::add(Geometry const& geometry) {
 	auto const id = m_storage.static_meshes.size();
-	m_storage.static_meshes.push_back(std::move(mesh));
+	m_storage.static_meshes.emplace_back(m_gfx, geometry);
 	return id;
 }
 
-Id<Image> Scene::add(Image image) {
-	auto const id = m_storage.images.size();
-	m_storage.images.push_back(std::move(image));
-	return id;
+Id<Texture> Scene::add(Image::View image, Id<Sampler> sampler_id, ColourSpace colour_space) {
+	auto sampler = [&] {
+		if (sampler_id >= m_storage.samplers.size()) {
+			logger::warn("[Scene] Invalid sampler id: [{}], using default", sampler_id.value());
+			return default_sampler();
+		}
+		return m_storage.samplers[sampler_id].sampler();
+	}();
+	auto const ret = m_storage.textures.size();
+	m_storage.textures.emplace_back(m_gfx, sampler, image, Texture::CreateInfo{.colour_space = colour_space});
+	return ret;
 }
 
 Id<Mesh> Scene::add(Mesh mesh) {
@@ -226,8 +229,8 @@ Id<Node> Scene::add(Node node, Id<Node> parent) {
 	throw Error{fmt::format("Scene {}: Invalid parent Node Id: {}", m_name, parent)};
 }
 
-bool Scene::load(Id<Scene> id) {
-	if (id >= scene_count()) { return false; }
+bool Scene::load(Id<Tree> id) {
+	if (id >= tree_count()) { return false; }
 	return load_tree(id);
 }
 
@@ -235,7 +238,8 @@ Ptr<Node> Scene::find(Id<Node> id) { return const_cast<Node*>(std::as_const(*thi
 Ptr<Node const> Scene::find(Id<Node> id) const { return find_node(m_tree.roots, id); }
 
 Ptr<Material> Scene::find(Id<Material> id) const { return id >= m_storage.materials.size() ? nullptr : m_storage.materials[id].get(); }
-
+Ptr<StaticMesh const> Scene::find(Id<StaticMesh> id) const { return id >= m_storage.static_meshes.size() ? nullptr : &m_storage.static_meshes[id]; }
+Ptr<Texture const> Scene::find(Id<Texture> id) const { return id >= m_storage.textures.size() ? nullptr : &m_storage.textures[id]; }
 Ptr<Mesh const> Scene::find(Id<Mesh> id) const { return id >= m_storage.meshes.size() ? nullptr : &m_storage.meshes[id]; }
 
 bool Scene::select(Id<Camera> id) {
@@ -261,7 +265,7 @@ void Scene::add_default_camera() {
 	m_tree.camera = add_unchecked(m_tree.roots, std::move(node));
 }
 
-bool Scene::load_tree(Id<Scene> id) {
+bool Scene::load_tree(Id<Tree> id) {
 	assert(id < m_storage.data.trees.size());
 	m_tree = TreeBuilder{*this, m_storage.data.nodes}(m_storage.data.trees[id], id);
 	return true;

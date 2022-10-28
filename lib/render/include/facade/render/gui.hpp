@@ -4,6 +4,9 @@
 #include <facade/vk/gfx.hpp>
 
 namespace facade {
+/// 
+/// \brief Creates a window and a renderer.
+/// 
 class Gui {
   public:
 	struct InitInfo {

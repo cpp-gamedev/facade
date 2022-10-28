@@ -8,39 +8,59 @@
 #include <memory>
 
 namespace facade {
+	
+///
+/// \brief Handles all information about the frame and what is happening.
+///
 struct FrameStats {
+	
+	///
+	/// \brief Name of the GPU
+	///
 	std::string_view gpu_name{};
+
 	///
 	/// \brief Total frames so far
 	///
 	std::uint64_t frame_counter{};
+	
 	///
 	/// \brief Triangles drawn in previous frame
 	///
 	std::uint64_t triangles{};
+
 	///
 	/// \brief Draw calls in previous frame
 	///
 	std::uint32_t draw_calls{};
+	
 	///
 	/// \brief Framerate (until previous frame)
 	///
 	std::uint32_t fps{};
+	
 	///
 	/// \brief Current present mode
 	///
 	vk::PresentModeKHR mode{};
+	
 	///
 	/// \brief Multi-sampled anti-aliasing level
 	///
 	vk::SampleCountFlagBits msaa{};
 };
 
+///
+/// \brief
+///
 struct RendererCreateInfo {
 	std::size_t command_buffers{1};
 	std::uint8_t desired_msaa{1};
 };
 
+///
+/// \brief Creates a window and a renderer.
+///
 class Renderer {
   public:
 	using CreateInfo = RendererCreateInfo;

@@ -12,6 +12,10 @@ struct ViewPlane {
 	float far{};
 };
 
+////////////////////////////////////////////////////////////
+/// \brief A camera inside of a 3d plane
+///
+////////////////////////////////////////////////////////////
 struct Camera {
 	struct Perspective {
 		ViewPlane view_plane{1.0f, 1000.0f};

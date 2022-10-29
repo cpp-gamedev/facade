@@ -45,13 +45,13 @@ constexpr vk::Filter to_filter(gltf::Filter const filter) {
 	}
 }
 
-Sampler to_sampler(Gfx const& gfx, gltf::Sampler const& sampler) {
-	auto info = Sampler::CreateInfo{};
-	info.mode_s = to_address_mode(sampler.wrap_s);
-	info.mode_t = to_address_mode(sampler.wrap_t);
-	if (sampler.min_filter) { info.min = to_filter(*sampler.min_filter); }
-	if (sampler.mag_filter) { info.mag = to_filter(*sampler.mag_filter); }
-	return Sampler{gfx, info};
+Sampler::CreateInfo to_sampler_info(gltf::Sampler const& sampler) {
+	auto ret = Sampler::CreateInfo{};
+	ret.mode_s = to_address_mode(sampler.wrap_s);
+	ret.mode_t = to_address_mode(sampler.wrap_t);
+	if (sampler.min_filter) { ret.min = to_filter(*sampler.min_filter); }
+	if (sampler.mag_filter) { ret.mag = to_filter(*sampler.mag_filter); }
+	return ret;
 }
 
 std::unique_ptr<Material> to_material(gltf::Material const& material) {
@@ -125,8 +125,8 @@ struct Scene::TreeBuilder {
 		if (set_cam) { camera = node_id; }
 	}
 
-	Tree operator()(Tree::Data const& tree, Id<Tree> id) {
-		auto ret = Tree{.id = id};
+	TreeImpl operator()(TreeImpl::Data const& tree, Id<Tree> id) {
+		auto ret = TreeImpl{.id = id};
 		for (auto const index : tree.roots) {
 			assert(index < in_gnodes.size());
 			add(in_gnodes[index], ret.roots);
@@ -165,7 +165,7 @@ bool Scene::load_gltf(dj::Json const& root, DataProvider const& provider, std::a
 		for (auto gltf_camera : asset.cameras) { add(to_camera(std::move(gltf_camera))); }
 	}
 
-	for (auto const& sampler : asset.samplers) { add(to_sampler(m_gfx, sampler)); }
+	for (auto const& sampler : asset.samplers) { add(to_sampler_info(sampler)); }
 	for (auto const& material : asset.materials) { add(to_material(material)); }
 	for (auto const& geometry : asset.geometries) { add(geometry); }
 	for (auto const& mesh : asset.meshes) { add(to_mesh(mesh)); }
@@ -180,7 +180,7 @@ bool Scene::load_gltf(dj::Json const& root, DataProvider const& provider, std::a
 	}
 
 	m_storage.data.nodes = std::move(asset.nodes);
-	for (auto& scene : asset.scenes) { m_storage.data.trees.push_back(Tree::Data{.roots = std::move(scene.root_nodes)}); }
+	for (auto& scene : asset.scenes) { m_storage.data.trees.push_back(TreeImpl::Data{.roots = std::move(scene.root_nodes)}); }
 
 	auto const ret = load(asset.start_scene);
 	*out_status = LoadStatus::eNone;
@@ -195,9 +195,9 @@ Id<Camera> Scene::add(Camera camera) {
 	return id;
 }
 
-Id<Sampler> Scene::add(Sampler sampler) {
+Id<Sampler> Scene::add(Sampler::CreateInfo const& create_info) {
 	auto const id = m_storage.samplers.size();
-	m_storage.samplers.push_back(std::move(sampler));
+	m_storage.samplers.emplace_back(m_gfx, create_info);
 	return id;
 }
 
@@ -233,7 +233,7 @@ Id<Mesh> Scene::add(Mesh mesh) {
 
 Id<Node> Scene::add(Node node, Id<Node> parent) {
 	check(node);
-	if (parent == id_v) { return add_unchecked(m_tree.roots, std::move(node)); }
+	if (parent == null_id_v) { return add_unchecked(m_tree.roots, std::move(node)); }
 	if (auto* target = find(parent)) { return add_unchecked(target->m_children, std::move(node)); }
 	throw Error{fmt::format("Scene {}: Invalid parent Node Id: {}", m_name, parent)};
 }

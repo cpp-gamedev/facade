@@ -78,6 +78,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/util/pinned.hpp
   include/${target_prefix}/util/ptr.hpp
   include/${target_prefix}/util/time.hpp
+  include/${target_prefix}/util/transform.hpp
   include/${target_prefix}/util/type_id.hpp
   include/${target_prefix}/util/unique_task.hpp
   include/${target_prefix}/util/unique.hpp

@@ -3,6 +3,9 @@
 #include <string_view>
 
 namespace facade {
+///
+/// \brief Loading status of a GLTF asset into a Scene.
+///
 enum class LoadStatus : std::uint8_t {
 	eNone,
 	eStartingThread,
@@ -22,6 +25,9 @@ enum class LoadStatus : std::uint8_t {
 	eCOUNT_,
 };
 
+///
+/// \brief String map for LoadStatus.
+///
 constexpr auto load_status_str = EnumArray<LoadStatus, std::string_view>{
 	"None",
 	"Starting Thread",
@@ -42,5 +48,8 @@ constexpr auto load_status_str = EnumArray<LoadStatus, std::string_view>{
 
 static_assert(std::size(load_status_str.t) == static_cast<std::size_t>(LoadStatus::eCOUNT_));
 
-constexpr float load_progress(LoadStatus const stage) { return static_cast<float>(stage) / static_cast<float>(LoadStatus::eCOUNT_); }
+///
+/// \brief Obtain the overall loading progress.
+///
+constexpr float load_progress(LoadStatus const status) { return static_cast<float>(status) / static_cast<float>(LoadStatus::eCOUNT_); }
 } // namespace facade

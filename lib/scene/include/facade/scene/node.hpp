@@ -1,6 +1,6 @@
 #pragma once
 #include <facade/scene/id.hpp>
-#include <facade/scene/transform.hpp>
+#include <facade/util/transform.hpp>
 #include <facade/util/type_id.hpp>
 #include <memory>
 #include <span>
@@ -8,15 +8,33 @@
 #include <vector>
 
 namespace facade {
+///
+/// \brief Concept for components attachable to a Node
+///
 template <typename Type>
 concept Attachable = std::is_move_constructible_v<Type>;
 
+///
+/// \brief Represents a node in the scene graph.
+///
+/// Each Node instance contains:
+/// - Transform
+/// - Attachments
+/// - Child nodes
+///
 class Node {
   public:
 	Node() = default;
 	Node(Node&&) = default;
 	Node& operator=(Node&&) = default;
 
+	///
+	/// \brief Attach t to the Node.
+	/// \param t object to attach
+	/// \returns Reference to attached object
+	///
+	/// Replaces existing Type, if already attached.
+	///
 	template <Attachable Type>
 	Type& attach(Type t) {
 		auto ret = std::make_unique<Model<Type>>(std::move(t));
@@ -24,24 +42,49 @@ class Node {
 		return static_cast<Model<Type>&>(*it->second).t;
 	}
 
+	///
+	/// \brief Obtain a pointer to attached Type, if present.
+	/// \returns nullptr if Type isn't attached
+	///
 	template <Attachable Type>
 	Type* find() const {
 		if (auto it = m_components.find(TypeId::make<Type>()); it != m_components.end()) { return &static_cast<Model<Type>&>(*it->second).t; }
 		return nullptr;
 	}
 
+	///
+	/// \brief Detach Type, if attached.
+	///
 	template <Attachable Type>
 	void detach() {
 		m_components.erase(TypeId::make<Type>());
 	}
 
+	///
+	/// \brief Obtain the Id of the node
+	///
 	Id<Node> id() const { return m_id; }
 
+	///
+	/// \brief Obtain a mutable view into the child nodes.
+	///
 	std::span<Node> children() { return m_children; }
+	///
+	/// \brief Obtain an immutable view into the child nodes.
+	///
 	std::span<Node const> children() const { return m_children; }
 
+	///
+	/// \brief Transform for the node.
+	///
 	Transform transform{};
+	///
+	/// \brief For instanced rendering.
+	///
 	std::vector<Transform> instances{};
+	///
+	/// \brief Name of the node.
+	///
 	std::string name{};
 
   private:

@@ -64,6 +64,7 @@ target_compile_definitions(${PROJECT_NAME}
 
 target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/util/async_queue.hpp
+  include/${target_prefix}/util/bool.hpp
   include/${target_prefix}/util/byte_buffer.hpp
   include/${target_prefix}/util/colour_space.hpp
   include/${target_prefix}/util/data_provider.hpp

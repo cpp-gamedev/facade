@@ -19,6 +19,7 @@
 
 #include <bin/shaders.hpp>
 
+#include <filesystem>
 #include <iostream>
 
 #include <imgui.h>
@@ -26,6 +27,8 @@
 using namespace facade;
 
 namespace {
+namespace fs = std::filesystem;
+
 static constexpr auto test_json_v = R"(
 {
   "scene": 0,
@@ -206,6 +209,16 @@ void log_prologue() {
 	logger::info("facade v{}.{}.{} | {} |", 0, 0, 0, buf);
 }
 
+fs::path find_gltf(fs::path root) {
+	if (root.extension() == ".gltf") { return root; }
+	for (auto const& it : fs::directory_iterator{root}) {
+		if (!it.is_regular_file()) { continue; }
+		auto path = it.path();
+		if (path.extension() == ".gltf") { return path; }
+	}
+	return {};
+}
+
 void run() {
 	auto engine = std::optional<Engine>{};
 
@@ -267,17 +280,25 @@ void run() {
 		if (input.keyboard.pressed(GLFW_KEY_ESCAPE)) { engine->request_stop(); }
 		glfwSetInputMode(engine->window(), GLFW_CURSOR, mouse_look ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
 
-		if (!state.file_drops.empty()) {
-			engine->load_async(state.file_drops.front(), [&] { post_scene_load(engine->scene()); });
-			loading.title = fmt::format("Loading {}...", state.to_filename(state.file_drops.front()));
-			editor::Popup::open(loading.title.c_str());
+		if (!state.file_drops.empty() && engine->load_status() == LoadStatus::eNone) {
+			auto path = find_gltf(state.file_drops.front());
+			if (!fs::is_regular_file(path)) {
+				logger::error("Failed to locate .gltf in path: [{}]", state.file_drops.front());
+			} else {
+				if (engine->load_async(path.generic_string(), [&] { post_scene_load(engine->scene()); })) {
+					loading.title = fmt::format("Loading {}...", path.filename().generic_string());
+				}
+			}
 		}
 		loading.status = engine->load_status();
 
-		if (auto popup = editor::Modal{loading.title.c_str()}) {
+		if (loading.status > LoadStatus::eNone) {
+			auto const* main_viewport = ImGui::GetMainViewport();
+			ImGui::SetNextWindowPos({0.0f, main_viewport->WorkPos.y + main_viewport->Size.y - 100.0f});
+			ImGui::SetNextWindowSize({main_viewport->Size.x, 100.0f});
+			auto window = editor::Window{loading.title.c_str(), nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize};
 			ImGui::Text("%s", load_status_str[loading.status].data());
-			ImGui::ProgressBar(load_progress(loading.status), ImVec2{400.0f, 0}, load_status_str[loading.status].data());
-			if (loading.status == LoadStatus::eNone) { editor::Popup::close_current(); }
+			ImGui::ProgressBar(load_progress(loading.status), ImVec2{-1.0f, 0.0f}, load_status_str[loading.status].data());
 		}
 
 		auto& camera = engine->scene().camera();

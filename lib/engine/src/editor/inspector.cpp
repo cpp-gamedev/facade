@@ -55,6 +55,9 @@ bool Inspector::inspect(char const* label, glm::vec4& out_vec4, float speed, flo
 bool Inspector::inspect(char const* label, glm::quat& out_quat) const {
 	auto euler = to_degree(glm::eulerAngles(out_quat));
 	if (inspect(label, euler, 0.5f, -180.0f, 180.0f)) {
+		static constexpr auto y_limit_v{90.0f};
+		if (euler.y < -y_limit_v) { euler.y = y_limit_v; }
+		if (euler.y > y_limit_v) { euler.y = -y_limit_v; }
 		out_quat = glm::quat(to_radian(euler));
 		return true;
 	}
@@ -63,8 +66,7 @@ bool Inspector::inspect(char const* label, glm::quat& out_quat) const {
 
 bool Inspector::inspect(Transform& out_transform) const {
 	auto ret = Modified{};
-	ImGui::Separator();
-	if (auto tn = TreeNode{"Transform"}) {
+	if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen)) {
 		auto vec3 = out_transform.position();
 		if (ret(inspect("Position", vec3))) { out_transform.set_position(vec3); }
 		auto quat = out_transform.orientation();
@@ -96,10 +98,10 @@ bool SceneInspector::inspect(Id<Material> material_id) const {
 	auto* material = m_scene.find(material_id);
 	if (!material) { return false; }
 	if (auto* unlit = dynamic_cast<UnlitMaterial*>(material)) {
-		if (auto tn = TreeNode{FixedString{"Material (Unlit) ({})", material_id}.c_str()}) { return inspect(tn, *unlit); }
+		if (auto tn = TreeNode{FixedString{"Material (Unlit) ({})###Material", material_id}.c_str()}) { return inspect(tn, *unlit); }
 		return false;
 	} else if (auto* lit = dynamic_cast<LitMaterial*>(material)) {
-		if (auto tn = TreeNode{FixedString{"Material (Lit) ({})", material_id}.c_str()}) { return inspect(tn, *lit); }
+		if (auto tn = TreeNode{FixedString{"Material (Lit) ({})###Material", material_id}.c_str()}) { return inspect(tn, *lit); }
 		return false;
 	}
 	return false;
@@ -118,8 +120,7 @@ bool SceneInspector::inspect(Id<Mesh> mesh_id) const {
 	auto ret = Modified{};
 	auto* mesh = m_scene.find(mesh_id);
 	if (!mesh) { return ret.value; }
-	ImGui::Separator();
-	if (auto tn = TreeNode{FixedString{"Mesh ({})", mesh_id}.c_str()})
+	if (ImGui::CollapsingHeader(FixedString{"Mesh ({})###Mesh", mesh_id}.c_str())) {
 		for (std::size_t i = 0; i < mesh->primitives.size(); ++i) {
 			if (auto tn = TreeNode{FixedString{"Primitive {}", i}.c_str()}) {
 				auto const& primitive = mesh->primitives[i];
@@ -127,6 +128,7 @@ bool SceneInspector::inspect(Id<Mesh> mesh_id) const {
 				if (primitive.material) { ret(inspect(*primitive.material)); }
 			}
 		}
+	}
 	return ret.value;
 }
 } // namespace facade::editor

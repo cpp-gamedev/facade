@@ -6,9 +6,13 @@ struct DirLight {
 	vec3 diffuse;
 };
 
+const uint ALPHA_OPAQUE = 0;
+const uint ALPHA_BLEND = 1;
+const uint ALPHA_MASK = 2;
+
 struct Material {
 	vec4 albedo;
-	vec4 metallic_roughness;
+	vec4 m_r_aco_am;
 };
 
 layout (set = 0, binding = 1) readonly buffer DL {
@@ -73,8 +77,8 @@ vec3 gamc(vec3 a) {
 }
 
 vec3 cook_torrance() {
-	float roughness = material.metallic_roughness.y * texture(roughness_metallic, in_uv).g;
-	float metallic = material.metallic_roughness.x * texture(roughness_metallic, in_uv).b;
+	float roughness = material.m_r_aco_am.y * texture(roughness_metallic, in_uv).g;
+	float metallic = material.m_r_aco_am.x * texture(roughness_metallic, in_uv).b;
 	vec3 f0 = mix(vec3(0.04), vec3(material.albedo), metallic);
 
 	vec3 L0 = vec3(0.0);
@@ -110,5 +114,14 @@ vec3 cook_torrance() {
 }
 
 void main() {
-	out_rgba = vec4(cook_torrance(), 1.0) * texture(base_colour, in_uv);
+	vec4 diffuse = texture(base_colour, in_uv);
+	float alpha_cutoff = material.m_r_aco_am.z;
+	uint alpha_mode = floatBitsToUint(material.m_r_aco_am.w);
+	if (alpha_mode == ALPHA_OPAQUE) {
+		diffuse.w = 1.0;
+	} else if (alpha_mode == ALPHA_MASK) {
+		if (diffuse.w < alpha_cutoff) { discard; }
+		diffuse.w = 1.0;
+	}
+	out_rgba = vec4(cook_torrance(), 1.0) * diffuse;
 }

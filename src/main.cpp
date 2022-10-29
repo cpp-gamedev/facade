@@ -294,11 +294,11 @@ void run() {
 
 		if (loading.status > LoadStatus::eNone) {
 			auto const* main_viewport = ImGui::GetMainViewport();
-			ImGui::SetNextWindowPos({0.0f, main_viewport->WorkPos.y + main_viewport->Size.y - 75.0f});
-			ImGui::SetNextWindowSize({-1.0f, 75.0f});
-			auto window = editor::Window{loading.title.c_str(), nullptr, ImGuiWindowFlags_NoTitleBar};
+			ImGui::SetNextWindowPos({0.0f, main_viewport->WorkPos.y + main_viewport->Size.y - 100.0f});
+			ImGui::SetNextWindowSize({main_viewport->Size.x, 100.0f});
+			auto window = editor::Window{loading.title.c_str(), nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize};
 			ImGui::Text("%s", load_status_str[loading.status].data());
-			ImGui::ProgressBar(load_progress(loading.status), ImVec2{main_viewport->WorkSize.x, 0.0f}, load_status_str[loading.status].data());
+			ImGui::ProgressBar(load_progress(loading.status), ImVec2{-1.0f, 0.0f}, load_status_str[loading.status].data());
 		}
 
 		auto& camera = engine->scene().camera();

@@ -97,7 +97,8 @@ struct Renderer::Impl {
 	}
 };
 
-Renderer::Renderer(Gfx gfx, Glfw::Window window, Gui* gui, CreateInfo const& info) : m_impl{std::make_unique<Impl>(std::move(gfx), window, gui, info)} {
+Renderer::Renderer(Gfx const& gfx, Glfw::Window window, Gui* gui, CreateInfo const& create_info)
+	: m_impl{std::make_unique<Impl>(std::move(gfx), window, gui, create_info)} {
 	m_impl->swapchain.refresh(Swapchain::Spec{window.framebuffer_extent()});
 	m_impl->stats.gpu_name = m_impl->gfx.gpu.getProperties().deviceName.data();
 	m_impl->stats.stats.gpu_name = m_impl->stats.gpu_name;
@@ -111,7 +112,7 @@ Renderer::Renderer(Gfx gfx, Glfw::Window window, Gui* gui, CreateInfo const& inf
 			.colour_space = m_impl->swapchain.colour_space(),
 		});
 	}
-	logger::info("[Renderer] buffering (frames): [{}] | MSAA: [{}x] | max threads: [{}] |", buffering_v, to_int(m_impl->msaa), info.command_buffers);
+	logger::info("[Renderer] buffering (frames): [{}] | MSAA: [{}x] | max threads: [{}] |", buffering_v, to_int(m_impl->msaa), create_info.command_buffers);
 }
 
 Renderer::Renderer(Renderer&&) noexcept = default;
@@ -256,7 +257,7 @@ bool Renderer::render() {
 	return true;
 }
 
-void Renderer::draw(Pipeline& pipeline, StaticMesh const& mesh, std::span<glm::mat4x4 const> instances) {
+void Renderer::draw(Pipeline& pipeline, StaticMesh const& mesh, std::span<glm::mat4x4 const> instances) const {
 	// update stats
 	++m_impl->stats.draw_calls;
 	m_impl->stats.triangles += instances.size() * mesh.view().vertex_count / 3;

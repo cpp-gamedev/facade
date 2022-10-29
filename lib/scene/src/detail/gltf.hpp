@@ -1,5 +1,6 @@
 #pragma once
 #include <facade/scene/load_status.hpp>
+#include <facade/scene/material.hpp>
 #include <facade/scene/node_data.hpp>
 #include <facade/scene/transform.hpp>
 #include <facade/util/byte_buffer.hpp>
@@ -59,7 +60,7 @@ struct PbrMetallicRoughness {
 };
 
 struct Material {
-	enum class AlphaMode { eOpaque, eMask, eBlend };
+	using AlphaMode = facade::Material::AlphaMode;
 
 	std::string name{};
 	PbrMetallicRoughness pbr{};
@@ -67,7 +68,7 @@ struct Material {
 	std::optional<OccusionTextureInfo> occlusion_texture{};
 	std::optional<TextureInfo> emissive_texture{};
 	glm::vec3 emissive_factor{};
-	AlphaMode alpha_mode{};
+	AlphaMode alpha_mode{AlphaMode::eOpaque};
 	float alpha_cutoff{0.5f};
 	bool double_sided{};
 };

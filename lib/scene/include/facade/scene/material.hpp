@@ -20,6 +20,8 @@ struct TextureStore {
 
 class Material {
   public:
+	enum class AlphaMode : std::uint32_t { eOpaque = 0, eBlend, eMask };
+
 	static glm::vec4 to_linear(glm::vec4 const& srgb);
 	static glm::vec4 to_srgb(glm::vec4 const& linear);
 
@@ -49,6 +51,8 @@ class LitMaterial : public Material {
 	float roughness{0.5f};
 	std::optional<Id<Texture>> base_colour{};
 	std::optional<Id<Texture>> roughness_metallic{};
+	float alpha_cutoff{};
+	AlphaMode alpha_mode{AlphaMode::eOpaque};
 
 	void write_sets(Pipeline& pipeline, TextureStore const& store) const override;
 };

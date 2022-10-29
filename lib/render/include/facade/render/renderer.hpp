@@ -8,12 +8,10 @@
 #include <memory>
 
 namespace facade {
-	
 ///
-/// \brief Handles all information about the frame and what is happening.
+/// \brief Stores various frame statistics.
 ///
 struct FrameStats {
-	
 	///
 	/// \brief Name of the GPU
 	///
@@ -23,7 +21,7 @@ struct FrameStats {
 	/// \brief Total frames so far
 	///
 	std::uint64_t frame_counter{};
-	
+
 	///
 	/// \brief Triangles drawn in previous frame
 	///
@@ -33,17 +31,17 @@ struct FrameStats {
 	/// \brief Draw calls in previous frame
 	///
 	std::uint32_t draw_calls{};
-	
+
 	///
 	/// \brief Framerate (until previous frame)
 	///
 	std::uint32_t fps{};
-	
+
 	///
 	/// \brief Current present mode
 	///
 	vk::PresentModeKHR mode{};
-	
+
 	///
 	/// \brief Multi-sampled anti-aliasing level
 	///
@@ -51,7 +49,7 @@ struct FrameStats {
 };
 
 ///
-/// \brief
+/// \brief Initialization data for constructing a Renderer.
 ///
 struct RendererCreateInfo {
 	std::size_t command_buffers{1};
@@ -59,7 +57,7 @@ struct RendererCreateInfo {
 };
 
 ///
-/// \brief Creates a window and a renderer.
+/// \brief Owns a Vulkan Swapchain and RenderPass, a Shader::Db and Pipes instance each, and renders to the Window passed in constructor.
 ///
 class Renderer {
   public:

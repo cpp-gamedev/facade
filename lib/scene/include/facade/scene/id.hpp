@@ -1,30 +1,30 @@
 #pragma once
+#include <concepts>
 #include <cstdint>
 
 namespace facade {
-////////////////////////////////////////////////////////////
-/// \brief A ID assigned to items inside of the GLTF viewer.
 ///
-////////////////////////////////////////////////////////////
-template <typename T>
+/// \brief Represents a strongly-typed integral ID.
+///
+/// Primarily used for items owned by a Scene.
+///
+template <typename Type, std::integral Value = std::size_t>
 class Id {
   public:
-	using id_type = std::size_t;
+	using id_type = Value;
 
-	////////////////////////////////////////////////////////////
-	/// \brief ADD MORE INFO.
 	///
-	/// \param value ADD MORE INFO.
+	/// \brief Implicit constructor
+	/// \param value The underlying value of this instance
 	///
-	////////////////////////////////////////////////////////////
-	constexpr Id(std::size_t value = {}) : m_value(value) {}
+	constexpr Id(Value value = {}) : m_value(value) {}
 
-	constexpr std::size_t value() const { return m_value; }
-	constexpr operator std::size_t() const { return value(); }
+	constexpr Value value() const { return m_value; }
+	constexpr operator Value() const { return value(); }
 
 	bool operator==(Id const&) const = default;
 
   private:
-	std::size_t m_value{};
+	Value m_value{};
 };
 } // namespace facade

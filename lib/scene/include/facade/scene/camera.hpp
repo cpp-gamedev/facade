@@ -12,10 +12,11 @@ struct ViewPlane {
 	float far{};
 };
 
-////////////////////////////////////////////////////////////
-/// \brief A camera inside of a 3d plane
 ///
-////////////////////////////////////////////////////////////
+/// \brief Models a 3D camera with either perspective or orthographic projection parameters.
+///
+/// The view matrix is modelled through a Transform that's passed in as a parameter.
+///
 struct Camera {
 	struct Perspective {
 		ViewPlane view_plane{1.0f, 1000.0f};

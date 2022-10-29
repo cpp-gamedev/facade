@@ -123,6 +123,7 @@ struct MainMenu {
 	struct {
 		editor::Log log{};
 		editor::Inspectee inspectee{};
+		Bool unified_scaling{true};
 	} data{};
 
 	void change_vsync(Engine const& engine) const {
@@ -145,7 +146,9 @@ struct MainMenu {
 	void inspector(Scene& scene) {
 		bool show = true;
 		ImGui::SetNextWindowSize({400.0f, 400.0f}, ImGuiCond_Once);
-		if (auto window = editor::Window{data.inspectee.name.c_str(), &show}) { editor::SceneInspector{window, scene}.inspect(data.inspectee.id); }
+		if (auto window = editor::Window{data.inspectee.name.c_str(), &show}) {
+			editor::SceneInspector{window, scene}.inspect(data.inspectee.id, data.unified_scaling);
+		}
 		if (!show) { data.inspectee = {}; }
 	}
 

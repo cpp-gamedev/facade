@@ -7,7 +7,6 @@
 namespace facade::editor {
 namespace {
 bool eq(float const a, float const b, float const epsilon = 0.001f) { return std::abs(a - b) < epsilon; }
-constexpr glm::vec3 to_radian(glm::vec3 const& angles) { return {glm::radians(angles.x), glm::radians(angles.y), glm::radians(angles.z)}; }
 constexpr glm::vec3 to_degree(glm::vec3 const& angles) { return {glm::degrees(angles.x), glm::degrees(angles.y), glm::degrees(angles.z)}; }
 
 struct Modified {
@@ -54,17 +53,17 @@ bool Inspector::inspect(char const* label, glm::vec4& out_vec4, float speed, flo
 
 bool Inspector::inspect(char const* label, glm::quat& out_quat) const {
 	auto euler = to_degree(glm::eulerAngles(out_quat));
+	auto const org = euler;
 	if (inspect(label, euler, 0.5f, -180.0f, 180.0f)) {
-		static constexpr auto y_limit_v{90.0f};
-		if (euler.y < -y_limit_v) { euler.y = y_limit_v; }
-		if (euler.y > y_limit_v) { euler.y = -y_limit_v; }
-		out_quat = glm::quat(to_radian(euler));
+		if (std::abs(org.x - euler.x) > 0.0f) { out_quat = glm::rotate(out_quat, glm::radians(org.x - euler.x), right_v); }
+		if (std::abs(org.y - euler.y) > 0.0f) { out_quat = glm::rotate(out_quat, glm::radians(org.y - euler.y), up_v); }
+		if (std::abs(org.z - euler.z) > 0.0f) { out_quat = glm::rotate(out_quat, glm::radians(org.z - euler.z), front_v); }
 		return true;
 	}
 	return false;
 }
 
-bool Inspector::inspect(Transform& out_transform) const {
+bool Inspector::inspect(Transform& out_transform, Bool& out_unified_scaling) const {
 	auto ret = Modified{};
 	if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen)) {
 		auto vec3 = out_transform.position();
@@ -72,7 +71,13 @@ bool Inspector::inspect(Transform& out_transform) const {
 		auto quat = out_transform.orientation();
 		if (ret(inspect("Orientation", quat))) { out_transform.set_orientation(quat); }
 		vec3 = out_transform.scale();
-		if (ret(inspect("Scale", vec3))) { out_transform.set_scale(vec3); }
+		if (out_unified_scaling) {
+			if (ret(ImGui::DragFloat("Scale", &vec3.x, 0.1f))) { out_transform.set_scale({vec3.x, vec3.x, vec3.x}); }
+		} else {
+			if (ret(inspect("Scale", vec3, 0.1f))) { out_transform.set_scale(vec3); }
+		}
+		ImGui::SameLine();
+		ImGui::Checkbox("Unified", &out_unified_scaling.value);
 	}
 	return ret.value;
 }
@@ -107,11 +112,11 @@ bool SceneInspector::inspect(Id<Material> material_id) const {
 	return false;
 }
 
-bool SceneInspector::inspect(Id<Node> node_id) const {
+bool SceneInspector::inspect(Id<Node> node_id, Bool& out_unified_scaling) const {
 	auto ret = Modified{};
 	auto* node = m_scene.find(node_id);
 	if (!node) { return false; }
-	ret(inspect(node->transform));
+	ret(inspect(node->transform, out_unified_scaling));
 	if (auto const* mesh_id = node->find<Id<Mesh>>()) { ret(inspect(*mesh_id)); }
 	return ret.value;
 }

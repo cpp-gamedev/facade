@@ -7,8 +7,8 @@ Openable::Openable(bool is_open) : m_open(is_open) {}
 
 Window::Window(char const* label, bool* open_if, int flags) : Openable(ImGui::Begin(label, open_if, flags)) {}
 
-Window::Window(NotClosed<Window>, char const* label, glm::vec2 size, bool border, int flags)
-	: Openable(ImGui::BeginChild(label, {size.x, size.y}, border, flags)), m_child(true) {}
+Window::Window(NotClosed<Window>, char const* label, glm::vec2 size, Bool border, int flags)
+	: Openable(ImGui::BeginChild(label, {size.x, size.y}, border.value, flags)), m_child(true) {}
 
 // ImGui windows requires End() even if Begin() returned false
 Window::~Window() {
@@ -37,7 +37,17 @@ MainMenu::~MainMenu() {
 	if (m_open) { ImGui::EndMainMenuBar(); }
 }
 
-Popup::Popup(char const* id, bool modal, int flags) : Openable(modal ? ImGui::BeginPopupModal(id, {}, flags) : ImGui::BeginPopup(id, flags)) {}
+Popup::Popup(char const* id, Bool modal, Bool centered, int flags) {
+	if (centered) {
+		auto const center = ImGui::GetMainViewport()->GetCenter();
+		ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2{0.5f, 0.5f});
+	}
+	if (modal) {
+		m_open = ImGui::BeginPopupModal(id, {}, flags);
+	} else {
+		m_open = ImGui::BeginPopup(id, flags);
+	}
+}
 
 Popup::~Popup() {
 	if (m_open) { ImGui::EndPopup(); }
@@ -47,7 +57,7 @@ void Popup::open(char const* id) { ImGui::OpenPopup(id); }
 
 void Popup::close_current() { ImGui::CloseCurrentPopup(); }
 
-Menu::Menu(NotClosed<MenuBar>, char const* label, bool enabled) : Openable(ImGui::BeginMenu(label, enabled)) {}
+Menu::Menu(NotClosed<MenuBar>, char const* label, Bool enabled) : Openable(ImGui::BeginMenu(label, enabled.value)) {}
 
 Menu::~Menu() {
 	if (m_open) { ImGui::EndMenu(); }

@@ -1,4 +1,5 @@
 #pragma once
+#include <facade/util/bool.hpp>
 #include <facade/util/pinned.hpp>
 #include <glm/vec2.hpp>
 #include <cassert>
@@ -14,7 +15,7 @@ class Openable : public Pinned {
 	explicit operator bool() const { return is_open(); }
 
   protected:
-	Openable(bool is_open);
+	Openable(bool is_open = false);
 	bool m_open;
 };
 
@@ -34,7 +35,7 @@ class Window : public Openable {
 	class Menu;
 
 	explicit Window(char const* label, bool* open_if = {}, int flags = {});
-	Window(NotClosed<Window> parent, char const* label, glm::vec2 size = {}, bool border = {}, int flags = {});
+	Window(NotClosed<Window> parent, char const* label, glm::vec2 size = {}, Bool border = {}, int flags = {});
 	~Window();
 
   private:
@@ -63,7 +64,7 @@ class MenuBar : public Openable {
 ///
 class Menu : public Openable {
   public:
-	explicit Menu(NotClosed<MenuBar>, char const* label, bool enabled = true);
+	explicit Menu(NotClosed<MenuBar>, char const* label, Bool enabled = {true});
 	~Menu();
 };
 
@@ -90,14 +91,14 @@ class MainMenu : public MenuBar {
 ///
 class Popup : public Openable {
   public:
-	explicit Popup(char const* id, int flags = {}) : Popup(id, false, flags) {}
+	explicit Popup(char const* id, Bool centered = {}, int flags = {}) : Popup(id, {}, centered, flags) {}
 	~Popup();
 
 	static void open(char const* id);
 	static void close_current();
 
   protected:
-	explicit Popup(char const* id, bool modal, int flags);
+	explicit Popup(char const* id, Bool modal, Bool centered, int flags);
 };
 
 ///
@@ -105,7 +106,7 @@ class Popup : public Openable {
 ///
 class Modal : public Popup {
   public:
-	explicit Modal(char const* id, int flags = {}) : Popup(id, true, flags) {}
+	explicit Modal(char const* id, Bool centered = {true}, int flags = {}) : Popup(id, {true}, centered, flags) {}
 };
 
 ///

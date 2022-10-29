@@ -1,7 +1,7 @@
 #pragma once
-#include <facade/util/ring_buffer.hpp>
 #include <facade/vk/drawer.hpp>
 #include <facade/vk/pipeline.hpp>
+#include <facade/vk/rotator.hpp>
 #include <facade/vk/shader.hpp>
 #include <vulkan/vulkan_hash.hpp>
 #include <mutex>
@@ -35,7 +35,7 @@ class Pipes {
 	struct Map {
 		std::unordered_map<vk::RenderPass, vk::UniquePipeline> pipelines{};
 		std::vector<SetLayout> set_layouts{};
-		RingBuffer<std::optional<SetAllocator::Pool>> set_pools{};
+		Rotator<std::optional<SetAllocator::Pool>> set_pools{};
 		vk::UniquePipelineLayout pipeline_layout{};
 		bool populated{};
 	};
@@ -46,7 +46,7 @@ class Pipes {
 	vk::UniquePipelineLayout make_pipeline_layout(std::span<vk::DescriptorSetLayout const> set_layouts) const;
 
 	std::unordered_map<Key, Map, Hasher> m_map{};
-	RingBuffer<Drawer> m_drawers{};
+	Rotator<Drawer> m_drawers{};
 	Gfx m_gfx{};
 	std::mutex m_mutex{};
 	vk::SampleCountFlagBits m_samples{};

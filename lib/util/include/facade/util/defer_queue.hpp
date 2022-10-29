@@ -5,6 +5,11 @@
 #include <vector>
 
 namespace facade {
+///
+/// \brief Concurrent queue of miscellaneous storage whose destruction is deferred by a few frames of updates.
+///
+/// Extremely low level data structure, used solely by Vulkan wrappers (in vk) to defer destruction of GPU resources.
+///
 class DeferQueue {
   public:
 	DeferQueue() = default;
@@ -12,17 +17,27 @@ class DeferQueue {
 
 	~DeferQueue() { clear(); }
 
+	///
+	/// \brief Push an item into the queue.
+	/// \param t Item to move into the queue
+	///
 	template <typename T>
 	void push(T t) {
 		auto lock = std::scoped_lock{m_mutex};
 		m_stack.push(std::move(t));
 	}
 
+	///
+	/// \brief Advance the queue, destroying items whose defer count is 0.
+	///
 	void next() {
 		auto lock = std::scoped_lock{m_mutex};
 		m_stack.next();
 	}
 
+	///
+	/// \brief Clear the queue.
+	///
 	void clear() {
 		auto lock = std::scoped_lock{m_mutex};
 		m_stack = {};

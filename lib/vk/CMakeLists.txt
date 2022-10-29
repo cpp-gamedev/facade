@@ -58,6 +58,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/vk/render_frame.hpp
   include/${target_prefix}/vk/render_pass.hpp
   include/${target_prefix}/vk/render_target.hpp
+  include/${target_prefix}/vk/rotator.hpp
   include/${target_prefix}/vk/set_allocator.hpp
   include/${target_prefix}/vk/shader.hpp
   include/${target_prefix}/vk/spir_v.hpp

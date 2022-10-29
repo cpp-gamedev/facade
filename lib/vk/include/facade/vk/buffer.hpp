@@ -1,7 +1,7 @@
 #pragma once
-#include <facade/util/ring_buffer.hpp>
 #include <facade/vk/defer.hpp>
 #include <facade/vk/gfx.hpp>
+#include <facade/vk/rotator.hpp>
 #include <vector>
 
 namespace facade {
@@ -31,7 +31,7 @@ class Buffer {
 
   private:
 	Gfx m_gfx{};
-	mutable RingBuffer<Defer<UniqueBuffer>> m_buffers{};
+	mutable Rotator<Defer<UniqueBuffer>> m_buffers{};
 	std::vector<std::byte> m_data{};
 	std::size_t m_size{};
 	Type m_type{};

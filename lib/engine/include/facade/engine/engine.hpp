@@ -1,4 +1,5 @@
 #pragma once
+#include <facade/build_version.hpp>
 #include <facade/glfw/glfw.hpp>
 #include <facade/scene/scene.hpp>
 #include <facade/util/time.hpp>

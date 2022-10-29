@@ -8,7 +8,9 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_DEBUG_POSTFIX "-d")
 
-project(${target_prefix}-lib)
+set(${target_prefix}_version 0.1.0)
+
+project(${target_prefix}-lib VERSION ${${target_prefix}_version})
 
 add_subdirectory(ext)
 add_subdirectory(interface)

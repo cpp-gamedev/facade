@@ -8,10 +8,17 @@ set(target_prefix facade)
 
 project(facade)
 
-option(FACADE_BUILD_SHADERS "Build facade shaders" ON)
-option(FACADE_PCH "Use PCH" ON)
+set(is_root_project OFF)
 
-if(FACADE_BUILD_SHADERS)
+if(PROJECT_NAME STREQUAL CMAKE_PROJECT_NAME)
+  set(is_root_project ON)
+endif()
+
+option(FACADE_BUILD_SHADERS "Build facade shaders" ${is_root_project})
+option(FACADE_PCH "Use PCH" ON)
+option(FACADE_BUILD_EXE "Build facade application (else only library)" ${is_root_project})
+
+if(FACADE_BUILD_EXE AND FACADE_BUILD_SHADERS)
   find_program(glslc glslc)
 
   if(glslc STREQUAL glslc-NOTFOUND)
@@ -23,7 +30,7 @@ endif()
 add_subdirectory(tools/embed_shader)
 add_subdirectory(lib)
 
-if(FACADE_BUILD_SHADERS)
+if(FACADE_BUILD_EXE AND FACADE_BUILD_SHADERS)
   message(STATUS "Adding build step to embed shaders")
   add_custom_command(
     DEPENDS
@@ -42,27 +49,29 @@ if(FACADE_BUILD_SHADERS)
   )
 endif()
 
-add_executable(${PROJECT_NAME})
+if(FACADE_BUILD_EXE)
+  add_executable(${PROJECT_NAME})
 
-target_sources(${PROJECT_NAME} PRIVATE
-  src/main.cpp
+  target_sources(${PROJECT_NAME} PRIVATE
+    src/main.cpp
 
-  src/bin/shaders.cpp
-  src/bin/shaders.hpp
+    src/bin/shaders.cpp
+    src/bin/shaders.hpp
 
-  src/bin/default_vert.spv.hpp
-  src/bin/unlit_frag.spv.hpp
-)
+    src/bin/default_vert.spv.hpp
+    src/bin/unlit_frag.spv.hpp
+  )
 
-target_link_libraries(${PROJECT_NAME} PRIVATE
-  facade::engine
-  facade::compile-options
-)
+  target_link_libraries(${PROJECT_NAME} PRIVATE
+    facade::engine
+    facade::compile-options
+  )
 
-string(TOUPPER ${target_prefix} target_prefix_upper)
+  string(TOUPPER ${target_prefix} target_prefix_upper)
 
-if(${${target_prefix_upper}_PCH})
-  target_precompile_headers(${PROJECT_NAME} REUSE_FROM ${target_prefix}-vk)
+  if(${${target_prefix_upper}_PCH})
+    target_precompile_headers(${PROJECT_NAME} REUSE_FROM ${target_prefix}-vk)
+  endif()
+
+  target_include_directories(${PROJECT_NAME} PRIVATE src)
 endif()
-
-target_include_directories(${PROJECT_NAME} PRIVATE src)

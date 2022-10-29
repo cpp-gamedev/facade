@@ -209,7 +209,8 @@ void log_prologue() {
 	auto const now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 	char buf[32]{};
 	std::strftime(buf, sizeof(buf), "%F %Z", std::localtime(&now));
-	logger::info("facade v{}.{}.{} | {} |", 0, 0, 0, buf);
+	static constexpr auto v = version_v;
+	logger::info("facade v{}.{}.{} | {} |", v.major, v.minor, v.patch, buf);
 }
 
 fs::path find_gltf(fs::path root) {

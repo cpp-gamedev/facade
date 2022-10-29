@@ -84,6 +84,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/util/type_id.hpp
   include/${target_prefix}/util/unique_task.hpp
   include/${target_prefix}/util/unique.hpp
+  include/${target_prefix}/util/version.hpp
   include/${target_prefix}/util/visitor.hpp
 
   src/data_provider.cpp

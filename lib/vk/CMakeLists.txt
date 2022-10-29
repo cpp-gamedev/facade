@@ -48,6 +48,7 @@ endif()
 target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/vk/buffer.hpp
   include/${target_prefix}/vk/cmd.hpp
+  include/${target_prefix}/vk/defer_queue.hpp
   include/${target_prefix}/vk/defer.hpp
   include/${target_prefix}/vk/descriptor_set.hpp
   include/${target_prefix}/vk/drawer.hpp

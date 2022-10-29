@@ -67,7 +67,6 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/util/byte_buffer.hpp
   include/${target_prefix}/util/colour_space.hpp
   include/${target_prefix}/util/data_provider.hpp
-  include/${target_prefix}/util/defer_queue.hpp
   include/${target_prefix}/util/enum_array.hpp
   include/${target_prefix}/util/error.hpp
   include/${target_prefix}/util/fixed_string.hpp

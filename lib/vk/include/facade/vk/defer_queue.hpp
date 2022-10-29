@@ -8,7 +8,7 @@ namespace facade {
 ///
 /// \brief Concurrent queue of miscellaneous storage whose destruction is deferred by a few frames of updates.
 ///
-/// Extremely low level data structure, used solely by Vulkan wrappers (in vk) to defer destruction of GPU resources.
+/// Extremely low level data structure, used solely by Vulkan wrappers to defer destruction of GPU resources.
 ///
 class DeferQueue {
   public:

@@ -1,6 +1,5 @@
 #pragma once
 #include <facade/util/colour_space.hpp>
-#include <facade/util/defer_queue.hpp>
 #include <facade/util/flex_array.hpp>
 #include <facade/vk/gfx.hpp>
 #include <glm/vec2.hpp>

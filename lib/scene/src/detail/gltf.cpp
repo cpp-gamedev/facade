@@ -386,9 +386,9 @@ struct Data {
 			auto const uri = json["uri"].as_string();
 			auto name = std::string{json["name"].as_string()};
 			if (auto const it = get_base64_start(uri); it != std::string_view::npos) {
-				i = Image{base64_decode(uri.substr(it)).span(), std::move(name)};
+				i = Image{base64_decode(uri.substr(it)), std::move(name)};
 			} else {
-				i = Image{provider.load(uri).span(), std::move(name)};
+				i = Image{provider.load(uri), std::move(name)};
 			}
 		}
 
@@ -466,26 +466,17 @@ struct Data {
 			m.double_sided = json["doubleSided"].as_bool(dj::Boolean{m.double_sided}).value;
 		}
 
-		Storage parse(dj::Json const& scene, std::atomic<LoadStatus>& out_status) {
+		Storage parse(dj::Json const& scene) {
 			storage = {};
-			out_status = LoadStatus::eParsingBuffers;
 			for (auto const& b : scene["buffers"].array_view()) { buffer(b); }
-			out_status = LoadStatus::eParsingBufferViews;
 			for (auto const& bv : scene["bufferViews"].array_view()) { buffer_view(bv); }
-			out_status = LoadStatus::eParsingAccessors;
 			for (auto const& s : scene["accessors"].array_view()) { accessor(s); }
 
-			out_status = LoadStatus::eParsingCameras;
 			for (auto const& c : scene["cameras"].array_view()) { camera(c); }
-			out_status = LoadStatus::eParsingSamplers;
 			for (auto const& s : scene["samplers"].array_view()) { sampler(s); }
-			out_status = LoadStatus::eLoadingImages;
 			for (auto const& i : scene["images"].array_view()) { image(i); }
-			out_status = LoadStatus::eParsingTextures;
 			for (auto const& t : scene["textures"].array_view()) { texture(t); }
-			out_status = LoadStatus::eParsingMeshes;
 			for (auto const& m : scene["meshes"].array_view()) { mesh(m); }
-			out_status = LoadStatus::eParsingMaterials;
 			for (auto const& m : scene["materials"].array_view()) { material(m); }
 
 			// Texture will use ColourSpace::sRGB by default; change non-colour textures to be linear
@@ -581,12 +572,19 @@ std::vector<std::size_t> children(dj::Json const& json) {
 }
 } // namespace
 
-Asset Asset::parse(dj::Json const& json, DataProvider const& provider, std::atomic<LoadStatus>& out_status) {
+Asset::Meta Asset::Meta::make(dj::Json const& json) {
+	auto ret = Meta{};
+	ret.images = json["images"].array_view().size();
+	ret.textures = json["textures"].array_view().size();
+	for (auto const& mesh : json["meshes"].array_view()) { ret.primitives += mesh["primitives"].array_view().size(); }
+	return ret;
+}
+
+Asset Asset::parse(dj::Json const& json, DataProvider const& provider) {
 	auto ret = Asset{};
-	auto storage = Data::Parser{provider}.parse(json, out_status);
+	auto storage = Data::Parser{provider}.parse(json);
 	if (storage.accessors.empty()) { return {}; }
 
-	out_status = LoadStatus::eBuildingGeometry;
 	ret.cameras = std::move(storage.cameras);
 	ret.images = std::move(storage.images);
 	ret.materials = std::move(storage.materials);
@@ -603,7 +601,6 @@ Asset Asset::parse(dj::Json const& json, DataProvider const& provider, std::atom
 		}
 	}
 
-	out_status = LoadStatus::eBuildingNodes;
 	auto const& nodes = json["nodes"].array_view();
 	ret.nodes.reserve(nodes.size());
 	for (auto const& node : nodes) {
@@ -619,7 +616,6 @@ Asset Asset::parse(dj::Json const& json, DataProvider const& provider, std::atom
 		ret.nodes.push_back(Node{node["name"].as<std::string>(), transform(node), children(node["children"]), index, type});
 	}
 
-	out_status = LoadStatus::eBuildingScenes;
 	auto const& scenes = json["scenes"].array_view();
 	ret.scenes.reserve(scenes.size());
 	for (auto const& scene : scenes) {

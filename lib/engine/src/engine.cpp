@@ -158,7 +158,7 @@ struct RenderWindow {
 		  renderer(gfx, this->window, gui.get(), Renderer::CreateInfo{command_buffers_v, msaa}), gui(std::move(gui)) {}
 };
 
-bool load_gltf(Scene& out_scene, char const* path, std::atomic<LoadStatus>* out_status) {
+bool load_gltf(Scene& out_scene, char const* path, AtomicLoadStatus* out_status) {
 	auto const provider = FileDataProvider::mount_parent_dir(path);
 	auto json = dj::Json::from_file(path);
 	return out_scene.load_gltf(json, provider, out_status);
@@ -182,7 +182,7 @@ bool busy(std::future<T> const& future) {
 struct LoadRequest {
 	std::string path{};
 	std::future<Scene> future{};
-	std::atomic<LoadStatus> status{};
+	AtomicLoadStatus status{};
 	float start_time{};
 };
 } // namespace
@@ -204,6 +204,7 @@ struct Engine::Impl {
 	Impl(UniqueWin window, std::uint8_t msaa, bool validation)
 		: window(std::move(window), std::make_unique<DearImGui>(), msaa, validation), renderer(this->window.gfx), scene(this->window.gfx), msaa(msaa) {
 		s_instance = this;
+		load.request.status.reset();
 	}
 
 	~Impl() {
@@ -279,7 +280,7 @@ bool Engine::load_async(std::string gltf_json_path, UniqueTask<void()> on_loaded
 	// populate load request
 	m_impl->load.callback = std::move(on_loaded);
 	m_impl->load.request.path = std::move(gltf_json_path);
-	m_impl->load.request.status.store(LoadStatus::eStartingThread);
+	m_impl->load.request.status.reset();
 	m_impl->load.request.start_time = time::since_start();
 	auto func = [path = m_impl->load.request.path, gfx = m_impl->window.gfx, status = &m_impl->load.request.status] {
 		auto scene = Scene{gfx};
@@ -294,7 +295,8 @@ bool Engine::load_async(std::string gltf_json_path, UniqueTask<void()> on_loaded
 
 LoadStatus Engine::load_status() const {
 	auto lock = std::scoped_lock{m_impl->mutex};
-	return m_impl->load.request.status.load();
+	auto const& status = m_impl->load.request.status;
+	return {.stage = status.stage.load(), .total = status.total, .done = status.done};
 }
 
 Scene& Engine::scene() const { return m_impl->scene; }
@@ -311,7 +313,7 @@ void Engine::update_load_request() {
 	// transfer scene (under mutex lock)
 	m_impl->scene = m_impl->load.request.future.get();
 	// reset load status
-	m_impl->load.request.status.store(LoadStatus::eNone);
+	m_impl->load.request.status.reset();
 	// move out the path
 	auto path = std::move(m_impl->load.request.path);
 	// move out the callback

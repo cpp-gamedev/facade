@@ -30,7 +30,7 @@ class Inspector {
 	bool inspect(char const* label, glm::vec3& out_vec3, float speed = 1.0f, float lo = min_v, float hi = max_v) const;
 	bool inspect(char const* label, glm::vec4& out_vec4, float speed = 1.0f, float lo = min_v, float hi = max_v) const;
 	bool inspect(char const* label, glm::quat& out_quat) const;
-	bool inspect(Transform& out_transform) const;
+	bool inspect(Transform& out_transform, Bool& out_unified_scaling) const;
 };
 
 class SceneInspector : public Inspector {
@@ -42,7 +42,7 @@ class SceneInspector : public Inspector {
 	bool inspect(TreeNode const& node, UnlitMaterial& out_material) const;
 	bool inspect(TreeNode const& node, LitMaterial& out_material) const;
 	bool inspect(Id<Material> material_id) const;
-	bool inspect(Id<Node> node_id) const;
+	bool inspect(Id<Node> node_id, Bool& out_unified_scaling) const;
 
 	bool inspect(Id<Mesh> mesh) const;
 

@@ -114,9 +114,10 @@ static constexpr auto test_json_v = R"(
 
 struct MainMenu {
 	struct {
-		bool stats{};
 		bool tree{};
+		bool stats{};
 		bool log{};
+		bool camera;
 		bool imgui_demo{};
 	} windows{};
 
@@ -176,6 +177,11 @@ struct MainMenu {
 		if (auto window = editor::Window{"Log", &windows.log}) { data.log.render(window); }
 	}
 
+	void cam(Scene& scene) {
+		ImGui::SetNextWindowSize({600.0f, 200.0f}, ImGuiCond_Once);
+		if (auto window = editor::Window{"Camera", &windows.camera}) { scene.camera().transform.; }
+	}
+
 	void display(Engine& engine, float const dt) {
 		if (auto main = editor::MainMenu{}) {
 			if (auto file = editor::Menu{main, "File"}) {
@@ -186,6 +192,7 @@ struct MainMenu {
 				if (ImGui::MenuItem("Tree")) { windows.tree = true; }
 				if (ImGui::MenuItem("Stats")) { windows.stats = true; }
 				if (ImGui::MenuItem("Log")) { windows.log = true; }
+				if (ImGui::MenuItem("Camera")) { windows.camera = true; }
 				if constexpr (debug_v) {
 					if (ImGui::MenuItem("ImGui demo")) { windows.imgui_demo = true; }
 				}
@@ -198,6 +205,7 @@ struct MainMenu {
 		if (data.inspectee) { inspector(engine.scene()); }
 		if (windows.stats) { stats(engine, dt); }
 		if (windows.log) { log(); }
+		if (windows.camera) { cam(engine.scene()); }
 		if (windows.imgui_demo) { ImGui::ShowDemoWindow(&windows.imgui_demo); }
 	}
 };

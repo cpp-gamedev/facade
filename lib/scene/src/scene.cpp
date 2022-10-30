@@ -150,8 +150,8 @@ struct Scene::TreeBuilder {
 };
 
 bool Scene::load_gltf(dj::Json const& root, DataProvider const& provider, AtomicLoadStatus* out_status) noexcept(false) {
-	auto const meta = gltf::Asset::peek(root);
 	if (out_status) {
+		auto const meta = gltf::Asset::peek(root);
 		out_status->done = 0;
 		out_status->total = 1 + meta.images + meta.textures + meta.primitives + 1;
 		out_status->stage = LoadStage::eParsingJson;

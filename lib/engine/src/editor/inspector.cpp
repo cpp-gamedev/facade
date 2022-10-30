@@ -55,9 +55,9 @@ bool Inspector::inspect(char const* label, glm::quat& out_quat) const {
 	auto euler = to_degree(glm::eulerAngles(out_quat));
 	auto const org = euler;
 	if (inspect(label, euler, 0.5f, -180.0f, 180.0f)) {
-		if (std::abs(org.x - euler.x) > 0.0f) { out_quat = glm::rotate(out_quat, glm::radians(org.x - euler.x), right_v); }
-		if (std::abs(org.y - euler.y) > 0.0f) { out_quat = glm::rotate(out_quat, glm::radians(org.y - euler.y), up_v); }
-		if (std::abs(org.z - euler.z) > 0.0f) { out_quat = glm::rotate(out_quat, glm::radians(org.z - euler.z), front_v); }
+		if (auto const diff = org.x - euler.x; std::abs(diff) > 0.0f) { out_quat = glm::rotate(out_quat, glm::radians(diff), right_v); }
+		if (auto const diff = org.y - euler.y; std::abs(diff) > 0.0f) { out_quat = glm::rotate(out_quat, glm::radians(diff), up_v); }
+		if (auto const diff = org.z - euler.z; std::abs(diff) > 0.0f) { out_quat = glm::rotate(out_quat, glm::radians(diff), front_v); }
 		return true;
 	}
 	return false;

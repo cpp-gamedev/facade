@@ -5,7 +5,6 @@
 namespace facade {
 enum class LoadStage : std::uint8_t {
 	eNone,
-	eStartingThread,
 	eParsingJson,
 	eLoadingImages,
 	eUploadingTextures,
@@ -15,7 +14,7 @@ enum class LoadStage : std::uint8_t {
 };
 
 constexpr auto load_stage_str = EnumArray<LoadStage, std::string_view>{
-	"None", "Starting Thread", "Parsing JSON", "Loading Images", "Uploading Textures", "Uploading Meshes", "Building Scenes",
+	"None", "Parsing JSON", "Loading Images", "Uploading Textures", "Uploading Meshes", "Building Scenes",
 };
 static_assert(std::size(load_stage_str.t) == static_cast<std::size_t>(LoadStage::eCOUNT_));
 

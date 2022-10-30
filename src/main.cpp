@@ -179,7 +179,7 @@ struct MainMenu {
 
 	void cam(Scene& scene) {
 		ImGui::SetNextWindowSize({600.0f, 200.0f}, ImGuiCond_Once);
-		if (auto window = editor::Window{"Camera", &windows.camera}) { scene.camera().transform.; }
+		if (auto window = editor::Window{"Camera", &windows.camera}) { scene.camera().transform; }
 	}
 
 	void display(Engine& engine, float const dt) {

@@ -215,6 +215,7 @@ void log_prologue() {
 
 fs::path find_gltf(fs::path root) {
 	if (root.extension() == ".gltf") { return root; }
+	if (!fs::is_directory(root)) { return {}; }
 	for (auto const& it : fs::directory_iterator{root}) {
 		if (!it.is_regular_file()) { continue; }
 		auto path = it.path();

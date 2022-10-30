@@ -149,43 +149,65 @@ struct Scene::TreeBuilder {
 	}
 };
 
-bool Scene::load_gltf(dj::Json const& root, DataProvider const& provider, std::atomic<LoadStatus>* out_status) noexcept(false) {
-	auto status = std::atomic<LoadStatus>{};
-	if (!out_status) { out_status = &status; }
-	auto asset = gltf::Asset::parse(root, provider, *out_status);
+bool Scene::load_gltf(dj::Json const& root, DataProvider const& provider, AtomicLoadStatus* out_status) noexcept(false) {
+	if (out_status) {
+		auto const meta = gltf::Asset::peek(root);
+		out_status->done = 0;
+		out_status->total = 1 + meta.images + meta.textures + meta.primitives + 1;
+		out_status->stage = LoadStage::eParsingJson;
+	}
+
+	auto asset = gltf::Asset::parse(root, provider);
 	if (asset.geometries.empty() || asset.scenes.empty()) {
-		*out_status = LoadStatus::eNone;
+		if (out_status) { out_status->reset(); }
 		return false;
 	}
 	if (asset.start_scene >= asset.scenes.size()) { throw Error{fmt::format("Invalid start scene: {}", asset.start_scene)}; }
 
-	*out_status = LoadStatus::eUploadingResources;
-	m_storage = {};
-	if (asset.cameras.empty()) {
-		add(Camera{.name = "default"});
-	} else {
-		for (auto gltf_camera : asset.cameras) { add(to_camera(std::move(gltf_camera))); }
+	if (out_status) {
+		++out_status->done;
+		out_status->stage = LoadStage::eLoadingImages;
+	}
+	auto images = std::vector<Image>{};
+	images.reserve(asset.images.size());
+	for (auto& image : asset.images) {
+		images.emplace_back(image.bytes.span(), std::move(image.name));
+		if (out_status) { ++out_status->done; }
 	}
 
-	for (auto const& sampler : asset.samplers) { add(to_sampler_info(sampler)); }
-	for (auto const& material : asset.materials) { add(to_material(material)); }
-	for (auto const& geometry : asset.geometries) { add(geometry); }
-	for (auto const& mesh : asset.meshes) { add(to_mesh(mesh)); }
-
+	m_storage = {};
+	if (out_status) { out_status->stage = LoadStage::eUploadingTextures; }
 	auto get_sampler = [this](std::optional<std::size_t> sampler_id) {
 		if (!sampler_id || sampler_id >= m_storage.samplers.size()) { return default_sampler(); }
 		return m_storage.samplers[*sampler_id].sampler();
 	};
 	for (auto const& texture : asset.textures) {
 		auto const tci = Texture::CreateInfo{.mip_mapped = true, .colour_space = texture.colour_space};
-		m_storage.textures.emplace_back(m_gfx, get_sampler(texture.sampler), asset.images.at(texture.source), tci);
+		m_storage.textures.emplace_back(m_gfx, get_sampler(texture.sampler), images.at(texture.source), tci);
+		if (out_status) { ++out_status->done; }
 	}
+
+	if (out_status) { out_status->stage = LoadStage::eUploadingMeshes; }
+	for (auto const& geometry : asset.geometries) {
+		add(geometry);
+		if (out_status) { ++out_status->done; }
+	}
+
+	if (out_status) { out_status->stage = LoadStage::eBuildingScenes; }
+	if (asset.cameras.empty()) {
+		add(Camera{.name = "default"});
+	} else {
+		for (auto gltf_camera : asset.cameras) { add(to_camera(std::move(gltf_camera))); }
+	}
+	for (auto const& sampler : asset.samplers) { add(to_sampler_info(sampler)); }
+	for (auto const& material : asset.materials) { add(to_material(material)); }
+	for (auto const& mesh : asset.meshes) { add(to_mesh(mesh)); }
 
 	m_storage.data.nodes = std::move(asset.nodes);
 	for (auto& scene : asset.scenes) { m_storage.data.trees.push_back(TreeImpl::Data{.roots = std::move(scene.root_nodes)}); }
 
 	auto const ret = load(asset.start_scene);
-	*out_status = LoadStatus::eNone;
+	if (out_status) { out_status->reset(); }
 	return ret;
 }
 

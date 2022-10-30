@@ -27,6 +27,21 @@ namespace facade {
 struct DataProvider;
 
 ///
+/// \brief Concurrent status for multi-threaded loading
+///
+struct AtomicLoadStatus {
+	std::atomic<LoadStage> stage{};
+	std::atomic<std::size_t> total{};
+	std::atomic<std::size_t> done{};
+
+	void reset() {
+		stage = LoadStage::eNone;
+		total = {};
+		done = {};
+	}
+};
+
+///
 /// \brief Represents a Mesh in a Scene.
 ///
 struct Mesh {
@@ -82,13 +97,13 @@ class Scene {
 	/// \brief Load data from a GLTF file.
 	/// \param root The root JSON node for the GLTF asset
 	/// \param provider Data provider with the JSON parent directory mounted
-	/// \param out_status Optional pointer to LoadStatus to be updated by the Scene
+	/// \param out_status Optional pointer to AtomicLoadStatus to be updated by the Scene
 	/// \returns true If successfully loaded
 	///
 	/// If the GLTF data fails to load, the scene data will remain unchanged.
 	/// This function purposely throws on fatal errors.
 	///
-	bool load_gltf(dj::Json const& root, DataProvider const& provider, std::atomic<LoadStatus>* out_status = {}) noexcept(false);
+	bool load_gltf(dj::Json const& root, DataProvider const& provider, AtomicLoadStatus* out_status = {}) noexcept(false);
 
 	///
 	/// \brief Add a Camera.

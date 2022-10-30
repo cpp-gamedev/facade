@@ -2,7 +2,9 @@ if("${target_prefix}" STREQUAL "")
   message(FATAL_ERROR "target_prefix unset")
 endif()
 
-project(${target_prefix}-engine)
+project(${target_prefix}-engine VERSION ${${target_prefix}_version})
+
+configure_file(src/build_version.hpp.in "${CMAKE_CURRENT_BINARY_DIR}/include/${target_prefix}/build_version.hpp" @ONLY)
 
 add_library(${PROJECT_NAME})
 add_library(${target_prefix}::engine ALIAS ${PROJECT_NAME})
@@ -12,6 +14,7 @@ target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20)
 target_include_directories(${PROJECT_NAME}
   PUBLIC
   include
+  "${CMAKE_CURRENT_BINARY_DIR}/include"
 
   PRIVATE
   src

@@ -1,5 +1,4 @@
 #pragma once
-#include <facade/scene/load_status.hpp>
 #include <facade/scene/material.hpp>
 #include <facade/scene/node_data.hpp>
 #include <facade/util/byte_buffer.hpp>
@@ -8,7 +7,6 @@
 #include <facade/util/transform.hpp>
 #include <facade/vk/geometry.hpp>
 #include <glm/vec4.hpp>
-#include <atomic>
 #include <optional>
 #include <string>
 #include <vector>
@@ -34,6 +32,11 @@ enum class Wrap {
 	eClampEdge = 33071,
 	eMirrorRepeat = 33648,
 	eRepeat = 10497,
+};
+
+struct Image {
+	ByteBuffer bytes{};
+	std::string name{};
 };
 
 struct TextureInfo {
@@ -137,6 +140,14 @@ struct Scene {
 };
 
 struct Asset {
+	struct Meta {
+		std::size_t images{};
+		std::size_t textures{};
+		std::size_t primitives{};
+
+		static Meta make(dj::Json const& json);
+	};
+
 	std::vector<Camera> cameras{};
 	std::vector<Sampler> samplers{};
 	std::vector<Geometry> geometries{};
@@ -149,7 +160,8 @@ struct Asset {
 	std::vector<Scene> scenes{};
 	std::size_t start_scene{};
 
-	static Asset parse(dj::Json const& json, DataProvider const& provider, std::atomic<LoadStatus>& out_status);
+	static Meta peek(dj::Json const& json) { return Meta::make(json); }
+	static Asset parse(dj::Json const& json, DataProvider const& provider);
 };
 } // namespace gltf
 } // namespace facade

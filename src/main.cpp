@@ -123,6 +123,7 @@ struct MainMenu {
 	struct {
 		editor::Log log{};
 		editor::Inspectee inspectee{};
+		Bool unified_scaling{true};
 	} data{};
 
 	void change_vsync(Engine const& engine) const {
@@ -145,7 +146,9 @@ struct MainMenu {
 	void inspector(Scene& scene) {
 		bool show = true;
 		ImGui::SetNextWindowSize({400.0f, 400.0f}, ImGuiCond_Once);
-		if (auto window = editor::Window{data.inspectee.name.c_str(), &show}) { editor::SceneInspector{window, scene}.inspect(data.inspectee.id); }
+		if (auto window = editor::Window{data.inspectee.name.c_str(), &show}) {
+			editor::SceneInspector{window, scene}.inspect(data.inspectee.id, data.unified_scaling);
+		}
 		if (!show) { data.inspectee = {}; }
 	}
 
@@ -206,11 +209,13 @@ void log_prologue() {
 	auto const now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 	char buf[32]{};
 	std::strftime(buf, sizeof(buf), "%F %Z", std::localtime(&now));
-	logger::info("facade v{}.{}.{} | {} |", 0, 0, 0, buf);
+	static constexpr auto v = version_v;
+	logger::info("facade v{}.{}.{} | {} |", v.major, v.minor, v.patch, buf);
 }
 
 fs::path find_gltf(fs::path root) {
 	if (root.extension() == ".gltf") { return root; }
+	if (!fs::is_directory(root)) { return {}; }
 	for (auto const& it : fs::directory_iterator{root}) {
 		if (!it.is_regular_file()) { continue; }
 		auto path = it.path();
@@ -280,7 +285,7 @@ void run() {
 		if (input.keyboard.pressed(GLFW_KEY_ESCAPE)) { engine->request_stop(); }
 		glfwSetInputMode(engine->window(), GLFW_CURSOR, mouse_look ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
 
-		if (!state.file_drops.empty() && engine->load_status() == LoadStatus::eNone) {
+		if (!state.file_drops.empty() && engine->load_status().total == 0) {
 			auto path = find_gltf(state.file_drops.front());
 			if (!fs::is_regular_file(path)) {
 				logger::error("Failed to locate .gltf in path: [{}]", state.file_drops.front());
@@ -292,13 +297,14 @@ void run() {
 		}
 		loading.status = engine->load_status();
 
-		if (loading.status > LoadStatus::eNone) {
+		if (loading.status.stage > LoadStage::eNone) {
 			auto const* main_viewport = ImGui::GetMainViewport();
 			ImGui::SetNextWindowPos({0.0f, main_viewport->WorkPos.y + main_viewport->Size.y - 100.0f});
 			ImGui::SetNextWindowSize({main_viewport->Size.x, 100.0f});
 			auto window = editor::Window{loading.title.c_str(), nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize};
-			ImGui::Text("%s", load_status_str[loading.status].data());
-			ImGui::ProgressBar(load_progress(loading.status), ImVec2{-1.0f, 0.0f}, load_status_str[loading.status].data());
+			ImGui::Text("%s", load_stage_str[loading.status.stage].data());
+			auto const progress = FixedString{"{} / {}", loading.status.done, loading.status.total};
+			ImGui::ProgressBar(loading.status.load_progress(), ImVec2{-1.0f, 0.0f}, progress.c_str());
 		}
 
 		auto& camera = engine->scene().camera();

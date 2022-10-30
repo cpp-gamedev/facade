@@ -284,7 +284,7 @@ void run() {
 		if (input.keyboard.pressed(GLFW_KEY_ESCAPE)) { engine->request_stop(); }
 		glfwSetInputMode(engine->window(), GLFW_CURSOR, mouse_look ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
 
-		if (!state.file_drops.empty() && engine->load_status() == LoadStatus::eNone) {
+		if (!state.file_drops.empty() && engine->load_status().total == 0) {
 			auto path = find_gltf(state.file_drops.front());
 			if (!fs::is_regular_file(path)) {
 				logger::error("Failed to locate .gltf in path: [{}]", state.file_drops.front());
@@ -296,13 +296,14 @@ void run() {
 		}
 		loading.status = engine->load_status();
 
-		if (loading.status > LoadStatus::eNone) {
+		if (loading.status.stage > LoadStage::eNone) {
 			auto const* main_viewport = ImGui::GetMainViewport();
 			ImGui::SetNextWindowPos({0.0f, main_viewport->WorkPos.y + main_viewport->Size.y - 100.0f});
 			ImGui::SetNextWindowSize({main_viewport->Size.x, 100.0f});
 			auto window = editor::Window{loading.title.c_str(), nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize};
-			ImGui::Text("%s", load_status_str[loading.status].data());
-			ImGui::ProgressBar(load_progress(loading.status), ImVec2{-1.0f, 0.0f}, load_status_str[loading.status].data());
+			ImGui::Text("%s", load_stage_str[loading.status.stage].data());
+			auto const progress = FixedString{"{} / {}", loading.status.done, loading.status.total};
+			ImGui::ProgressBar(loading.status.ratio(), ImVec2{-1.0f, 0.0f}, progress.c_str());
 		}
 
 		auto& camera = engine->scene().camera();

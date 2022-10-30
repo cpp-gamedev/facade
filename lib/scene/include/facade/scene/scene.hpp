@@ -24,6 +24,18 @@ class Json;
 }
 
 namespace facade {
+struct AtomicLoadStatus {
+	std::atomic<LoadStage> stage{};
+	std::atomic<std::size_t> total{};
+	std::atomic<std::size_t> done{};
+
+	void reset() {
+		stage = LoadStage::eNone;
+		total = {};
+		done = {};
+	}
+};
+
 struct Mesh {
 	struct Primitive {
 		Id<StaticMesh> static_mesh{};
@@ -51,7 +63,7 @@ class Scene {
 
 	explicit Scene(Gfx const& gfx);
 
-	bool load_gltf(dj::Json const& root, DataProvider const& provider, std::atomic<LoadStatus>* out_status = {}) noexcept(false);
+	bool load_gltf(dj::Json const& root, DataProvider const& provider, AtomicLoadStatus* out_status = {}) noexcept(false);
 
 	Id<Camera> add(Camera camera);
 	Id<Sampler> add(Sampler sampler);

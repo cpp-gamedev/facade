@@ -3,44 +3,30 @@
 #include <string_view>
 
 namespace facade {
-enum class LoadStatus : std::uint8_t {
+enum class LoadStage : std::uint8_t {
 	eNone,
 	eStartingThread,
-	eParsingBuffers,
-	eParsingBufferViews,
-	eParsingAccessors,
-	eParsingCameras,
-	eParsingSamplers,
+	eParsingJson,
 	eLoadingImages,
-	eParsingTextures,
-	eParsingMeshes,
-	eParsingMaterials,
-	eBuildingGeometry,
-	eBuildingNodes,
+	eUploadingTextures,
+	eUploadingMeshes,
 	eBuildingScenes,
-	eUploadingResources,
 	eCOUNT_,
 };
 
-constexpr auto load_status_str = EnumArray<LoadStatus, std::string_view>{
-	"None",
-	"Starting Thread",
-	"Parsing Buffers",
-	"Parsing BufferViews",
-	"Parsing Accessors",
-	"Parsing Cameras",
-	"Parsing Samplers",
-	"Loading Images",
-	"Parsing Textures",
-	"Parsing Meshes",
-	"Parsing Materials",
-	"Building Geometry",
-	"Building Nodes",
-	"Building Scenes",
-	"Uploading Resources",
+constexpr auto load_stage_str = EnumArray<LoadStage, std::string_view>{
+	"None", "Starting Thread", "Parsing JSON", "Loading Images", "Uploading Textures", "Uploading Meshes", "Building Scenes",
 };
+static_assert(std::size(load_stage_str.t) == static_cast<std::size_t>(LoadStage::eCOUNT_));
 
-static_assert(std::size(load_status_str.t) == static_cast<std::size_t>(LoadStatus::eCOUNT_));
+struct LoadStatus {
+	LoadStage stage{};
+	std::size_t total{};
+	std::size_t done{};
 
-constexpr float load_progress(LoadStatus const stage) { return static_cast<float>(stage) / static_cast<float>(LoadStatus::eCOUNT_); }
+	constexpr float ratio() const {
+		if (total == 0) { return 0.0f; }
+		return static_cast<float>(done) / static_cast<float>(total);
+	}
+};
 } // namespace facade

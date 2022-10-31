@@ -1,6 +1,7 @@
 #include <imgui.h>
 #include <facade/engine/editor/inspector.hpp>
 #include <facade/scene/scene.hpp>
+#include <facade/util/enumerate.hpp>
 #include <facade/util/fixed_string.hpp>
 #include <cassert>
 
@@ -18,8 +19,6 @@ struct Modified {
 	}
 };
 } // namespace
-
-Inspector::Inspector([[maybe_unused]] Window const& target) { assert(target.is_open()); }
 
 bool Inspector::inspect(char const* label, glm::vec2& out_vec2, float speed, float lo, float hi) const {
 	float arr[2] = {out_vec2.x, out_vec2.y};
@@ -64,25 +63,41 @@ bool Inspector::inspect(char const* label, glm::quat& out_quat) const {
 }
 
 bool Inspector::inspect(Transform& out_transform, Bool& out_unified_scaling) const {
+	if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen)) { return do_inspect(out_transform, out_unified_scaling, {true}); }
+	return false;
+}
+
+bool Inspector::inspect(std::span<Transform> out_instances, Bool unified_scaling) const {
+	if (out_instances.empty()) { return false; }
 	auto ret = Modified{};
-	if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen)) {
-		auto vec3 = out_transform.position();
-		if (ret(inspect("Position", vec3))) { out_transform.set_position(vec3); }
-		auto quat = out_transform.orientation();
-		if (ret(inspect("Orientation", quat))) { out_transform.set_orientation(quat); }
-		vec3 = out_transform.scale();
-		if (out_unified_scaling) {
-			if (ret(ImGui::DragFloat("Scale", &vec3.x, 0.1f))) { out_transform.set_scale({vec3.x, vec3.x, vec3.x}); }
-		} else {
-			if (ret(inspect("Scale", vec3, 0.1f))) { out_transform.set_scale(vec3); }
+	if (ImGui::CollapsingHeader("Instances")) {
+		for (auto [transform, index] : enumerate(out_instances)) {
+			if (auto tn = TreeNode{FixedString{"Instance [{}]", index}.c_str()}) { ret(do_inspect(transform, unified_scaling, {false})); }
 		}
+	}
+	return ret.value;
+}
+
+bool Inspector::do_inspect(Transform& out_transform, Bool& out_unified_scaling, Bool scaling_toggle) const {
+	auto ret = Modified{};
+	auto vec3 = out_transform.position();
+	if (ret(inspect("Position", vec3))) { out_transform.set_position(vec3); }
+	auto quat = out_transform.orientation();
+	if (ret(inspect("Orientation", quat))) { out_transform.set_orientation(quat); }
+	vec3 = out_transform.scale();
+	if (out_unified_scaling) {
+		if (ret(ImGui::DragFloat("Scale", &vec3.x, 0.1f))) { out_transform.set_scale({vec3.x, vec3.x, vec3.x}); }
+	} else {
+		if (ret(inspect("Scale", vec3, 0.1f))) { out_transform.set_scale(vec3); }
+	}
+	if (scaling_toggle) {
 		ImGui::SameLine();
 		ImGui::Checkbox("Unified", &out_unified_scaling.value);
 	}
 	return ret.value;
 }
 
-SceneInspector::SceneInspector([[maybe_unused]] Window const& target, Scene& scene) : Inspector(target), m_scene(scene) { assert(target.is_open()); }
+SceneInspector::SceneInspector(NotClosed<Window> target, Scene& scene) : Inspector(target), m_scene(scene) {}
 
 bool SceneInspector::inspect([[maybe_unused]] TreeNode const& node, UnlitMaterial& out_material) const {
 	assert(node.is_open());
@@ -96,6 +111,18 @@ bool SceneInspector::inspect([[maybe_unused]] TreeNode const& node, LitMaterial&
 	auto ret = Modified{};
 	ret(ImGui::SliderFloat("Metallic", &out_material.metallic, 0.0f, 1.0f));
 	ret(ImGui::SliderFloat("Roughness", &out_material.roughness, 0.0f, 1.0f));
+	if (out_material.base_colour || out_material.roughness_metallic) {
+		if (auto tn = TreeNode{"Textures"}) {
+			if (out_material.base_colour) {
+				auto const* tex = m_scene.find(*out_material.base_colour);
+				TreeNode::leaf(FixedString{"Albedo: {} ({})", tex->name, *out_material.base_colour}.c_str());
+			}
+			if (out_material.roughness_metallic) {
+				auto const* tex = m_scene.find(*out_material.roughness_metallic);
+				TreeNode::leaf(FixedString{"Roughness-Metallic: {} ({})", tex->name, *out_material.roughness_metallic}.c_str());
+			}
+		}
+	}
 	return ret.value;
 }
 
@@ -117,6 +144,7 @@ bool SceneInspector::inspect(Id<Node> node_id, Bool& out_unified_scaling) const 
 	auto* node = m_scene.find(node_id);
 	if (!node) { return false; }
 	ret(inspect(node->transform, out_unified_scaling));
+	ret(inspect(node->instances, out_unified_scaling));
 	if (auto const* mesh_id = node->find<Id<Mesh>>()) { ret(inspect(*mesh_id)); }
 	return ret.value;
 }
@@ -127,9 +155,9 @@ bool SceneInspector::inspect(Id<Mesh> mesh_id) const {
 	if (!mesh) { return ret.value; }
 	if (ImGui::CollapsingHeader(FixedString{"Mesh ({})###Mesh", mesh_id}.c_str())) {
 		for (std::size_t i = 0; i < mesh->primitives.size(); ++i) {
-			if (auto tn = TreeNode{FixedString{"Primitive {}", i}.c_str()}) {
+			if (auto tn = TreeNode{FixedString{"Primitive [{}]", i}.c_str()}) {
 				auto const& primitive = mesh->primitives[i];
-				ImGui::Text("%s", FixedString{"Static Mesh ({})", primitive.static_mesh}.c_str());
+				TreeNode::leaf(FixedString{"Static Mesh ({})", primitive.static_mesh}.c_str());
 				if (primitive.material) { ret(inspect(*primitive.material)); }
 			}
 		}

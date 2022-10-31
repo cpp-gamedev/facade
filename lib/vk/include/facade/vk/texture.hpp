@@ -43,6 +43,7 @@ class Texture {
 	std::uint32_t mip_levels() const { return m_info.mip_levels; }
 	ColourSpace colour_space() const { return is_linear(m_info.format) ? ColourSpace::eLinear : ColourSpace::eSrgb; }
 
+	std::string name{"(Unnamed)"};
 	vk::Sampler sampler{};
 
   private:

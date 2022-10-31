@@ -181,9 +181,9 @@ bool Scene::load_gltf(dj::Json const& root, DataProvider const& provider, Atomic
 		if (!sampler_id || sampler_id >= m_storage.samplers.size()) { return default_sampler(); }
 		return m_storage.samplers[*sampler_id].sampler();
 	};
-	for (auto const& texture : asset.textures) {
+	for (auto& texture : asset.textures) {
 		auto const tci = Texture::CreateInfo{.mip_mapped = true, .colour_space = texture.colour_space};
-		m_storage.textures.emplace_back(m_gfx, get_sampler(texture.sampler), images.at(texture.source), tci);
+		m_storage.textures.emplace_back(m_gfx, get_sampler(texture.sampler), images.at(texture.source), tci).name = std::move(texture.name);
 		if (out_status) { ++out_status->done; }
 	}
 
@@ -312,10 +312,10 @@ Id<Mesh> Scene::add_unchecked(Mesh mesh) {
 }
 
 Id<Node> Scene::add_unchecked(std::vector<Node>& out, Node&& node) {
-	m_storage.next_node = {m_storage.next_node + 1};
-	node.m_id = m_storage.next_node;
+	auto const id = Id<Node>{++s_next_node};
+	node.m_id = id;
 	out.push_back(std::move(node));
-	return m_storage.next_node;
+	return id;
 }
 
 Node const* Scene::find_node(std::span<Node const> nodes, Id<Node> id) {

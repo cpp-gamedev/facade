@@ -69,6 +69,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/util/colour_space.hpp
   include/${target_prefix}/util/data_provider.hpp
   include/${target_prefix}/util/enum_array.hpp
+  include/${target_prefix}/util/enumerate.hpp
   include/${target_prefix}/util/error.hpp
   include/${target_prefix}/util/fixed_string.hpp
   include/${target_prefix}/util/flex_array.hpp

@@ -65,7 +65,6 @@ void RenderTarget::to_present(vk::CommandBuffer const cb) {
 
 RenderFrame RenderFrame::make(Gfx const& gfx, std::size_t secondary) {
 	auto ret = RenderFrame{
-		.gfx = gfx,
 		.sync =
 			Sync{
 				.draw = gfx.device.createSemaphoreUnique({}),
@@ -80,8 +79,8 @@ RenderFrame RenderFrame::make(Gfx const& gfx, std::size_t secondary) {
 	return ret;
 }
 
-Framebuffer RenderFrame::refresh(vk::RenderPass rp, RenderTarget const& rt) {
-	framebuffer = make_framebuffer(gfx.device, rp, rt);
+Framebuffer RenderFrame::refresh(vk::Device device, vk::RenderPass rp, RenderTarget const& rt) {
+	framebuffer = make_framebuffer(device, rp, rt);
 	return {rt.attachments(), *framebuffer, primary, secondary.span()};
 }
 

@@ -1,4 +1,5 @@
 #pragma once
+#include <facade/util/enum_array.hpp>
 #include <glm/vec2.hpp>
 #include <array>
 #include <string_view>
@@ -6,38 +7,65 @@
 struct GLFWwindow;
 
 namespace facade {
-enum class Action { eNone, ePress, eHeld, eRepeat, eRelease };
+///
+/// \brief Kinds of Key / Button actions.
+///
+enum class Action { eNone, ePress, eHeld, eRepeat, eRelease, eCOUNT_ };
+constexpr auto action_str = EnumArray<Action, std::string_view>{
+	"none", "press", "held", "repeat", "release",
+};
 
-inline constexpr std::string_view action_name(Action action) {
-	switch (action) {
-	default:
-	case Action::eNone: return "none";
-	case Action::ePress: return "press";
-	case Action::eHeld: return "held";
-	case Action::eRepeat: return "repeat";
-	case Action::eRelease: return "release";
-	}
-}
-
+///
+/// \brief Storage for Key (or Button) state.
+/// \param Capacity size of state array
+///
 template <int Capacity>
 class KeyState {
   public:
 	static constexpr int capacity_v{Capacity};
 
+	///
+	/// \brief Obtain the action corresponding to key
+	/// \param key GLFW key / button Id
+	/// \returns Action for key
+	///
 	Action action(int key) const {
 		if (key < 0 || key > capacity_v) { return Action::eNone; }
 		return m_key_actions[static_cast<std::size_t>(key)];
 	}
 
+	///
+	/// \brief Check if a key was pressed.
+	/// \param key GLFW key / button Id
+	/// \returns true If key was pressed
+	///
 	bool pressed(int key) const { return action(key) == Action::ePress; }
+	///
+	/// \brief Check if a key was released.
+	/// \param key GLFW key / button Id
+	/// \returns true If key was released
+	///
 	bool released(int key) const { return action(key) == Action::eRelease; }
+	///
+	/// \brief Check if a key was repeated.
+	/// \param key GLFW key / button Id
+	/// \returns true If key was repeated
+	///
 	bool repeated(int key) const { return action(key) == Action::eRepeat; }
 
+	///
+	/// \brief Check if a key is held.
+	/// \param key GLFW key / button Id
+	/// \returns true If key is held
+	///
 	bool held(int key) const {
 		auto const ret = action(key);
 		return ret == Action::ePress || ret == Action::eHeld || ret == Action::eRepeat;
 	}
 
+	///
+	/// \brief Update actions and swap states.
+	///
 	virtual void next_frame() {
 		auto prev = m_key_actions;
 		m_key_actions = {};
@@ -49,24 +77,61 @@ class KeyState {
 		}
 	}
 
+	///
+	/// \brief Associate action with key.
+	/// \param key GLFW key / button Id
+	/// \param action Action to associate
+	///
 	void on_key(int key, Action action) { m_key_actions[static_cast<std::size_t>(key)] = action; }
 
   private:
 	std::array<Action, static_cast<std::size_t>(capacity_v)> m_key_actions{};
 };
 
+///
+/// \brief Keyboard State
+///
 class Keyboard : public KeyState<512> {};
 
+///
+/// \brief Mouse State
+///
 class Mouse : public KeyState<8> {
   public:
+	///
+	/// \brief Wrapper for on_key.
+	///
 	void on_button(int button, Action action) { on_key(button, action); }
+	///
+	/// \brief Store cursor position.
+	/// \param position Cursor position.
+	///
 	void on_position(glm::vec2 position) { m_position = position; }
-	void on_scroll(glm::vec2 scroll) { m_scroll += scroll; }
+	///
+	/// \brief Add scroll delta.
+	/// \param delta Amount scrolled in xy directions
+	///
+	void on_scroll(glm::vec2 delta) { m_scroll += delta; }
 
+	///
+	/// \brief Obtain the cursor position.
+	/// \returns Cursor position
+	///
 	glm::vec2 position() const { return m_position; }
+	///
+	/// \brief Obtain the difference in cursor positions from last state.
+	/// \returns Difference in cursor positions.
+	///
 	glm::vec2 delta_pos() const { return m_position - m_prev_position; }
+	///
+	/// \brief Obtain the amount scrolled.
+	/// \returns Scroll amount
+	///
 	glm::vec2 scroll() const { return m_scroll; }
 
+	///
+	/// \brief Update and swap state.
+	///
 	void next_frame() override {
 		KeyState<8>::next_frame();
 		m_scroll = {};

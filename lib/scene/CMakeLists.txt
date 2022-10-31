@@ -41,9 +41,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/scene/material.hpp
   include/${target_prefix}/scene/node_data.hpp
   include/${target_prefix}/scene/node.hpp
-  include/${target_prefix}/scene/rect.hpp
   include/${target_prefix}/scene/scene.hpp
-  include/${target_prefix}/scene/transform.hpp
 
   src/detail/gltf.cpp
   src/detail/gltf.hpp

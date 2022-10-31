@@ -68,7 +68,6 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/util/byte_buffer.hpp
   include/${target_prefix}/util/colour_space.hpp
   include/${target_prefix}/util/data_provider.hpp
-  include/${target_prefix}/util/defer_queue.hpp
   include/${target_prefix}/util/enum_array.hpp
   include/${target_prefix}/util/error.hpp
   include/${target_prefix}/util/fixed_string.hpp
@@ -79,8 +78,8 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/util/nvec3.hpp
   include/${target_prefix}/util/pinned.hpp
   include/${target_prefix}/util/ptr.hpp
-  include/${target_prefix}/util/ring_buffer.hpp
   include/${target_prefix}/util/time.hpp
+  include/${target_prefix}/util/transform.hpp
   include/${target_prefix}/util/type_id.hpp
   include/${target_prefix}/util/unique_task.hpp
   include/${target_prefix}/util/unique.hpp

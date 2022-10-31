@@ -3,8 +3,15 @@
 #include <cstdint>
 
 namespace facade {
+///
+/// \brief Maps a unique identifier for each instantiating type.
+///
 class TypeId {
   public:
+	///
+	/// \brief Obtain (or create) a unique TypeId instance for Type.
+	/// \param Type The type to instantiate the unique Id for
+	///
 	template <typename Type>
 	static TypeId make() {
 		return get_id<Type>();
@@ -12,6 +19,10 @@ class TypeId {
 
 	TypeId() = default;
 
+	///
+	/// \brief Obtain the underlying Id.
+	/// \returns The underlying id
+	///
 	std::size_t value() const { return m_id; }
 	explicit operator std::size_t() const { return value(); }
 	bool operator==(TypeId const&) const = default;

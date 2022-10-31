@@ -3,10 +3,16 @@
 #include <facade/vk/wsi.hpp>
 
 namespace facade {
+///
+/// \brief Concrete Wsi using GLFW.
+///
 struct GlfwWsi : Wsi {
+	///
+	/// \brief The window in use.
+	///
 	Glfw::Window window{};
 
-	GlfwWsi(Glfw::Window window) : window(window) {}
+	explicit GlfwWsi(Glfw::Window window) : window(window) {}
 
 	std::vector<char const*> extensions() const final;
 	vk::UniqueSurfaceKHR make_surface(vk::Instance instance) const final;

@@ -1,7 +1,7 @@
 #pragma once
-#include <facade/util/ring_buffer.hpp>
 #include <facade/vk/cmd.hpp>
 #include <facade/vk/render_target.hpp>
+#include <facade/vk/rotator.hpp>
 
 namespace facade {
 struct RenderFrame {
@@ -28,7 +28,7 @@ struct RenderFrame {
 };
 
 template <std::size_t Size = buffering_v>
-using RenderFrames = RingBuffer<RenderFrame, Size>;
+using RenderFrames = Rotator<RenderFrame, Size>;
 
 template <std::size_t Size = buffering_v>
 RenderFrames<Size> make_render_frames(Gfx const& gfx, std::size_t secondary) {

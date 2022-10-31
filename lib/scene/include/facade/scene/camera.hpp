@@ -1,17 +1,25 @@
 #pragma once
-#include <facade/scene/transform.hpp>
 #include <facade/util/nvec3.hpp>
+#include <facade/util/transform.hpp>
 #include <facade/util/visitor.hpp>
 #include <glm/mat4x4.hpp>
 #include <string>
 #include <variant>
 
 namespace facade {
+///
+/// \brief The view / z plane for Camera.
+///
 struct ViewPlane {
 	float near{};
 	float far{};
 };
 
+///
+/// \brief Models a 3D camera with either perspective or orthographic projection parameters.
+///
+/// The view matrix is modelled through a Transform that's passed in as a parameter.
+///
 struct Camera {
 	struct Perspective {
 		ViewPlane view_plane{1.0f, 1000.0f};

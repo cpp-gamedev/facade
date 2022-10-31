@@ -304,7 +304,7 @@ void run() {
 			auto window = editor::Window{loading.title.c_str(), nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize};
 			ImGui::Text("%s", load_stage_str[loading.status.stage].data());
 			auto const progress = FixedString{"{} / {}", loading.status.done, loading.status.total};
-			ImGui::ProgressBar(loading.status.ratio(), ImVec2{-1.0f, 0.0f}, progress.c_str());
+			ImGui::ProgressBar(loading.status.load_progress(), ImVec2{-1.0f, 0.0f}, progress.c_str());
 		}
 
 		auto& camera = engine->scene().camera();

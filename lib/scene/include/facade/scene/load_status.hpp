@@ -3,6 +3,9 @@
 #include <string_view>
 
 namespace facade {
+///
+/// \brief Loading stage of a GLTF asset into a Scene.
+///
 enum class LoadStage : std::uint8_t {
 	eNone,
 	eParsingJson,
@@ -13,6 +16,9 @@ enum class LoadStage : std::uint8_t {
 	eCOUNT_,
 };
 
+///
+/// \brief String map for LoadStage.
+///
 constexpr auto load_stage_str = EnumArray<LoadStage, std::string_view>{
 	"None", "Parsing JSON", "Loading Images", "Uploading Textures", "Uploading Meshes", "Building Scenes",
 };
@@ -23,7 +29,10 @@ struct LoadStatus {
 	std::size_t total{};
 	std::size_t done{};
 
-	constexpr float ratio() const {
+	///
+	/// \brief Obtain the overall loading progress.
+	///
+	constexpr float load_progress() const {
 		if (total == 0) { return 0.0f; }
 		return static_cast<float>(done) / static_cast<float>(total);
 	}

@@ -1,5 +1,5 @@
 #pragma once
-#include <facade/util/defer_queue.hpp>
+#include <facade/vk/defer_queue.hpp>
 #include <facade/vk/vma.hpp>
 
 namespace facade {

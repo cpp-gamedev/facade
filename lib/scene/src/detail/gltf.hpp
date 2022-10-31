@@ -1,9 +1,10 @@
 #pragma once
 #include <facade/scene/material.hpp>
 #include <facade/scene/node_data.hpp>
-#include <facade/scene/transform.hpp>
 #include <facade/util/byte_buffer.hpp>
 #include <facade/util/colour_space.hpp>
+#include <facade/util/image.hpp>
+#include <facade/util/transform.hpp>
 #include <facade/vk/geometry.hpp>
 #include <glm/vec4.hpp>
 #include <optional>

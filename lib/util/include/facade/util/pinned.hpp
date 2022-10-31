@@ -1,6 +1,9 @@
 #pragma once
 
 namespace facade {
+///
+/// \brief Base class for non-moveable, non-copiable types.
+///
 class Pinned {
   public:
 	Pinned() = default;

@@ -129,7 +129,7 @@ struct DearImGui : Gui {
 		pool = init_imgui(info);
 	}
 
-	void new_frame() final {
+	void new_frame() {
 		if (state == State::eEndFrame) { end_frame(); }
 		ImGui_ImplVulkan_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
@@ -137,7 +137,7 @@ struct DearImGui : Gui {
 		state = State::eEndFrame;
 	}
 
-	void end_frame() final {
+	void end_frame() {
 		// ImGui::Render calls ImGui::EndFrame
 		ImGui::Render();
 		state = State::eNewFrame;
@@ -151,9 +151,9 @@ struct RenderWindow {
 	Vulkan vulkan;
 	Gfx gfx;
 	Renderer renderer;
-	std::unique_ptr<Gui> gui;
+	std::unique_ptr<DearImGui> gui;
 
-	RenderWindow(UniqueWin window, std::unique_ptr<Gui> gui, std::uint8_t msaa, bool validation)
+	RenderWindow(UniqueWin window, std::unique_ptr<DearImGui> gui, std::uint8_t msaa, bool validation)
 		: window(std::move(window)), vulkan(GlfwWsi{this->window}, validation), gfx(vulkan.gfx()),
 		  renderer(gfx, this->window, gui.get(), Renderer::CreateInfo{command_buffers_v, msaa}), gui(std::move(gui)) {}
 };

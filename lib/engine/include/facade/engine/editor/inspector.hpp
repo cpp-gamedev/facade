@@ -2,6 +2,8 @@
 #include <facade/engine/editor/common.hpp>
 #include <facade/scene/material.hpp>
 #include <facade/scene/node.hpp>
+#include <facade/util/nvec3.hpp>
+#include <facade/util/rgb.hpp>
 #include <limits>
 
 namespace facade {
@@ -28,7 +30,10 @@ class Inspector {
 	bool inspect(char const* label, glm::vec2& out_vec2, float speed = 1.0f, float lo = min_v, float hi = max_v) const;
 	bool inspect(char const* label, glm::vec3& out_vec3, float speed = 1.0f, float lo = min_v, float hi = max_v) const;
 	bool inspect(char const* label, glm::vec4& out_vec4, float speed = 1.0f, float lo = min_v, float hi = max_v) const;
+	bool inspect(char const* label, nvec3& out_vec3, float speed = 0.01f) const;
 	bool inspect(char const* label, glm::quat& out_quat) const;
+	bool inspect_rgb(char const* label, glm::vec3& out_rgb) const;
+	bool inspect(char const* label, Rgb& out_rgb) const;
 	bool inspect(Transform& out_transform, Bool& out_unified_scaling) const;
 	bool inspect(std::span<Transform> out_instances, Bool unfied_scaling) const;
 

@@ -50,6 +50,15 @@ bool Inspector::inspect(char const* label, glm::vec4& out_vec4, float speed, flo
 	return false;
 }
 
+bool Inspector::inspect(char const* label, nvec3& out_vec3, float speed) const {
+	auto vec3 = out_vec3.value();
+	if (inspect(label, vec3, speed, -1.0f, 1.0f)) {
+		out_vec3 = vec3;
+		return true;
+	}
+	return false;
+}
+
 bool Inspector::inspect(char const* label, glm::quat& out_quat) const {
 	auto euler = to_degree(glm::eulerAngles(out_quat));
 	auto const org = euler;
@@ -60,6 +69,25 @@ bool Inspector::inspect(char const* label, glm::quat& out_quat) const {
 		return true;
 	}
 	return false;
+}
+
+bool Inspector::inspect_rgb(char const* label, glm::vec3& out_rgb) const {
+	float arr[3] = {out_rgb.x, out_rgb.y, out_rgb.z};
+	if (ImGui::ColorEdit3(label, arr)) {
+		out_rgb = {arr[0], arr[1], arr[2]};
+		return true;
+	}
+	return false;
+}
+
+bool Inspector::inspect(char const* label, Rgb& out_rgb) const {
+	auto ret = Modified{};
+	if (auto tn = TreeNode{label}) {
+		auto vec3 = out_rgb.to_vec3();
+		if (inspect_rgb("RGB", vec3)) { ret.value = true; }
+		ret(ImGui::DragFloat("Intensity", &out_rgb.intensity, 0.05f, 0.1f, 1000.0f));
+	}
+	return ret.value;
 }
 
 bool Inspector::inspect(Transform& out_transform, Bool& out_unified_scaling) const {
@@ -111,6 +139,7 @@ bool SceneInspector::inspect([[maybe_unused]] TreeNode const& node, LitMaterial&
 	auto ret = Modified{};
 	ret(ImGui::SliderFloat("Metallic", &out_material.metallic, 0.0f, 1.0f));
 	ret(ImGui::SliderFloat("Roughness", &out_material.roughness, 0.0f, 1.0f));
+	ret(inspect_rgb("Albedo", out_material.albedo));
 	if (out_material.base_colour || out_material.roughness_metallic) {
 		if (auto tn = TreeNode{"Textures"}) {
 			if (out_material.base_colour) {

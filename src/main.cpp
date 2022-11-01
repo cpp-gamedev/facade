@@ -259,7 +259,7 @@ void run() {
 		engine->add_shader(shaders::unlit());
 
 		auto& scene = engine->scene();
-		scene.dir_lights.push_back(DirLight{.direction = glm::normalize(glm::vec3{-1.0f, -1.0f, -1.0f}), .diffuse = glm::vec3{5.0f}});
+		scene.dir_lights.insert(DirLight{.direction = glm::normalize(glm::vec3{-1.0f, -1.0f, -1.0f}), .rgb = {.intensity = 5.0f}});
 		scene.load_gltf(dj::Json::parse(test_json_v), DummyDataProvider{});
 		post_scene_load(engine->scene());
 		engine->show(true);

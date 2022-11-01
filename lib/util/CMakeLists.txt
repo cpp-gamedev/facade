@@ -79,6 +79,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/util/nvec3.hpp
   include/${target_prefix}/util/pinned.hpp
   include/${target_prefix}/util/ptr.hpp
+  include/${target_prefix}/util/rgb.hpp
   include/${target_prefix}/util/time.hpp
   include/${target_prefix}/util/transform.hpp
   include/${target_prefix}/util/type_id.hpp
@@ -90,5 +91,6 @@ target_sources(${PROJECT_NAME} PRIVATE
   src/data_provider.cpp
   src/image.cpp
   src/logger.cpp
+  src/rgb.cpp
   src/time.cpp
 )

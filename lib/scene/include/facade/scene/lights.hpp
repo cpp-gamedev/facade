@@ -1,13 +1,19 @@
 #pragma once
 #include <facade/util/nvec3.hpp>
+#include <facade/util/rgb.hpp>
 
 namespace facade {
 ///
-/// \brief GPU data for directional lights.
+/// \brief Directional light.
 ///
 struct DirLight {
-	alignas(16) glm::vec3 direction{front_v};
-	alignas(16) glm::vec3 ambient{0.04f};
-	alignas(16) glm::vec3 diffuse{1.0f};
+	///
+	/// \brief Direction.
+	///
+	nvec3 direction{front_v};
+	///
+	/// \brief Colour and intensity.
+	///
+	Rgb rgb{};
 };
 } // namespace facade

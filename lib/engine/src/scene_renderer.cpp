@@ -24,6 +24,19 @@ struct Img1x1 {
 		};
 	}
 };
+
+struct DirLightSSBO {
+	alignas(16) glm::vec3 direction{front_v};
+	alignas(16) glm::vec3 ambient{0.04f};
+	alignas(16) glm::vec3 diffuse{1.0f};
+
+	static DirLightSSBO make(DirLight const& light) {
+		return {
+			.direction = light.direction.value(),
+			.diffuse = light.rgb.to_vec4(),
+		};
+	}
+};
 } // namespace
 
 SceneRenderer::SceneRenderer(Gfx const& gfx)
@@ -51,7 +64,9 @@ void SceneRenderer::write_view(glm::vec2 const extent) {
 		.pos_v = {cam_node.transform.position(), 1.0f},
 	};
 	m_view_proj.write(&vp, sizeof(vp));
-	m_dir_lights.write(m_scene->dir_lights.data(), m_scene->dir_lights.size() * sizeof(DirLight));
+	auto dir_lights = FlexArray<DirLightSSBO, 4>{};
+	for (auto const& light : m_scene->dir_lights.span()) { dir_lights.insert(DirLightSSBO::make(light)); }
+	m_dir_lights.write(dir_lights.span().data(), dir_lights.span().size_bytes());
 }
 
 void SceneRenderer::update_view(Pipeline& out_pipeline) const {

@@ -50,7 +50,7 @@ class TreeNode : public Openable {
 	explicit TreeNode(char const* label, int flags = {});
 	~TreeNode();
 
-	static void leaf(char const* label, int flags = {});
+	static bool leaf(char const* label, int flags = {});
 };
 
 ///

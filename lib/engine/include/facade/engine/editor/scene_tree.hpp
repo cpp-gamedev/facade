@@ -11,7 +11,7 @@ namespace editor {
 ///
 /// \brief Target Node to inspect (driven by SceneTree)
 ///
-struct Inspectee {
+struct InspectNode {
 	FixedString<128> name{"[Node]###Node"};
 	Id<Node> id{};
 
@@ -30,7 +30,7 @@ class SceneTree : public Pinned {
 	/// \param inout Used to highlight matching Node, and set to clicked Node, if any
 	/// \returns true if inout changed during tree walk
 	///
-	bool render(NotClosed<Window>, Inspectee& inout) const;
+	bool render(NotClosed<Window>, InspectNode& inout) const;
 
   private:
 	Scene& m_scene;

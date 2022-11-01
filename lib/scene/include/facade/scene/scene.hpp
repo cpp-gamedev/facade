@@ -8,7 +8,6 @@
 #include <facade/scene/node.hpp>
 #include <facade/scene/node_data.hpp>
 #include <facade/util/enum_array.hpp>
-#include <facade/util/flex_array.hpp>
 #include <facade/util/image.hpp>
 #include <facade/util/ptr.hpp>
 #include <facade/util/transform.hpp>

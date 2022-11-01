@@ -123,7 +123,7 @@ struct MainMenu {
 
 	struct {
 		editor::Log log{};
-		editor::Inspectee inspectee{};
+		editor::InspectNode inspect{};
 		Bool unified_scaling{true};
 	} data{};
 
@@ -146,15 +146,15 @@ struct MainMenu {
 
 	void inspector(Scene& scene) {
 		bool show = true;
-		ImGui::SetNextWindowSize({400.0f, 400.0f}, ImGuiCond_Once);
-		if (auto window = editor::Window{data.inspectee.name.c_str(), &show}) {
-			editor::SceneInspector{window, scene}.inspect(data.inspectee.id, data.unified_scaling);
+		ImGui::SetNextWindowSize({400.0f, 400.0f}, ImGuiCond_FirstUseEver);
+		if (auto window = editor::Window{data.inspect.name.c_str(), &show}) {
+			editor::SceneInspector{window, scene}.inspect(data.inspect.id, data.unified_scaling);
 		}
-		if (!show) { data.inspectee = {}; }
+		if (!show) { data.inspect = {}; }
 	}
 
 	void stats(Engine const& engine, float const dt) {
-		ImGui::SetNextWindowSize({250.0f, 200.0f}, ImGuiCond_Once);
+		ImGui::SetNextWindowSize({250.0f, 200.0f}, ImGuiCond_FirstUseEver);
 		if (auto window = editor::Window{"Frame Stats", &windows.stats}) {
 			auto const& stats = engine.renderer().frame_stats();
 			ImGui::Text("%s", FixedString{"Counter: {}", stats.frame_counter}.c_str());
@@ -171,17 +171,21 @@ struct MainMenu {
 	}
 
 	void tree(Scene& scene) {
-		ImGui::SetNextWindowSize({250.0f, 350.0f}, ImGuiCond_Once);
-		if (auto window = editor::Window{"Scene", &windows.tree}) { editor::SceneTree{scene}.render(window, data.inspectee); }
+		ImGui::SetNextWindowSize({250.0f, 350.0f}, ImGuiCond_FirstUseEver);
+		if (auto window = editor::Window{"Scene", &windows.tree}) {
+			if (ImGui::Button("Lights")) { windows.lights = true; }
+			ImGui::Separator();
+			editor::SceneTree{scene}.render(window, data.inspect);
+		}
 	}
 
-	void lights(Scene& scene) {
-		ImGui::SetNextWindowSize({400.0f, 400.0f}, ImGuiCond_Once);
-		if (auto window = editor::Window{"Lights", &windows.lights}) { editor::Inspector{window}.inspect(scene.lights); }
+	void lights(Lights& lights) {
+		ImGui::SetNextWindowSize({400.0f, 400.0f}, ImGuiCond_FirstUseEver);
+		if (auto window = editor::Window{"Lights", &windows.lights}) { editor::Inspector{window}.inspect(lights); }
 	}
 
 	void log() {
-		ImGui::SetNextWindowSize({600.0f, 200.0f}, ImGuiCond_Once);
+		ImGui::SetNextWindowSize({600.0f, 200.0f}, ImGuiCond_FirstUseEver);
 		if (auto window = editor::Window{"Log", &windows.log}) { data.log.render(window); }
 	}
 
@@ -205,8 +209,8 @@ struct MainMenu {
 		}
 
 		if (windows.tree) { tree(engine.scene()); }
-		if (windows.lights) { lights(engine.scene()); }
-		if (data.inspectee) { inspector(engine.scene()); }
+		if (windows.lights) { lights(engine.scene().lights); }
+		if (data.inspect) { inspector(engine.scene()); }
 		if (windows.stats) { stats(engine, dt); }
 		if (windows.log) { log(); }
 		if (windows.imgui_demo) { ImGui::ShowDemoWindow(&windows.imgui_demo); }
@@ -248,7 +252,7 @@ void run() {
 		auto material = std::make_unique<LitMaterial>();
 		material->albedo = {1.0f, 0.0f, 0.0f};
 		material_id = scene.add(std::move(material));
-		auto static_mesh_id = scene.add(make_manipulator(0.125f, 1.0f, 16));
+		auto static_mesh_id = scene.add(make_cubed_sphere(1.0f, 32));
 		auto mesh_id = scene.add(Mesh{.primitives = {Mesh::Primitive{static_mesh_id, material_id}}});
 
 		auto node = Node{};

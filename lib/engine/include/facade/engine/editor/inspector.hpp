@@ -8,6 +8,7 @@
 
 namespace facade {
 struct Mesh;
+struct Lights;
 class Scene;
 
 namespace editor {
@@ -36,6 +37,7 @@ class Inspector {
 	bool inspect(char const* label, Rgb& out_rgb) const;
 	bool inspect(Transform& out_transform, Bool& out_unified_scaling) const;
 	bool inspect(std::span<Transform> out_instances, Bool unfied_scaling) const;
+	bool inspect(Lights& out_lights) const;
 
   private:
 	bool do_inspect(Transform& out_transform, Bool& out_unified_scaling, Bool scaling_toggle) const;
@@ -47,12 +49,12 @@ class SceneInspector : public Inspector {
 
 	SceneInspector(NotClosed<Window> target, Scene& scene);
 
-	bool inspect(TreeNode const& node, UnlitMaterial& out_material) const;
-	bool inspect(TreeNode const& node, LitMaterial& out_material) const;
+	bool inspect(NotClosed<TreeNode>, UnlitMaterial& out_material) const;
+	bool inspect(NotClosed<TreeNode> node, LitMaterial& out_material) const;
 	bool inspect(Id<Material> material_id) const;
-	bool inspect(Id<Node> node_id, Bool& out_unified_scaling) const;
-
 	bool inspect(Id<Mesh> mesh) const;
+
+	bool inspect(Id<Node> node_id, Bool& out_unified_scaling) const;
 
   private:
 	Scene& m_scene;

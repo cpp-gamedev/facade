@@ -65,7 +65,7 @@ void SceneRenderer::write_view(glm::vec2 const extent) {
 	};
 	m_view_proj.write(&vp, sizeof(vp));
 	auto dir_lights = FlexArray<DirLightSSBO, 4>{};
-	for (auto const& light : m_scene->dir_lights.span()) { dir_lights.insert(DirLightSSBO::make(light)); }
+	for (auto const& light : m_scene->lights.dir_lights.span()) { dir_lights.insert(DirLightSSBO::make(light)); }
 	m_dir_lights.write(dir_lights.span().data(), dir_lights.span().size_bytes());
 }
 

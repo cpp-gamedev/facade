@@ -83,8 +83,11 @@ bool Inspector::inspect_rgb(char const* label, glm::vec3& out_rgb) const {
 bool Inspector::inspect(char const* label, Rgb& out_rgb) const {
 	auto ret = Modified{};
 	if (auto tn = TreeNode{label}) {
-		auto vec3 = out_rgb.to_vec3();
-		if (inspect_rgb("RGB", vec3)) { ret.value = true; }
+		auto vec3 = Rgb{.channels = out_rgb.channels, .intensity = 1.0f}.to_vec3();
+		if (inspect_rgb("RGB", vec3)) {
+			out_rgb = Rgb::make(vec3, out_rgb.intensity);
+			ret.value = true;
+		}
 		ret(ImGui::DragFloat("Intensity", &out_rgb.intensity, 0.05f, 0.1f, 1000.0f));
 	}
 	return ret.value;
@@ -103,6 +106,42 @@ bool Inspector::inspect(std::span<Transform> out_instances, Bool unified_scaling
 			if (auto tn = TreeNode{FixedString{"Instance [{}]", index}.c_str()}) { ret(do_inspect(transform, unified_scaling, {false})); }
 		}
 	}
+	return ret.value;
+}
+
+bool Inspector::inspect(Lights& out_lights) const {
+	if (out_lights.dir_lights.empty()) { return false; }
+	auto ret = Modified{};
+	auto to_remove = std::optional<std::size_t>{};
+	bool allow_removal = out_lights.dir_lights.size() > 1;
+	auto inspect_dir_light = [&](DirLight& out_light, std::size_t index) {
+		auto tn = TreeNode{FixedString{"[{}]", index}.c_str()};
+		if (allow_removal) {
+			ImGui::SameLine(ImGui::GetWindowContentRegionWidth() - 10.0f);
+			static constexpr auto colour_v = ImVec4{0.8f, 0.0f, 0.1f, 1.0f};
+			ImGui::PushStyleColor(ImGuiCol_Button, colour_v);
+			ImGui::PushStyleColor(ImGuiCol_ButtonHovered, colour_v);
+			ImGui::PushStyleColor(ImGuiCol_ButtonActive, colour_v);
+			if (ImGui::SmallButton("x")) { to_remove = index; }
+			ImGui::PopStyleColor(3);
+		}
+		if (tn) {
+			ret(inspect("Direction", out_light.direction));
+			ret(inspect("Albedo", out_light.rgb));
+		}
+	};
+	if (ImGui::CollapsingHeader("DirLights")) {
+		for (auto [light, index] : enumerate(out_lights.dir_lights.span())) { inspect_dir_light(light, index); }
+	}
+	if (to_remove) {
+		auto replace = decltype(out_lights.dir_lights){};
+		for (auto const [light, index] : enumerate(out_lights.dir_lights.span())) {
+			if (index == *to_remove) { continue; }
+			replace.insert(light);
+		}
+		out_lights.dir_lights = std::move(replace);
+	}
+	if (out_lights.dir_lights.size() < Lights::max_lights_v && ImGui::Button("[+]")) { out_lights.dir_lights.insert(DirLight{}); }
 	return ret.value;
 }
 
@@ -127,15 +166,13 @@ bool Inspector::do_inspect(Transform& out_transform, Bool& out_unified_scaling, 
 
 SceneInspector::SceneInspector(NotClosed<Window> target, Scene& scene) : Inspector(target), m_scene(scene) {}
 
-bool SceneInspector::inspect([[maybe_unused]] TreeNode const& node, UnlitMaterial& out_material) const {
-	assert(node.is_open());
+bool SceneInspector::inspect(NotClosed<TreeNode>, UnlitMaterial& out_material) const {
 	auto ret = Modified{};
 	ret(inspect("Tint", out_material.tint, 0.01f, 0.0f, 1.0f));
 	return ret.value;
 }
 
-bool SceneInspector::inspect([[maybe_unused]] TreeNode const& node, LitMaterial& out_material) const {
-	assert(node.is_open());
+bool SceneInspector::inspect(NotClosed<TreeNode>, LitMaterial& out_material) const {
 	auto ret = Modified{};
 	ret(ImGui::SliderFloat("Metallic", &out_material.metallic, 0.0f, 1.0f));
 	ret(ImGui::SliderFloat("Roughness", &out_material.roughness, 0.0f, 1.0f));
@@ -168,6 +205,21 @@ bool SceneInspector::inspect(Id<Material> material_id) const {
 	return false;
 }
 
+bool SceneInspector::inspect(Id<Mesh> mesh_id) const {
+	auto ret = Modified{};
+	auto* mesh = m_scene.find(mesh_id);
+	if (!mesh) { return ret.value; }
+	if (ImGui::CollapsingHeader(FixedString{"Mesh ({})###Mesh", mesh_id}.c_str())) {
+		for (auto [primitive, index] : enumerate(mesh->primitives)) {
+			if (auto tn = TreeNode{FixedString{"Primitive [{}]", index}.c_str()}) {
+				TreeNode::leaf(FixedString{"Static Mesh ({})", primitive.static_mesh}.c_str());
+				if (primitive.material) { ret(inspect(*primitive.material)); }
+			}
+		}
+	}
+	return ret.value;
+}
+
 bool SceneInspector::inspect(Id<Node> node_id, Bool& out_unified_scaling) const {
 	auto ret = Modified{};
 	auto* node = m_scene.find(node_id);
@@ -175,22 +227,6 @@ bool SceneInspector::inspect(Id<Node> node_id, Bool& out_unified_scaling) const 
 	ret(inspect(node->transform, out_unified_scaling));
 	ret(inspect(node->instances, out_unified_scaling));
 	if (auto const* mesh_id = node->find<Id<Mesh>>()) { ret(inspect(*mesh_id)); }
-	return ret.value;
-}
-
-bool SceneInspector::inspect(Id<Mesh> mesh_id) const {
-	auto ret = Modified{};
-	auto* mesh = m_scene.find(mesh_id);
-	if (!mesh) { return ret.value; }
-	if (ImGui::CollapsingHeader(FixedString{"Mesh ({})###Mesh", mesh_id}.c_str())) {
-		for (std::size_t i = 0; i < mesh->primitives.size(); ++i) {
-			if (auto tn = TreeNode{FixedString{"Primitive [{}]", i}.c_str()}) {
-				auto const& primitive = mesh->primitives[i];
-				TreeNode::leaf(FixedString{"Static Mesh ({})", primitive.static_mesh}.c_str());
-				if (primitive.material) { ret(inspect(*primitive.material)); }
-			}
-		}
-	}
 	return ret.value;
 }
 } // namespace facade::editor

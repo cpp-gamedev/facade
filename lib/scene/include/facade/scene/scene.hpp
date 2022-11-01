@@ -244,9 +244,9 @@ class Scene {
 	Resources resources() const { return m_storage.resources(); }
 
 	///
-	/// \brief All the directional lights in the scene.
+	/// \brief All the lights in the scene.
 	///
-	FlexArray<DirLight, 4> dir_lights{};
+	Lights lights{};
 
   private:
 	struct TreeBuilder;

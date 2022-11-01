@@ -40,17 +40,25 @@ class FlexArray {
 
 	///
 	/// \brief Obtain a mutable view into the array.
+	/// \returns Mutable view into the array
 	///
 	constexpr std::span<Type> span() { return {m_t.data(), m_size}; }
 	///
 	/// \brief Obtain an immutable view into the array.
+	/// \returns Immutable view into the array
 	///
 	constexpr std::span<Type const> span() const { return {m_t.data(), m_size}; }
 
 	///
 	/// \brief Obtain the number of elements stored.
+	/// \returns Number of elements stored
 	///
 	constexpr std::size_t size() const { return m_size; }
+	///
+	/// \brief Check if the array size is 0.
+	/// \returns true if size is 0
+	///
+	constexpr bool empty() const { return m_size == 0; }
 
   private:
 	std::array<Type, Capacity> m_t{};

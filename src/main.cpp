@@ -116,6 +116,7 @@ struct MainMenu {
 	struct {
 		bool stats{};
 		bool tree{};
+		bool lights{};
 		bool log{};
 		bool imgui_demo{};
 	} windows{};
@@ -174,6 +175,11 @@ struct MainMenu {
 		if (auto window = editor::Window{"Scene", &windows.tree}) { editor::SceneTree{scene}.render(window, data.inspectee); }
 	}
 
+	void lights(Scene& scene) {
+		ImGui::SetNextWindowSize({400.0f, 400.0f}, ImGuiCond_Once);
+		if (auto window = editor::Window{"Lights", &windows.lights}) { editor::Inspector{window}.inspect(scene.lights); }
+	}
+
 	void log() {
 		ImGui::SetNextWindowSize({600.0f, 200.0f}, ImGuiCond_Once);
 		if (auto window = editor::Window{"Log", &windows.log}) { data.log.render(window); }
@@ -187,6 +193,7 @@ struct MainMenu {
 			}
 			if (auto window = editor::Menu{main, "Window"}) {
 				if (ImGui::MenuItem("Tree")) { windows.tree = true; }
+				if (ImGui::MenuItem("Lights")) { windows.lights = true; }
 				if (ImGui::MenuItem("Stats")) { windows.stats = true; }
 				if (ImGui::MenuItem("Log")) { windows.log = true; }
 				if constexpr (debug_v) {
@@ -198,6 +205,7 @@ struct MainMenu {
 		}
 
 		if (windows.tree) { tree(engine.scene()); }
+		if (windows.lights) { lights(engine.scene()); }
 		if (data.inspectee) { inspector(engine.scene()); }
 		if (windows.stats) { stats(engine, dt); }
 		if (windows.log) { log(); }
@@ -234,12 +242,13 @@ void run() {
 	auto material_id = Id<Material>{};
 	auto node_id = Id<Node>{};
 	auto post_scene_load = [&](Scene& scene) {
+		scene.lights.dir_lights.insert(DirLight{.direction = glm::normalize(glm::vec3{-1.0f, -1.0f, -1.0f}), .rgb = {.intensity = 5.0f}});
 		scene.camera().transform.set_position({0.0f, 0.0f, 5.0f});
 
 		auto material = std::make_unique<LitMaterial>();
 		material->albedo = {1.0f, 0.0f, 0.0f};
 		material_id = scene.add(std::move(material));
-		auto static_mesh_id = scene.add(make_cubed_sphere(1.0f, 32));
+		auto static_mesh_id = scene.add(make_manipulator(0.125f, 1.0f, 16));
 		auto mesh_id = scene.add(Mesh{.primitives = {Mesh::Primitive{static_mesh_id, material_id}}});
 
 		auto node = Node{};
@@ -259,7 +268,6 @@ void run() {
 		engine->add_shader(shaders::unlit());
 
 		auto& scene = engine->scene();
-		scene.dir_lights.insert(DirLight{.direction = glm::normalize(glm::vec3{-1.0f, -1.0f, -1.0f}), .rgb = {.intensity = 5.0f}});
 		scene.load_gltf(dj::Json::parse(test_json_v), DummyDataProvider{});
 		post_scene_load(engine->scene());
 		engine->show(true);

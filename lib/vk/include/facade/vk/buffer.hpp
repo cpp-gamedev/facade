@@ -33,7 +33,6 @@ class Buffer {
 	Gfx m_gfx{};
 	mutable Rotator<Defer<UniqueBuffer>> m_buffers{};
 	std::vector<std::byte> m_data{};
-	std::size_t m_size{};
 	Type m_type{};
 };
 } // namespace facade

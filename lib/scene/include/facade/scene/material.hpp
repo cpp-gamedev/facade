@@ -64,6 +64,8 @@ class Material {
 	/// \param store Texture lookup store
 	///
 	virtual void write_sets(Pipeline& pipeline, TextureStore const& store) const = 0;
+
+	std::string name{"(Unnamed)"};
 };
 
 ///

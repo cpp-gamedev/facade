@@ -116,13 +116,14 @@ struct MainMenu {
 	struct {
 		bool stats{};
 		bool tree{};
+		bool lights{};
 		bool log{};
 		bool imgui_demo{};
 	} windows{};
 
 	struct {
 		editor::Log log{};
-		editor::Inspectee inspectee{};
+		editor::InspectNode inspect{};
 		Bool unified_scaling{true};
 	} data{};
 
@@ -145,15 +146,15 @@ struct MainMenu {
 
 	void inspector(Scene& scene) {
 		bool show = true;
-		ImGui::SetNextWindowSize({400.0f, 400.0f}, ImGuiCond_Once);
-		if (auto window = editor::Window{data.inspectee.name.c_str(), &show}) {
-			editor::SceneInspector{window, scene}.inspect(data.inspectee.id, data.unified_scaling);
+		ImGui::SetNextWindowSize({400.0f, 400.0f}, ImGuiCond_FirstUseEver);
+		if (auto window = editor::Window{data.inspect.name.c_str(), &show}) {
+			editor::SceneInspector{window, scene}.inspect(data.inspect.id, data.unified_scaling);
 		}
-		if (!show) { data.inspectee = {}; }
+		if (!show) { data.inspect = {}; }
 	}
 
 	void stats(Engine const& engine, float const dt) {
-		ImGui::SetNextWindowSize({250.0f, 200.0f}, ImGuiCond_Once);
+		ImGui::SetNextWindowSize({250.0f, 200.0f}, ImGuiCond_FirstUseEver);
 		if (auto window = editor::Window{"Frame Stats", &windows.stats}) {
 			auto const& stats = engine.renderer().frame_stats();
 			ImGui::Text("%s", FixedString{"Counter: {}", stats.frame_counter}.c_str());
@@ -170,12 +171,21 @@ struct MainMenu {
 	}
 
 	void tree(Scene& scene) {
-		ImGui::SetNextWindowSize({250.0f, 350.0f}, ImGuiCond_Once);
-		if (auto window = editor::Window{"Scene", &windows.tree}) { editor::SceneTree{scene}.render(window, data.inspectee); }
+		ImGui::SetNextWindowSize({250.0f, 350.0f}, ImGuiCond_FirstUseEver);
+		if (auto window = editor::Window{"Scene", &windows.tree}) {
+			if (ImGui::Button("Lights")) { windows.lights = true; }
+			ImGui::Separator();
+			editor::SceneTree{scene}.render(window, data.inspect);
+		}
+	}
+
+	void lights(Lights& lights) {
+		ImGui::SetNextWindowSize({400.0f, 400.0f}, ImGuiCond_FirstUseEver);
+		if (auto window = editor::Window{"Lights", &windows.lights}) { editor::Inspector{window}.inspect(lights); }
 	}
 
 	void log() {
-		ImGui::SetNextWindowSize({600.0f, 200.0f}, ImGuiCond_Once);
+		ImGui::SetNextWindowSize({600.0f, 200.0f}, ImGuiCond_FirstUseEver);
 		if (auto window = editor::Window{"Log", &windows.log}) { data.log.render(window); }
 	}
 
@@ -187,6 +197,7 @@ struct MainMenu {
 			}
 			if (auto window = editor::Menu{main, "Window"}) {
 				if (ImGui::MenuItem("Tree")) { windows.tree = true; }
+				if (ImGui::MenuItem("Lights")) { windows.lights = true; }
 				if (ImGui::MenuItem("Stats")) { windows.stats = true; }
 				if (ImGui::MenuItem("Log")) { windows.log = true; }
 				if constexpr (debug_v) {
@@ -198,7 +209,8 @@ struct MainMenu {
 		}
 
 		if (windows.tree) { tree(engine.scene()); }
-		if (data.inspectee) { inspector(engine.scene()); }
+		if (windows.lights) { lights(engine.scene().lights); }
+		if (data.inspect) { inspector(engine.scene()); }
 		if (windows.stats) { stats(engine, dt); }
 		if (windows.log) { log(); }
 		if (windows.imgui_demo) { ImGui::ShowDemoWindow(&windows.imgui_demo); }
@@ -234,6 +246,7 @@ void run() {
 	auto material_id = Id<Material>{};
 	auto node_id = Id<Node>{};
 	auto post_scene_load = [&](Scene& scene) {
+		scene.lights.dir_lights.insert(DirLight{.direction = glm::normalize(glm::vec3{-1.0f, -1.0f, -1.0f}), .rgb = {.intensity = 5.0f}});
 		scene.camera().transform.set_position({0.0f, 0.0f, 5.0f});
 
 		auto material = std::make_unique<LitMaterial>();
@@ -259,7 +272,6 @@ void run() {
 		engine->add_shader(shaders::unlit());
 
 		auto& scene = engine->scene();
-		scene.dir_lights.push_back(DirLight{.direction = glm::normalize(glm::vec3{-1.0f, -1.0f, -1.0f}), .diffuse = glm::vec3{5.0f}});
 		scene.load_gltf(dj::Json::parse(test_json_v), DummyDataProvider{});
 		post_scene_load(engine->scene());
 		engine->show(true);

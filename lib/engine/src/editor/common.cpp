@@ -25,6 +25,11 @@ TreeNode::~TreeNode() {
 	if (m_open) { ImGui::TreePop(); }
 }
 
+bool TreeNode::leaf(char const* label, int flags) {
+	if (TreeNode{label, flags | ImGuiTreeNodeFlags_Leaf}) { return true; }
+	return false;
+}
+
 Window::Menu::Menu(NotClosed<Window>) : MenuBar(ImGui::BeginMenuBar()) {}
 
 Window::Menu::~Menu() {

@@ -288,7 +288,7 @@ struct Data {
 
 		void buffer(dj::Json const& json) {
 			auto& b = storage.buffers.emplace_back();
-			b.name = json["name"].as_string();
+			b.name = json["name"].as_string("(Unnamed)");
 			auto const uri = json["uri"].as_string();
 			// TODO
 			assert(!uri.empty());
@@ -319,7 +319,7 @@ struct Data {
 			if (auto const& bv = json["bufferView"]) { a.buffer_view = bv.as<std::size_t>(); }
 			a.byte_offset = json["byteOffset"].as<std::size_t>(0U);
 			a.normalized = json["normalized"].as_bool(dj::Boolean{false}).value;
-			a.name = json["name"].as_string();
+			a.name = json["name"].as_string("(Unnamed)");
 			// TODO range
 		}
 
@@ -346,7 +346,7 @@ struct Data {
 		void camera(dj::Json const& json) {
 			auto& c = storage.cameras.emplace_back();
 			assert(json.contains("type"));
-			c.name = json["name"].as_string();
+			c.name = json["name"].as_string("(Unnamed)");
 			c.type = json["type"].as_string() == "orthographic" ? Camera::Type::eOrthographic : Camera::Type::ePerspective;
 			if (c.type == Camera::Type::eOrthographic) {
 				assert(json.contains("orthographic"));
@@ -359,7 +359,7 @@ struct Data {
 
 		void sampler(dj::Json const& json) {
 			auto& s = storage.samplers.emplace_back();
-			s.name = json["name"].as<std::string>();
+			s.name = json["name"].as<std::string>("(Unnamed)");
 			if (auto const& min = json["minFilter"]) { s.min_filter = static_cast<Filter>(min.as<int>()); }
 			if (auto const& mag = json["magFilter"]) { s.mag_filter = static_cast<Filter>(mag.as<int>()); }
 			s.wrap_s = static_cast<Wrap>(json["wrapS"].as<int>(static_cast<int>(s.wrap_s)));
@@ -377,14 +377,14 @@ struct Data {
 
 		void mesh(dj::Json const& json) {
 			auto& m = storage.meshes.emplace_back();
-			m.name = json["name"].as_string();
+			m.name = json["name"].as_string("(Unnamed)");
 			for (auto const& j : json["primitives"].array_view()) { m.primitives.push_back(primitive(j)); }
 		}
 
 		void image(dj::Json const& json) {
 			auto& i = storage.images.emplace_back();
 			auto const uri = json["uri"].as_string();
-			auto name = std::string{json["name"].as_string()};
+			auto name = std::string{json["name"].as_string("(Unnamed)")};
 			if (auto const it = get_base64_start(uri); it != std::string_view::npos) {
 				i = Image{base64_decode(uri.substr(it)), std::move(name)};
 			} else {
@@ -394,7 +394,7 @@ struct Data {
 
 		void texture(dj::Json const& json) {
 			auto& t = storage.textures.emplace_back();
-			t.name = json["name"].as<std::string>();
+			t.name = json["name"].as<std::string>("(Unnamed)");
 			if (auto const& sampler = json["sampler"]) { t.sampler = sampler.as<std::size_t>(); }
 			assert(json.contains("source"));
 			t.source = json["source"].as<std::size_t>();
@@ -455,7 +455,7 @@ struct Data {
 
 		void material(dj::Json const& json) {
 			auto& m = storage.materials.emplace_back();
-			m.name = std::string{json["name"].as_string()};
+			m.name = std::string{json["name"].as_string("(Unnamed)")};
 			m.pbr = pbr_metallic_roughness(json["pbrMetallicRoughness"]);
 			m.emissive_factor = get_vec<float, 3>(json["emissiveFactor"]);
 			if (auto const& nt = json["normalTexture"]) { m.normal_texture = get_normal_texture_info(nt); }

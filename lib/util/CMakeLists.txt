@@ -69,6 +69,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/util/colour_space.hpp
   include/${target_prefix}/util/data_provider.hpp
   include/${target_prefix}/util/enum_array.hpp
+  include/${target_prefix}/util/enumerate.hpp
   include/${target_prefix}/util/error.hpp
   include/${target_prefix}/util/fixed_string.hpp
   include/${target_prefix}/util/flex_array.hpp
@@ -78,6 +79,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/util/nvec3.hpp
   include/${target_prefix}/util/pinned.hpp
   include/${target_prefix}/util/ptr.hpp
+  include/${target_prefix}/util/rgb.hpp
   include/${target_prefix}/util/time.hpp
   include/${target_prefix}/util/transform.hpp
   include/${target_prefix}/util/type_id.hpp
@@ -89,5 +91,6 @@ target_sources(${PROJECT_NAME} PRIVATE
   src/data_provider.cpp
   src/image.cpp
   src/logger.cpp
+  src/rgb.cpp
   src/time.cpp
 )

@@ -4,6 +4,7 @@
 #include <facade/scene/lights.hpp>
 #include <facade/scene/load_status.hpp>
 #include <facade/scene/material.hpp>
+#include <facade/scene/mesh.hpp>
 #include <facade/scene/node.hpp>
 #include <facade/scene/node_data.hpp>
 #include <facade/util/enum_array.hpp>
@@ -42,30 +43,6 @@ struct AtomicLoadStatus {
 };
 
 ///
-/// \brief Represents a Mesh in a Scene.
-///
-struct Mesh {
-	///
-	/// \brief Represents a primitive in a mesh
-	///
-	struct Primitive {
-		///
-		/// \brief Id of the StaticMesh this primitive uses.
-		///
-		Id<StaticMesh> static_mesh{};
-		///
-		/// \brief Id of the Material this primitive uses.
-		///
-		std::optional<Id<Material>> material{};
-	};
-
-	///
-	/// \brief List of primitives in this mesh.
-	///
-	std::vector<Primitive> primitives{};
-};
-
-///
 /// \brief Models a 3D scene.
 ///
 /// A single Scene holds all the data in a GLTF asset, which can contain *multiple* GLTF scenes.
@@ -77,6 +54,18 @@ class Scene {
 	/// \brief Represents a single GTLF scene.
 	///
 	struct Tree {};
+
+	///
+	/// \brief Immutable view of the resources stored in the scene.
+	///
+	struct Resources {
+		std::span<Camera const> cameras{};
+		std::span<Sampler const> samplers{};
+		std::span<std::unique_ptr<Material> const> materials{};
+		std::span<StaticMesh const> static_meshes{};
+		std::span<Texture const> textures{};
+		std::span<Mesh const> meshes{};
+	};
 
 	///
 	/// \brief "Null" Id for a Node: refers to no Node.
@@ -248,9 +237,15 @@ class Scene {
 	Texture make_texture(Image::View image) const;
 
 	///
-	/// \brief All the directional lights in the scene.
+	/// \brief Obtain a view into the stored resources.
+	/// \returns A Resources object
 	///
-	std::vector<DirLight> dir_lights{};
+	Resources resources() const { return m_storage.resources(); }
+
+	///
+	/// \brief All the lights in the scene.
+	///
+	Lights lights{};
 
   private:
 	struct TreeBuilder;
@@ -279,7 +274,8 @@ class Scene {
 		std::vector<Mesh> meshes{};
 
 		Data data{};
-		Id<Node> next_node{};
+
+		Resources resources() const { return {cameras, samplers, materials, static_meshes, textures, meshes}; }
 	};
 
 	void add_default_camera();
@@ -290,6 +286,8 @@ class Scene {
 
 	void check(Mesh const& mesh) const noexcept(false);
 	void check(Node const& node) const noexcept(false);
+
+	inline static std::atomic<Id<Node>::id_type> s_next_node{};
 
 	Gfx m_gfx;
 	Sampler m_sampler;

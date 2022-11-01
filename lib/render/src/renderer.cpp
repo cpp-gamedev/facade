@@ -187,7 +187,7 @@ bool Renderer::next_frame(std::span<vk::CommandBuffer> out) {
 	m_impl->render_target = m_impl->render_pass.refresh(acquired);
 
 	// refresh framebuffer
-	m_impl->framebuffer = frame.refresh(m_impl->render_pass.render_pass(), *m_impl->render_target);
+	m_impl->framebuffer = frame.refresh(m_impl->gfx.device, m_impl->render_pass.render_pass(), *m_impl->render_target);
 
 	// begin recording commands
 	auto const cbii = vk::CommandBufferInheritanceInfo{m_impl->render_pass.render_pass(), 0, m_impl->framebuffer.framebuffer};

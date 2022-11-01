@@ -35,11 +35,11 @@ void Buffer::refresh() const {
 
 BufferView Buffer::view() const {
 	refresh();
-	return {m_buffers.get().get().get().buffer, m_size};
+	return {m_buffers.get().get().get().buffer, m_data.size()};
 }
 
 DescriptorBuffer Buffer::descriptor_buffer() const {
 	refresh();
-	return {m_buffers.get().get().get().buffer, m_buffers.get().get().get().size, to_descriptor_type(m_type)};
+	return {m_buffers.get().get().get().buffer, m_data.size(), to_descriptor_type(m_type)};
 }
 } // namespace facade

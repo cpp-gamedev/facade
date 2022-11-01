@@ -1,13 +1,26 @@
 #pragma once
+#include <facade/util/flex_array.hpp>
 #include <facade/util/nvec3.hpp>
+#include <facade/util/rgb.hpp>
 
 namespace facade {
 ///
-/// \brief GPU data for directional lights.
+/// \brief Directional light.
 ///
 struct DirLight {
-	alignas(16) glm::vec3 direction{front_v};
-	alignas(16) glm::vec3 ambient{0.04f};
-	alignas(16) glm::vec3 diffuse{1.0f};
+	///
+	/// \brief Direction.
+	///
+	nvec3 direction{-front_v};
+	///
+	/// \brief Colour and intensity.
+	///
+	Rgb rgb{};
+};
+
+struct Lights {
+	static constexpr std::size_t max_lights_v{4};
+
+	FlexArray<DirLight, max_lights_v> dir_lights{};
 };
 } // namespace facade

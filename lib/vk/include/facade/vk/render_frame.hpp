@@ -13,7 +13,6 @@ struct RenderFrame {
 		vk::UniqueFence drawn{};
 	};
 
-	Gfx gfx{};
 	Sync sync{};
 	Cmd::Allocator cmd_alloc{};
 	vk::UniqueFramebuffer framebuffer{};
@@ -22,7 +21,7 @@ struct RenderFrame {
 
 	static RenderFrame make(Gfx const& gfx, std::size_t secondary);
 
-	Framebuffer refresh(vk::RenderPass rp, RenderTarget const& rt);
+	Framebuffer refresh(vk::Device device, vk::RenderPass rp, RenderTarget const& rt);
 
 	void submit(vk::Queue queue) const;
 };

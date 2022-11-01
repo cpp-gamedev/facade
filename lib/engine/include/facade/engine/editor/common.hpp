@@ -49,6 +49,8 @@ class TreeNode : public Openable {
   public:
 	explicit TreeNode(char const* label, int flags = {});
 	~TreeNode();
+
+	static bool leaf(char const* label, int flags = {});
 };
 
 ///

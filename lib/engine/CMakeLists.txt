@@ -52,4 +52,4 @@ target_sources(${PROJECT_NAME} PRIVATE
   src/editor/inspector.cpp
   src/editor/log.cpp
   src/editor/scene_tree.cpp
-)
+ "src/editor/keybinder.cpp")

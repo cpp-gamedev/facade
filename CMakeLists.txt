@@ -53,6 +53,9 @@ if(FACADE_BUILD_EXE)
   add_executable(${PROJECT_NAME})
 
   target_sources(${PROJECT_NAME} PRIVATE
+    src/main_menu/main_menu.cpp
+    src/main_menu/main_menu.hpp
+
     src/main.cpp
 
     src/bin/shaders.cpp

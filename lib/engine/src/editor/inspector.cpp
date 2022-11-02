@@ -110,7 +110,6 @@ bool Inspector::inspect(std::span<Transform> out_instances, Bool unified_scaling
 }
 
 bool Inspector::inspect(Lights& out_lights) const {
-	if (out_lights.dir_lights.empty()) { return false; }
 	auto ret = Modified{};
 	auto to_remove = std::optional<std::size_t>{};
 	bool allow_removal = out_lights.dir_lights.size() > 1;

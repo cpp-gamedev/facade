@@ -4,6 +4,11 @@
 #include <glm/vec2.hpp>
 #include <cassert>
 #include <concepts>
+#include <span>
+
+namespace facade {
+class Engine;
+}
 
 namespace facade::editor {
 ///
@@ -25,6 +30,9 @@ class Openable : public Pinned {
 template <typename T>
 struct NotClosed {
 	NotClosed([[maybe_unused]] T const& t) { assert(t.is_open()); }
+
+	template <std::derived_from<T> Derived>
+	NotClosed(NotClosed<Derived>) {}
 };
 
 ///

@@ -1,28 +1,23 @@
-
 #include <facade/defines.hpp>
 
 #include <facade/util/data_provider.hpp>
 #include <facade/util/error.hpp>
-#include <facade/util/fixed_string.hpp>
 #include <facade/util/logger.hpp>
 #include <facade/vk/geometry.hpp>
 
-#include <djson/json.hpp>
-
-#include <facade/render/renderer.hpp>
 #include <facade/scene/fly_cam.hpp>
 
-#include <facade/engine/editor/inspector.hpp>
-#include <facade/engine/editor/log.hpp>
-#include <facade/engine/editor/scene_tree.hpp>
 #include <facade/engine/engine.hpp>
 
 #include <bin/shaders.hpp>
+#include <main_menu/main_menu.hpp>
+
+#include <djson/json.hpp>
+
+#include <imgui.h>
 
 #include <filesystem>
 #include <iostream>
-
-#include <imgui.h>
 
 using namespace facade;
 
@@ -112,111 +107,6 @@ static constexpr auto test_json_v = R"(
 }
 )";
 
-struct MainMenu {
-	struct {
-		bool stats{};
-		bool tree{};
-		bool lights{};
-		bool log{};
-		bool imgui_demo{};
-	} windows{};
-
-	struct {
-		editor::Log log{};
-		editor::InspectNode inspect{};
-		Bool unified_scaling{true};
-	} data{};
-
-	void change_vsync(Engine const& engine) const {
-		static constexpr vk::PresentModeKHR modes[] = {vk::PresentModeKHR::eFifo, vk::PresentModeKHR::eFifoRelaxed, vk::PresentModeKHR::eMailbox,
-													   vk::PresentModeKHR::eImmediate};
-		static std::size_t index{0};
-		auto const next_mode = [&] {
-			while (true) {
-				index = (index + 1) % std::size(modes);
-				auto const ret = modes[index];
-				if (!engine.renderer().is_supported(ret)) { continue; }
-				return ret;
-			}
-			throw Error{"Invariant violated"};
-		}();
-		engine.renderer().request_mode(next_mode);
-		logger::info("Requesting present mode: [{}]", present_mode_str(next_mode));
-	}
-
-	void inspector(Scene& scene) {
-		bool show = true;
-		ImGui::SetNextWindowSize({400.0f, 400.0f}, ImGuiCond_FirstUseEver);
-		if (auto window = editor::Window{data.inspect.name.c_str(), &show}) {
-			editor::SceneInspector{window, scene}.inspect(data.inspect.id, data.unified_scaling);
-		}
-		if (!show) { data.inspect = {}; }
-	}
-
-	void stats(Engine const& engine, float const dt) {
-		ImGui::SetNextWindowSize({250.0f, 200.0f}, ImGuiCond_FirstUseEver);
-		if (auto window = editor::Window{"Frame Stats", &windows.stats}) {
-			auto const& stats = engine.renderer().frame_stats();
-			ImGui::Text("%s", FixedString{"Counter: {}", stats.frame_counter}.c_str());
-			ImGui::Text("%s", FixedString{"Triangles: {}", stats.triangles}.c_str());
-			ImGui::Text("%s", FixedString{"Draw calls: {}", stats.draw_calls}.c_str());
-			ImGui::Text("%s", FixedString{"FPS: {}", (stats.fps == 0 ? static_cast<std::uint32_t>(stats.frame_counter) : stats.fps)}.c_str());
-			ImGui::Text("%s", FixedString{"Frame time: {:.2f}ms", dt * 1000.0f}.c_str());
-			ImGui::Text("%s", FixedString{"GPU: {}", stats.gpu_name}.c_str());
-			ImGui::Text("%s", FixedString{"MSAA: {}x", to_int(stats.msaa)}.c_str());
-			if (ImGui::SmallButton("Vsync")) { change_vsync(engine); }
-			ImGui::SameLine();
-			ImGui::Text("%s", vsync_status(stats.mode).data());
-		}
-	}
-
-	void tree(Scene& scene) {
-		ImGui::SetNextWindowSize({250.0f, 350.0f}, ImGuiCond_FirstUseEver);
-		if (auto window = editor::Window{"Scene", &windows.tree}) {
-			if (ImGui::Button("Lights")) { windows.lights = true; }
-			ImGui::Separator();
-			editor::SceneTree{scene}.render(window, data.inspect);
-		}
-	}
-
-	void lights(Lights& lights) {
-		ImGui::SetNextWindowSize({400.0f, 400.0f}, ImGuiCond_FirstUseEver);
-		if (auto window = editor::Window{"Lights", &windows.lights}) { editor::Inspector{window}.inspect(lights); }
-	}
-
-	void log() {
-		ImGui::SetNextWindowSize({600.0f, 200.0f}, ImGuiCond_FirstUseEver);
-		if (auto window = editor::Window{"Log", &windows.log}) { data.log.render(window); }
-	}
-
-	void display(Engine& engine, float const dt) {
-		if (auto main = editor::MainMenu{}) {
-			if (auto file = editor::Menu{main, "File"}) {
-				ImGui::Separator();
-				if (ImGui::MenuItem("Exit")) { engine.request_stop(); }
-			}
-			if (auto window = editor::Menu{main, "Window"}) {
-				if (ImGui::MenuItem("Tree")) { windows.tree = true; }
-				if (ImGui::MenuItem("Lights")) { windows.lights = true; }
-				if (ImGui::MenuItem("Stats")) { windows.stats = true; }
-				if (ImGui::MenuItem("Log")) { windows.log = true; }
-				if constexpr (debug_v) {
-					if (ImGui::MenuItem("ImGui demo")) { windows.imgui_demo = true; }
-				}
-				ImGui::Separator();
-				if (ImGui::MenuItem("Close All")) { windows = {}; }
-			}
-		}
-
-		if (windows.tree) { tree(engine.scene()); }
-		if (windows.lights) { lights(engine.scene().lights); }
-		if (data.inspect) { inspector(engine.scene()); }
-		if (windows.stats) { stats(engine, dt); }
-		if (windows.log) { log(); }
-		if (windows.imgui_demo) { ImGui::ShowDemoWindow(&windows.imgui_demo); }
-	}
-};
-
 void log_prologue() {
 	auto const now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 	char buf[32]{};
@@ -245,7 +135,8 @@ void run() {
 
 	auto material_id = Id<Material>{};
 	auto node_id = Id<Node>{};
-	auto post_scene_load = [&](Scene& scene) {
+	auto post_scene_load = [&]() {
+		auto& scene = engine->scene();
 		scene.lights.dir_lights.insert(DirLight{.direction = glm::normalize(glm::vec3{-1.0f, -1.0f, -1.0f}), .rgb = {.intensity = 5.0f}});
 		scene.camera().transform.set_position({0.0f, 0.0f, 5.0f});
 
@@ -253,6 +144,7 @@ void run() {
 		material->albedo = {1.0f, 0.0f, 0.0f};
 		material_id = scene.add(std::move(material));
 		auto static_mesh_id = scene.add(make_cubed_sphere(1.0f, 32));
+		// auto static_mesh_id = scene.add(make_manipulator(0.125f, 1.0f, 16));
 		auto mesh_id = scene.add(Mesh{.primitives = {Mesh::Primitive{static_mesh_id, material_id}}});
 
 		auto node = Node{};
@@ -273,7 +165,7 @@ void run() {
 
 		auto& scene = engine->scene();
 		scene.load_gltf(dj::Json::parse(test_json_v), DummyDataProvider{});
-		post_scene_load(engine->scene());
+		post_scene_load();
 		engine->show(true);
 	};
 
@@ -281,7 +173,8 @@ void run() {
 
 	float const drot_z[] = {100.0f, -150.0f};
 
-	auto main_menu = MainMenu{};
+	auto file_menu = FileMenu{};
+	auto window_menu = WindowMenu{};
 
 	struct {
 		LoadStatus status{};
@@ -302,8 +195,9 @@ void run() {
 			if (!fs::is_regular_file(path)) {
 				logger::error("Failed to locate .gltf in path: [{}]", state.file_drops.front());
 			} else {
-				if (engine->load_async(path.generic_string(), [&] { post_scene_load(engine->scene()); })) {
+				if (engine->load_async(path.generic_string(), post_scene_load)) {
 					loading.title = fmt::format("Loading {}...", path.filename().generic_string());
+					file_menu.add_recent(path.generic_string());
 				}
 			}
 		}
@@ -343,7 +237,20 @@ void run() {
 			node->instances[1].rotate(glm::radians(drot_z[1]) * dt, {1.0f, 0.0f, 0.0f});
 		}
 
-		main_menu.display(*engine, dt);
+		if (auto menu = editor::MainMenu{}) {
+			auto file_command = file_menu.display(menu);
+			window_menu.display_menu(menu);
+			window_menu.display_windows(*engine);
+			auto const visitor = Visitor{
+				[&engine](FileMenu::Shutdown) { engine->request_stop(); },
+				[&engine, &post_scene_load, &file_menu](FileMenu::OpenRecent open_recent) {
+					engine->load_async(open_recent.path, post_scene_load);
+					file_menu.add_recent(std::move(open_recent.path));
+				},
+				[](std::monostate) {},
+			};
+			std::visit(visitor, file_command);
+		}
 		// TEMP CODE
 
 		engine->render();

@@ -7,7 +7,6 @@
 
 namespace facade::editor {
 namespace {
-bool eq(float const a, float const b, float const epsilon = 0.001f) { return std::abs(a - b) < epsilon; }
 constexpr glm::vec3 to_degree(glm::vec3 const& angles) { return {glm::degrees(angles.x), glm::degrees(angles.y), glm::degrees(angles.z)}; }
 
 struct Modified {
@@ -18,36 +17,41 @@ struct Modified {
 		return modified;
 	}
 };
+
+using DragFloatFunc = bool (*)(const char*, float* v, float, float, float, const char*, ImGuiSliderFlags);
+
+constexpr DragFloatFunc drag_float_vtable[] = {
+	nullptr, &ImGui::DragFloat, &ImGui::DragFloat2, &ImGui::DragFloat3, &ImGui::DragFloat4,
+};
+
+template <std::size_t Dim>
+bool drag_float(char const* label, float (&data)[Dim], float speed, float lo, float hi, int flags = {}) {
+	static_assert(Dim > 0 && Dim < std::size(drag_float_vtable));
+	return drag_float_vtable[Dim](label, data, speed, lo, hi, "%.3f", flags);
+}
+
+template <std::size_t Dim>
+bool inspect_vec(char const* label, glm::vec<static_cast<int>(Dim), float>& out_vec, float speed, float lo, float hi) {
+	float data[Dim]{};
+	std::memcpy(data, &out_vec, Dim * sizeof(float));
+	if (drag_float(label, data, speed, lo, hi)) {
+		std::memcpy(&out_vec, data, Dim * sizeof(float));
+		return true;
+	}
+	return false;
+}
 } // namespace
 
 bool Inspector::inspect(char const* label, glm::vec2& out_vec2, float speed, float lo, float hi) const {
-	float arr[2] = {out_vec2.x, out_vec2.y};
-	ImGui::DragFloat2(label, arr, speed, lo, hi);
-	if (!eq(arr[0], out_vec2.x) || !eq(arr[1], out_vec2.y)) {
-		out_vec2 = {arr[0], arr[1]};
-		return true;
-	}
-	return false;
+	return inspect_vec<2>(label, out_vec2, speed, lo, hi);
 }
 
 bool Inspector::inspect(char const* label, glm::vec3& out_vec3, float speed, float lo, float hi) const {
-	float arr[3] = {out_vec3.x, out_vec3.y, out_vec3.z};
-	ImGui::DragFloat3(label, arr, speed, lo, hi);
-	if (!eq(arr[0], out_vec3.x) || !eq(arr[1], out_vec3.y) || !eq(arr[2], out_vec3.z)) {
-		out_vec3 = {arr[0], arr[1], arr[2]};
-		return true;
-	}
-	return false;
+	return inspect_vec<3>(label, out_vec3, speed, lo, hi);
 }
 
 bool Inspector::inspect(char const* label, glm::vec4& out_vec4, float speed, float lo, float hi) const {
-	float arr[4] = {out_vec4.x, out_vec4.y, out_vec4.z, out_vec4.w};
-	ImGui::DragFloat4(label, arr, speed, lo, hi);
-	if (!eq(arr[0], out_vec4.x) || !eq(arr[1], out_vec4.y) || !eq(arr[2], out_vec4.z) || !eq(arr[3], out_vec4.w)) {
-		out_vec4 = {arr[0], arr[1], arr[2], arr[3]};
-		return true;
-	}
-	return false;
+	return inspect_vec<4>(label, out_vec4, speed, lo, hi);
 }
 
 bool Inspector::inspect(char const* label, nvec3& out_vec3, float speed) const {
@@ -61,8 +65,10 @@ bool Inspector::inspect(char const* label, nvec3& out_vec3, float speed) const {
 
 bool Inspector::inspect(char const* label, glm::quat& out_quat) const {
 	auto euler = to_degree(glm::eulerAngles(out_quat));
+	float deg[3] = {euler.x, euler.y, euler.z};
 	auto const org = euler;
-	if (inspect(label, euler, 0.5f, -180.0f, 180.0f)) {
+	if (drag_float(label, deg, 0.5f, -180.0f, 180.0f, ImGuiSliderFlags_NoInput)) {
+		euler = {deg[0], deg[1], deg[2]};
 		if (auto const diff = org.x - euler.x; std::abs(diff) > 0.0f) { out_quat = glm::rotate(out_quat, glm::radians(diff), right_v); }
 		if (auto const diff = org.y - euler.y; std::abs(diff) > 0.0f) { out_quat = glm::rotate(out_quat, glm::radians(diff), up_v); }
 		if (auto const diff = org.z - euler.z; std::abs(diff) > 0.0f) { out_quat = glm::rotate(out_quat, glm::radians(diff), front_v); }

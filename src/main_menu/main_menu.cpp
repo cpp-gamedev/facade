@@ -27,6 +27,7 @@ void WindowMenu::display_windows(Engine& engine) {
 	if (m_data.inspect && !display_inspector(engine.scene())) { m_data.inspect = {}; }
 	if (m_flags.log) { m_flags.log = display_log(); }
 	if (m_flags.stats) { m_flags.stats = display_stats(engine); }
+	if (m_flags.demo) { ImGui::ShowDemoWindow(&m_flags.demo); }
 }
 
 bool WindowMenu::display_scene(Scene& scene) {

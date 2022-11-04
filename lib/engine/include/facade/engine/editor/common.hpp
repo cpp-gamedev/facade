@@ -35,15 +35,20 @@ struct NotClosed {
 	NotClosed(NotClosed<Derived>) {}
 };
 
+class Canvas : public Openable {
+  protected:
+	using Openable::Openable;
+};
+
 ///
 /// \brief RAII Dear ImGui window
 ///
-class Window : public Openable {
+class Window : public Canvas {
   public:
 	class Menu;
 
 	explicit Window(char const* label, bool* open_if = {}, int flags = {});
-	Window(NotClosed<Window> parent, char const* label, glm::vec2 size = {}, Bool border = {}, int flags = {});
+	Window(NotClosed<Canvas> parent, char const* label, glm::vec2 size = {}, Bool border = {}, int flags = {});
 	~Window();
 
   private:
@@ -83,7 +88,7 @@ class Menu : public Openable {
 ///
 class Window::Menu : public MenuBar {
   public:
-	explicit Menu(NotClosed<Window>);
+	explicit Menu(NotClosed<Canvas>);
 	~Menu();
 };
 
@@ -99,16 +104,16 @@ class MainMenu : public MenuBar {
 ///
 /// \brief RAII Dear ImGui Popup
 ///
-class Popup : public Openable {
+class Popup : public Canvas {
   public:
-	explicit Popup(char const* id, Bool centered = {}, int flags = {}) : Popup(id, {}, centered, flags) {}
+	explicit Popup(char const* id, Bool centered = {}, int flags = {}) : Popup(id, {}, {}, centered, flags) {}
 	~Popup();
 
 	static void open(char const* id);
 	static void close_current();
 
   protected:
-	explicit Popup(char const* id, Bool modal, Bool centered, int flags);
+	explicit Popup(char const* id, Bool modal, Bool closeable, Bool centered, int flags);
 };
 
 ///
@@ -116,7 +121,7 @@ class Popup : public Openable {
 ///
 class Modal : public Popup {
   public:
-	explicit Modal(char const* id, Bool centered = {true}, int flags = {}) : Popup(id, {true}, centered, flags) {}
+	explicit Modal(char const* id, Bool centered = {true}, Bool closeable = {true}, int flags = {}) : Popup(id, {true}, closeable, centered, flags) {}
 };
 
 ///

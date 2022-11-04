@@ -68,14 +68,6 @@ struct Glfw::State {
 	/// \brief Delta-time between polls.
 	///
 	float dt{};
-
-	///
-	/// \brief Obtain the filename of a file drop path.
-	/// \param path Path to extract filename from
-	///
-	/// Passed path must be in generic form.
-	///
-	static std::string to_filename(std::string_view path);
 };
 
 ///

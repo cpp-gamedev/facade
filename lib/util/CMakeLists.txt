@@ -70,6 +70,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/util/data_provider.hpp
   include/${target_prefix}/util/enum_array.hpp
   include/${target_prefix}/util/enumerate.hpp
+  include/${target_prefix}/util/env.hpp
   include/${target_prefix}/util/error.hpp
   include/${target_prefix}/util/fixed_string.hpp
   include/${target_prefix}/util/flex_array.hpp
@@ -89,6 +90,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/util/visitor.hpp
 
   src/data_provider.cpp
+  src/env.cpp
   src/image.cpp
   src/logger.cpp
   src/rgb.cpp

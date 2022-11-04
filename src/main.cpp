@@ -1,6 +1,7 @@
 #include <facade/defines.hpp>
 
 #include <facade/util/data_provider.hpp>
+#include <facade/util/env.hpp>
 #include <facade/util/error.hpp>
 #include <facade/util/logger.hpp>
 #include <facade/vk/geometry.hpp>
@@ -181,6 +182,17 @@ void run() {
 		std::string title{};
 	} loading{};
 
+	auto load_async = [&engine, &file_menu, &loading, &post_scene_load](fs::path const& path) {
+		if (engine->load_async(path.generic_string(), post_scene_load)) {
+			loading.title = fmt::format("Loading {}...", path.filename().generic_string());
+			file_menu.add_recent(path.generic_string());
+			return true;
+		}
+		return false;
+	};
+
+	auto dir_list = env::DirEntries{};
+
 	while (engine->running()) {
 		auto const& state = engine->poll();
 		auto const& input = state.input;
@@ -195,10 +207,7 @@ void run() {
 			if (!fs::is_regular_file(path)) {
 				logger::error("Failed to locate .gltf in path: [{}]", state.file_drops.front());
 			} else {
-				if (engine->load_async(path.generic_string(), post_scene_load)) {
-					loading.title = fmt::format("Loading {}...", path.filename().generic_string());
-					file_menu.add_recent(path.generic_string());
-				}
+				load_async(path);
 			}
 		}
 		loading.status = engine->load_status();
@@ -238,18 +247,48 @@ void run() {
 		}
 
 		if (auto menu = editor::MainMenu{}) {
-			auto file_command = file_menu.display(menu);
+			auto file_command = file_menu.display(menu, {engine->load_status().stage > LoadStage::eNone});
 			window_menu.display_menu(menu);
 			window_menu.display_windows(*engine);
 			auto const visitor = Visitor{
 				[&engine](FileMenu::Shutdown) { engine->request_stop(); },
-				[&engine, &post_scene_load, &file_menu](FileMenu::OpenRecent open_recent) {
-					engine->load_async(open_recent.path, post_scene_load);
-					file_menu.add_recent(std::move(open_recent.path));
-				},
+				[&load_async](FileMenu::OpenRecent open_recent) { load_async(open_recent.path); },
 				[](std::monostate) {},
+				[](FileMenu::OpenFile) { editor::Popup::open("Browse"); },
 			};
 			std::visit(visitor, file_command);
+
+			if (auto popup = editor::Modal{"Browse"}) {
+				static auto s_path = fs::current_path();
+				ImGui::Text("%s", s_path.generic_string().c_str());
+				if (ImGui::Button("Up")) { s_path = s_path.parent_path(); }
+				if (auto documents = env::documents_path(); !documents.empty()) {
+					ImGui::SameLine();
+					if (ImGui::Button("Documents")) { s_path = std::move(documents); }
+				}
+				if (auto downloads = env::downloads_path(); !downloads.empty()) {
+					ImGui::SameLine();
+					if (ImGui::Button("Downloads")) { s_path = std::move(downloads); }
+				}
+				ImGui::Separator();
+				if (auto window = editor::Window{popup, "File Tree"}) {
+					static constexpr std::string_view filter_v[] = {".gltf"};
+					env::GetDirEntries{.extensions = filter_v}(dir_list, s_path.generic_string().c_str());
+					if (s_path.has_parent_path() && ImGui::Selectable("..", false, ImGuiSelectableFlags_DontClosePopups)) { s_path = s_path.parent_path(); }
+					for (auto const& dir : dir_list.dirs) {
+						auto filename = env::to_filename(dir);
+						filename += "/";
+						if (ImGui::Selectable(filename.c_str(), false, ImGuiSelectableFlags_DontClosePopups)) { s_path = dir; }
+					}
+					for (auto const& file : dir_list.files) {
+						auto filename = env::to_filename(file);
+						if (ImGui::Selectable(filename.c_str(), false, ImGuiSelectableFlags_DontClosePopups)) {
+							load_async(file);
+							popup.close_current();
+						}
+					}
+				}
+			}
 		}
 		// TEMP CODE
 

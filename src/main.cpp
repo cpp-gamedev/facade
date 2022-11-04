@@ -239,16 +239,22 @@ void run() {
 			window_menu.display_menu(menu);
 			window_menu.display_windows(*engine);
 			static constexpr std::string_view gltf_ext_v[] = {".gltf"};
-			auto browse_file = editor::BrowseFile{.out_entries = dir_entries, .extensions = gltf_ext_v};
 			auto const visitor = Visitor{
 				[&engine](FileMenu::Shutdown) { engine->request_stop(); },
 				[&load_async](FileMenu::OpenRecent open_recent) { load_async(open_recent.path); },
 				[](std::monostate) {},
-				[id = browse_file.popup_name](FileMenu::OpenFile) { editor::Popup::open(id); },
+				[](FileMenu::OpenFile) { editor::Popup::open("Browse..."); },
 			};
 			std::visit(visitor, file_command);
 
-			if (auto selected = browse_file(browse_path); !selected.empty()) { load_async(selected); }
+			if (ImGui::IsPopupOpen("Browse...")) { ImGui::SetNextWindowSize({400.0f, 250.0f}, ImGuiCond_FirstUseEver); }
+			if (auto popup = editor::Modal{"Browse..."}) {
+				auto selected = editor::BrowseFile{.out_entries = dir_entries, .extensions = gltf_ext_v}(popup, browse_path);
+				if (!selected.empty()) {
+					popup.close_current();
+					load_async(selected);
+				}
+			}
 		}
 
 		// TEMP CODE

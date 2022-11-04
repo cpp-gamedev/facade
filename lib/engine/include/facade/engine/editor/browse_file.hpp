@@ -5,9 +5,9 @@
 namespace facade::editor {
 struct BrowseFile {
 	env::DirEntries& out_entries;
-	char const* popup_name{"Browse..."};
 	env::MatchList extensions{};
+	float parent_indent{5.0f};
 
-	std::string operator()(std::string& out_path);
+	std::string operator()(NotClosed<Popup> popup, std::string& out_path);
 };
 } // namespace facade::editor

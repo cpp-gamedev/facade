@@ -1,13 +1,13 @@
 #include <facade/defines.hpp>
 
 #include <facade/util/data_provider.hpp>
-#include <facade/util/env.hpp>
 #include <facade/util/error.hpp>
 #include <facade/util/logger.hpp>
 #include <facade/vk/geometry.hpp>
 
 #include <facade/scene/fly_cam.hpp>
 
+#include <facade/engine/editor/browse_file.hpp>
 #include <facade/engine/engine.hpp>
 
 #include <bin/shaders.hpp>
@@ -191,7 +191,8 @@ void run() {
 		return false;
 	};
 
-	auto dir_list = env::DirEntries{};
+	auto dir_entries = env::DirEntries{};
+	auto browse_path = std::string{};
 
 	while (engine->running()) {
 		auto const& state = engine->poll();
@@ -233,6 +234,24 @@ void run() {
 			if (mouse_look) { fly_cam.rotate({input.mouse.delta_pos().x, -input.mouse.delta_pos().y}); }
 		}
 
+		if (auto menu = editor::MainMenu{}) {
+			auto file_command = file_menu.display(menu, {engine->load_status().stage > LoadStage::eNone});
+			window_menu.display_menu(menu);
+			window_menu.display_windows(*engine);
+			static constexpr std::string_view gltf_ext_v[] = {".gltf"};
+			auto browse_file = editor::BrowseFile{.out_entries = dir_entries, .extensions = gltf_ext_v};
+			auto const visitor = Visitor{
+				[&engine](FileMenu::Shutdown) { engine->request_stop(); },
+				[&load_async](FileMenu::OpenRecent open_recent) { load_async(open_recent.path); },
+				[](std::monostate) {},
+				[id = browse_file.popup_name](FileMenu::OpenFile) { editor::Popup::open(id); },
+			};
+			std::visit(visitor, file_command);
+
+			if (auto selected = browse_file(browse_path); !selected.empty()) { load_async(selected); }
+		}
+
+		// TEMP CODE
 		if (input.keyboard.pressed(GLFW_KEY_R)) {
 			logger::info("Reloading...");
 			engine.reset();
@@ -240,55 +259,9 @@ void run() {
 			continue;
 		}
 
-		// TEMP CODE
 		if (auto* node = engine->scene().find(node_id)) {
 			node->instances[0].rotate(glm::radians(drot_z[0]) * dt, {0.0f, 1.0f, 0.0f});
 			node->instances[1].rotate(glm::radians(drot_z[1]) * dt, {1.0f, 0.0f, 0.0f});
-		}
-
-		if (auto menu = editor::MainMenu{}) {
-			auto file_command = file_menu.display(menu, {engine->load_status().stage > LoadStage::eNone});
-			window_menu.display_menu(menu);
-			window_menu.display_windows(*engine);
-			auto const visitor = Visitor{
-				[&engine](FileMenu::Shutdown) { engine->request_stop(); },
-				[&load_async](FileMenu::OpenRecent open_recent) { load_async(open_recent.path); },
-				[](std::monostate) {},
-				[](FileMenu::OpenFile) { editor::Popup::open("Browse"); },
-			};
-			std::visit(visitor, file_command);
-
-			if (auto popup = editor::Modal{"Browse"}) {
-				static auto s_path = fs::current_path();
-				ImGui::Text("%s", s_path.generic_string().c_str());
-				if (ImGui::Button("Up")) { s_path = s_path.parent_path(); }
-				if (auto documents = env::documents_path(); !documents.empty()) {
-					ImGui::SameLine();
-					if (ImGui::Button("Documents")) { s_path = std::move(documents); }
-				}
-				if (auto downloads = env::downloads_path(); !downloads.empty()) {
-					ImGui::SameLine();
-					if (ImGui::Button("Downloads")) { s_path = std::move(downloads); }
-				}
-				ImGui::Separator();
-				if (auto window = editor::Window{popup, "File Tree"}) {
-					static constexpr std::string_view filter_v[] = {".gltf"};
-					env::GetDirEntries{.extensions = filter_v}(dir_list, s_path.generic_string().c_str());
-					if (s_path.has_parent_path() && ImGui::Selectable("..", false, ImGuiSelectableFlags_DontClosePopups)) { s_path = s_path.parent_path(); }
-					for (auto const& dir : dir_list.dirs) {
-						auto filename = env::to_filename(dir);
-						filename += "/";
-						if (ImGui::Selectable(filename.c_str(), false, ImGuiSelectableFlags_DontClosePopups)) { s_path = dir; }
-					}
-					for (auto const& file : dir_list.files) {
-						auto filename = env::to_filename(file);
-						if (ImGui::Selectable(filename.c_str(), false, ImGuiSelectableFlags_DontClosePopups)) {
-							load_async(file);
-							popup.close_current();
-						}
-					}
-				}
-			}
 		}
 		// TEMP CODE
 

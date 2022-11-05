@@ -5,10 +5,10 @@
 namespace facade::editor {
 Openable::Openable(bool is_open) : m_open(is_open) {}
 
-Window::Window(char const* label, bool* open_if, int flags) : Openable(ImGui::Begin(label, open_if, flags)) {}
+Window::Window(char const* label, bool* open_if, int flags) : Canvas(ImGui::Begin(label, open_if, flags)) {}
 
-Window::Window(NotClosed<Window>, char const* label, glm::vec2 size, Bool border, int flags)
-	: Openable(ImGui::BeginChild(label, {size.x, size.y}, border.value, flags)), m_child(true) {}
+Window::Window(NotClosed<Canvas>, char const* label, glm::vec2 size, Bool border, int flags)
+	: Canvas(ImGui::BeginChild(label, {size.x, size.y}, border.value, flags)), m_child(true) {}
 
 // ImGui windows requires End() even if Begin() returned false
 Window::~Window() {
@@ -30,7 +30,7 @@ bool TreeNode::leaf(char const* label, int flags) {
 	return false;
 }
 
-Window::Menu::Menu(NotClosed<Window>) : MenuBar(ImGui::BeginMenuBar()) {}
+Window::Menu::Menu(NotClosed<Canvas>) : MenuBar(ImGui::BeginMenuBar()) {}
 
 Window::Menu::~Menu() {
 	if (m_open) { ImGui::EndMenuBar(); }
@@ -42,13 +42,13 @@ MainMenu::~MainMenu() {
 	if (m_open) { ImGui::EndMainMenuBar(); }
 }
 
-Popup::Popup(char const* id, Bool modal, Bool centered, int flags) {
+Popup::Popup(char const* id, Bool modal, Bool closeable, Bool centered, int flags) {
 	if (centered) {
 		auto const center = ImGui::GetMainViewport()->GetCenter();
 		ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2{0.5f, 0.5f});
 	}
 	if (modal) {
-		m_open = ImGui::BeginPopupModal(id, {}, flags);
+		m_open = ImGui::BeginPopupModal(id, &closeable.value, flags);
 	} else {
 		m_open = ImGui::BeginPopup(id, flags);
 	}

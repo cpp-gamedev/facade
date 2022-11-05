@@ -40,6 +40,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/engine/engine.hpp
   include/${target_prefix}/engine/scene_renderer.hpp
 
+  include/${target_prefix}/engine/editor/browse_file.hpp
   include/${target_prefix}/engine/editor/common.hpp
   include/${target_prefix}/engine/editor/inspector.hpp
   include/${target_prefix}/engine/editor/log.hpp
@@ -48,6 +49,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   src/scene_renderer.cpp
   src/engine.cpp
 
+  src/editor/browse_file.cpp
   src/editor/common.cpp
   src/editor/inspector.cpp
   src/editor/log.cpp

@@ -15,15 +15,16 @@ class FileMenu {
 		std::string path{};
 	};
 	struct Shutdown {};
-	using Command = std::variant<std::monostate, OpenRecent, Shutdown>;
+	struct OpenFile {};
+	using Command = std::variant<std::monostate, OpenRecent, OpenFile, Shutdown>;
 
 	void add_recent(std::string path);
-	Command display(editor::NotClosed<editor::MainMenu> main);
+	Command display(editor::NotClosed<editor::MainMenu> main, Bool loading);
 
 	std::uint8_t max_recents{8};
 
   private:
-	Command open_recent(editor::NotClosed<editor::MainMenu> main);
+	void open_recent(Command& out, editor::NotClosed<editor::MainMenu> main, Bool loading);
 
 	std::vector<std::string> m_recents;
 };

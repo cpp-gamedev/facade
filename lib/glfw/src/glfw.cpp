@@ -55,11 +55,6 @@ void Glfw::poll_events() {
 
 void Glfw::reset_dt() { g_states.dt = {}; }
 
-std::string Glfw::State::to_filename(std::string_view path) {
-	if (auto const i = path.find_last_of('/'); i != std::string_view::npos) { path = path.substr(i + 1); }
-	return std::string{path};
-}
-
 auto Glfw::Window::make() -> UniqueWin {
 	auto ret = Window{};
 	ret.glfw = get_or_make_glfw();

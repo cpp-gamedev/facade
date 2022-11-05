@@ -7,6 +7,7 @@
 
 #include <facade/scene/fly_cam.hpp>
 
+#include <facade/engine/editor/browse_file.hpp>
 #include <facade/engine/engine.hpp>
 
 #include <bin/shaders.hpp>
@@ -181,6 +182,18 @@ void run() {
 		std::string title{};
 	} loading{};
 
+	auto load_async = [&engine, &file_menu, &loading, &post_scene_load](fs::path const& path) {
+		if (engine->load_async(path.generic_string(), post_scene_load)) {
+			loading.title = fmt::format("Loading {}...", path.filename().generic_string());
+			file_menu.add_recent(path.generic_string());
+			return true;
+		}
+		return false;
+	};
+
+	auto dir_entries = env::DirEntries{};
+	auto browse_path = std::string{};
+
 	while (engine->running()) {
 		auto const& state = engine->poll();
 		auto const& input = state.input;
@@ -195,10 +208,7 @@ void run() {
 			if (!fs::is_regular_file(path)) {
 				logger::error("Failed to locate .gltf in path: [{}]", state.file_drops.front());
 			} else {
-				if (engine->load_async(path.generic_string(), post_scene_load)) {
-					loading.title = fmt::format("Loading {}...", path.filename().generic_string());
-					file_menu.add_recent(path.generic_string());
-				}
+				load_async(path);
 			}
 		}
 		loading.status = engine->load_status();
@@ -224,6 +234,30 @@ void run() {
 			if (mouse_look) { fly_cam.rotate({input.mouse.delta_pos().x, -input.mouse.delta_pos().y}); }
 		}
 
+		if (auto menu = editor::MainMenu{}) {
+			auto file_command = file_menu.display(menu, {engine->load_status().stage > LoadStage::eNone});
+			window_menu.display_menu(menu);
+			window_menu.display_windows(*engine);
+			static constexpr std::string_view gltf_ext_v[] = {".gltf"};
+			auto const visitor = Visitor{
+				[&engine](FileMenu::Shutdown) { engine->request_stop(); },
+				[&load_async](FileMenu::OpenRecent open_recent) { load_async(open_recent.path); },
+				[](std::monostate) {},
+				[](FileMenu::OpenFile) { editor::Popup::open("Browse..."); },
+			};
+			std::visit(visitor, file_command);
+
+			if (ImGui::IsPopupOpen("Browse...")) { ImGui::SetNextWindowSize({400.0f, 250.0f}, ImGuiCond_FirstUseEver); }
+			if (auto popup = editor::Modal{"Browse..."}) {
+				auto selected = editor::BrowseFile{.out_entries = dir_entries, .extensions = gltf_ext_v}(popup, browse_path);
+				if (!selected.empty()) {
+					popup.close_current();
+					load_async(selected);
+				}
+			}
+		}
+
+		// TEMP CODE
 		if (input.keyboard.pressed(GLFW_KEY_R)) {
 			logger::info("Reloading...");
 			engine.reset();
@@ -231,25 +265,9 @@ void run() {
 			continue;
 		}
 
-		// TEMP CODE
 		if (auto* node = engine->scene().find(node_id)) {
 			node->instances[0].rotate(glm::radians(drot_z[0]) * dt, {0.0f, 1.0f, 0.0f});
 			node->instances[1].rotate(glm::radians(drot_z[1]) * dt, {1.0f, 0.0f, 0.0f});
-		}
-
-		if (auto menu = editor::MainMenu{}) {
-			auto file_command = file_menu.display(menu);
-			window_menu.display_menu(menu);
-			window_menu.display_windows(*engine);
-			auto const visitor = Visitor{
-				[&engine](FileMenu::Shutdown) { engine->request_stop(); },
-				[&engine, &post_scene_load, &file_menu](FileMenu::OpenRecent open_recent) {
-					engine->load_async(open_recent.path, post_scene_load);
-					file_menu.add_recent(std::move(open_recent.path));
-				},
-				[](std::monostate) {},
-			};
-			std::visit(visitor, file_command);
 		}
 		// TEMP CODE
 

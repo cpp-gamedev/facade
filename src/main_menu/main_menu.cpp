@@ -3,6 +3,7 @@
 #include <facade/engine/editor/scene_tree.hpp>
 #include <facade/engine/engine.hpp>
 #include <facade/render/renderer.hpp>
+#include <facade/util/env.hpp>
 #include <facade/util/error.hpp>
 #include <facade/util/fixed_string.hpp>
 #include <facade/util/logger.hpp>
@@ -122,23 +123,22 @@ void FileMenu::add_recent(std::string path) {
 	}
 }
 
-auto FileMenu::display(editor::NotClosed<editor::MainMenu> main) -> Command {
+auto FileMenu::display(editor::NotClosed<editor::MainMenu> main, Bool loading) -> Command {
 	auto ret = Command{};
 	if (auto file = editor::Menu{main, "File"}) {
-		if (!m_recents.empty()) { ret = open_recent(main); }
+		if (ImGui::MenuItem("Open...", {}, false, !loading)) { ret = OpenFile{}; }
+		if (!m_recents.empty()) { open_recent(ret, main, loading); }
 		ImGui::Separator();
 		if (ImGui::MenuItem("Exit")) { ret = Shutdown{}; }
 	}
 	return ret;
 }
 
-auto FileMenu::open_recent(editor::NotClosed<editor::MainMenu> main) -> Command {
-	auto ret = Command{};
+void FileMenu::open_recent(Command& out, editor::NotClosed<editor::MainMenu> main, Bool loading) {
 	if (auto open_recent = editor::Menu{main, "Open Recent"}) {
 		for (auto it = m_recents.rbegin(); it != m_recents.rend(); ++it) {
-			if (ImGui::MenuItem(Engine::State::to_filename(*it).c_str())) { ret = OpenRecent{.path = *it}; }
+			if (ImGui::MenuItem(env::to_filename(*it).c_str(), {}, false, !loading)) { out = OpenRecent{.path = *it}; }
 		}
 	}
-	return ret;
 }
 } // namespace facade

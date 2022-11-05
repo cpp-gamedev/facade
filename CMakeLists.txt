@@ -53,6 +53,8 @@ if(FACADE_BUILD_EXE)
   add_executable(${PROJECT_NAME})
 
   target_sources(${PROJECT_NAME} PRIVATE
+    src/config/config.cpp
+    src/config/config.hpp
     src/main_menu/main_menu.cpp
     src/main_menu/main_menu.hpp
 

@@ -91,6 +91,7 @@ class Engine {
 	///
 	LoadStatus load_status() const;
 
+	glm::ivec2 window_position() const;
 	glm::uvec2 window_extent() const;
 	glm::uvec2 framebuffer_extent() const;
 

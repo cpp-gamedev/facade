@@ -259,6 +259,7 @@ void Engine::render() {
 
 void Engine::request_stop() { glfwSetWindowShouldClose(window(), GLFW_TRUE); }
 
+glm::ivec2 Engine::window_position() const { return m_impl->window.window.get().position(); }
 glm::uvec2 Engine::window_extent() const { return m_impl->window.window.get().window_extent(); }
 glm::uvec2 Engine::framebuffer_extent() const { return m_impl->window.window.get().framebuffer_extent(); }
 

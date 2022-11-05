@@ -20,6 +20,7 @@ class FileMenu {
 
 	void add_recent(std::string path);
 	Command display(editor::NotClosed<editor::MainMenu> main, Bool loading);
+	std::span<std::string const> recents() const { return m_recents; }
 
 	std::uint8_t max_recents{8};
 

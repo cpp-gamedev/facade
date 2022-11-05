@@ -11,6 +11,7 @@
 #include <facade/engine/engine.hpp>
 
 #include <bin/shaders.hpp>
+#include <config/config.hpp>
 #include <main_menu/main_menu.hpp>
 
 #include <djson/json.hpp>
@@ -129,6 +130,10 @@ fs::path find_gltf(fs::path root) {
 
 void run() {
 	auto engine = std::optional<Engine>{};
+	auto engine_info = Engine::CreateInfo{};
+	auto config = Config::Scoped{};
+	engine_info.extent = config.config.window.extent;
+	engine_info.desired_msaa = config.config.window.msaa;
 
 	struct DummyDataProvider : DataProvider {
 		ByteBuffer load(std::string_view) const override { return {}; }
@@ -156,7 +161,8 @@ void run() {
 	};
 
 	auto init = [&] {
-		engine.emplace();
+		engine.emplace(engine_info);
+		if (config.config.window.position) { glfwSetWindowPos(engine->window(), config.config.window.position->x, config.config.window.position->y); }
 		log_prologue();
 
 		auto lit = shaders::lit();
@@ -177,22 +183,24 @@ void run() {
 	auto file_menu = FileMenu{};
 	auto window_menu = WindowMenu{};
 
+	for (auto const& recent : config.config.file_menu.recents) { file_menu.add_recent(recent); }
+
 	struct {
 		LoadStatus status{};
 		std::string title{};
 	} loading{};
 
-	auto load_async = [&engine, &file_menu, &loading, &post_scene_load](fs::path const& path) {
+	auto load_async = [&engine, &file_menu, &loading, &post_scene_load, &config](fs::path const& path) {
 		if (engine->load_async(path.generic_string(), post_scene_load)) {
 			loading.title = fmt::format("Loading {}...", path.filename().generic_string());
 			file_menu.add_recent(path.generic_string());
+			config.config.file_menu.recents = {file_menu.recents().begin(), file_menu.recents().end()};
 			return true;
 		}
 		return false;
 	};
 
 	auto dir_entries = env::DirEntries{};
-	auto browse_path = std::string{};
 
 	while (engine->running()) {
 		auto const& state = engine->poll();
@@ -249,13 +257,16 @@ void run() {
 
 			if (ImGui::IsPopupOpen("Browse...")) { ImGui::SetNextWindowSize({400.0f, 250.0f}, ImGuiCond_FirstUseEver); }
 			if (auto popup = editor::Modal{"Browse..."}) {
-				auto selected = editor::BrowseFile{.out_entries = dir_entries, .extensions = gltf_ext_v}(popup, browse_path);
+				auto selected = editor::BrowseFile{.out_entries = dir_entries, .extensions = gltf_ext_v}(popup, config.config.file_menu.browse_path);
 				if (!selected.empty()) {
 					popup.close_current();
 					load_async(selected);
 				}
 			}
 		}
+
+		config.config.window.extent = engine->window_extent();
+		config.config.window.position = engine->window_position();
 
 		// TEMP CODE
 		if (input.keyboard.pressed(GLFW_KEY_R)) {

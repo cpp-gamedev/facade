@@ -27,10 +27,12 @@ std::string truncate(std::string_view in, std::size_t limit) {
 
 std::string BrowseFile::operator()(NotClosed<Popup> popup, std::string& out_path) {
 	auto const fs_path = [&] {
-		auto ret = fs::absolute(out_path);
-		if (!fs::is_directory(ret)) {
+		auto ret = fs::path{};
+		if (!fs::is_directory(out_path)) {
 			ret = fs::current_path();
 			out_path = ret.generic_string();
+		} else {
+			ret = fs::absolute(out_path);
 		}
 		return ret;
 	}();

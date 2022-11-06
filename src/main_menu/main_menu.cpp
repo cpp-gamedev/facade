@@ -73,6 +73,13 @@ bool WindowMenu::display_stats(Engine& engine) {
 		if (ImGui::SmallButton("Vsync")) { change_vsync(engine); }
 		ImGui::SameLine();
 		ImGui::Text("%s", vsync_status(stats.mode).data());
+		auto& ps = engine.scene().pipeline_state;
+		bool wireframe = ps.mode == vk::PolygonMode::eLine;
+		if (ImGui::Checkbox("Wireframe", &wireframe)) { ps.mode = wireframe ? vk::PolygonMode::eLine : vk::PolygonMode::eFill; }
+		if (wireframe) {
+			ImGui::SameLine();
+			ImGui::DragFloat("Line Width", &ps.line_width, 0.1f, 1.0f, 10.0f);
+		}
 	}
 	return show;
 }

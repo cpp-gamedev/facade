@@ -139,16 +139,15 @@ void run() {
 		ByteBuffer load(std::string_view) const override { return {}; }
 	};
 
-	auto material_id = Id<Material>{};
 	auto node_id = Id<Node>{};
-	auto post_scene_load = [&]() {
+	auto post_scene_load = [&engine, &node_id]() {
 		auto& scene = engine->scene();
 		scene.lights.dir_lights.insert(DirLight{.direction = glm::normalize(glm::vec3{-1.0f, -1.0f, -1.0f}), .rgb = {.intensity = 5.0f}});
 		scene.camera().transform.set_position({0.0f, 0.0f, 5.0f});
 
 		auto material = std::make_unique<LitMaterial>();
 		material->albedo = {1.0f, 0.0f, 0.0f};
-		material_id = scene.add(std::move(material));
+		auto material_id = scene.add(std::move(material));
 		auto static_mesh_id = scene.add(make_cubed_sphere(1.0f, 32));
 		// auto static_mesh_id = scene.add(make_manipulator(0.125f, 1.0f, 16));
 		auto mesh_id = scene.add(Mesh{.primitives = {Mesh::Primitive{static_mesh_id, material_id}}});

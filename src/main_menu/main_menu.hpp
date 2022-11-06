@@ -3,29 +3,29 @@
 #include <facade/engine/editor/log.hpp>
 #include <facade/engine/editor/scene_tree.hpp>
 #include <string>
-#include <variant>
 #include <vector>
 
 namespace facade {
 struct Lights;
+class Events;
+
+namespace event {
+struct OpenRecent {
+	std::string path{};
+};
+struct OpenFile {};
+} // namespace event
 
 class FileMenu {
   public:
-	struct OpenRecent {
-		std::string path{};
-	};
-	struct Shutdown {};
-	struct OpenFile {};
-	using Command = std::variant<std::monostate, OpenRecent, OpenFile, Shutdown>;
-
 	void add_recent(std::string path);
-	Command display(editor::NotClosed<editor::MainMenu> main, Bool loading);
+	void display(Events const& events, editor::NotClosed<editor::MainMenu> main, Bool loading);
 	std::span<std::string const> recents() const { return m_recents; }
 
 	std::uint8_t max_recents{8};
 
   private:
-	void open_recent(Command& out, editor::NotClosed<editor::MainMenu> main, Bool loading);
+	void open_recent(Events const& events, editor::NotClosed<editor::MainMenu> main, Bool loading);
 
 	std::vector<std::string> m_recents;
 };

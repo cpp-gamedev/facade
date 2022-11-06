@@ -5,6 +5,8 @@
 #include <vector>
 
 namespace facade {
+class Engine;
+
 struct Config {
 	class Scoped;
 
@@ -29,6 +31,8 @@ class Config::Scoped {
   public:
 	Scoped(std::string path = "facade.conf") : m_path(std::move(path)), config(load(m_path.c_str())) {}
 	~Scoped() { config.save(m_path.c_str()); }
+
+	void update(Engine const& engine);
 
 	Config config{};
 };

@@ -1,4 +1,6 @@
 #include <imgui.h>
+#include <events/common.hpp>
+#include <events/events.hpp>
 #include <facade/engine/editor/inspector.hpp>
 #include <facade/engine/editor/scene_tree.hpp>
 #include <facade/engine/engine.hpp>
@@ -130,21 +132,19 @@ void FileMenu::add_recent(std::string path) {
 	}
 }
 
-auto FileMenu::display(editor::NotClosed<editor::MainMenu> main, Bool loading) -> Command {
-	auto ret = Command{};
+void FileMenu::display(Events const& events, editor::NotClosed<editor::MainMenu> main, Bool loading) {
 	if (auto file = editor::Menu{main, "File"}) {
-		if (ImGui::MenuItem("Open...", {}, false, !loading)) { ret = OpenFile{}; }
-		if (!m_recents.empty()) { open_recent(ret, main, loading); }
+		if (ImGui::MenuItem("Open...", {}, false, !loading)) { events.dispatch(event::OpenFile{}); }
+		if (!m_recents.empty()) { open_recent(events, main, loading); }
 		ImGui::Separator();
-		if (ImGui::MenuItem("Exit")) { ret = Shutdown{}; }
+		if (ImGui::MenuItem("Exit")) { events.dispatch(event::Shutdown{}); }
 	}
-	return ret;
 }
 
-void FileMenu::open_recent(Command& out, editor::NotClosed<editor::MainMenu> main, Bool loading) {
+void FileMenu::open_recent(Events const& events, editor::NotClosed<editor::MainMenu> main, Bool loading) {
 	if (auto open_recent = editor::Menu{main, "Open Recent"}) {
 		for (auto it = m_recents.rbegin(); it != m_recents.rend(); ++it) {
-			if (ImGui::MenuItem(env::to_filename(*it).c_str(), {}, false, !loading)) { out = OpenRecent{.path = *it}; }
+			if (ImGui::MenuItem(env::to_filename(*it).c_str(), {}, false, !loading)) { events.dispatch(event::OpenRecent{*it}); }
 		}
 	}
 }

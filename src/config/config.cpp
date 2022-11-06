@@ -1,5 +1,6 @@
 #include <config/config.hpp>
 #include <djson/json.hpp>
+#include <facade/engine/engine.hpp>
 #include <facade/util/logger.hpp>
 #include <filesystem>
 
@@ -76,5 +77,10 @@ bool Config::save(char const* path) const {
 	}
 	logger::info("Saved config to [{}]", path);
 	return true;
+}
+
+void Config::Scoped::update(Engine const& engine) {
+	config.window.extent = engine.window_extent();
+	config.window.position = engine.window_position();
 }
 } // namespace facade

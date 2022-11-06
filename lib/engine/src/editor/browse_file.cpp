@@ -25,17 +25,24 @@ std::string truncate(std::string_view in, std::size_t limit) {
 }
 } // namespace
 
-std::string BrowseFile::operator()(NotClosed<Popup> popup, std::string& out_path) {
-	auto const fs_path = [&] {
-		auto ret = fs::path{};
+auto BrowseFile::operator()(NotClosed<Popup> popup, std::string& out_path) -> Result {
+	auto ret = Result{};
+	auto fs_path = [&] {
+		auto path = fs::path{};
 		if (!fs::is_directory(out_path)) {
-			ret = fs::current_path();
-			out_path = ret.generic_string();
+			path = fs::current_path();
+			out_path = path.generic_string();
+			ret.dir_changed = true;
 		} else {
-			ret = fs::absolute(out_path);
+			path = fs::absolute(out_path);
 		}
-		return ret;
+		return path;
 	}();
+	auto cd = [&](fs::path path) {
+		fs_path = std::move(path);
+		out_path = fs_path.generic_string();
+		ret.dir_changed = true;
+	};
 	auto label = out_path;
 	auto const text_size = ImGui::CalcTextSize(label.c_str());
 	ImGui::PushItemWidth(-50.0f);
@@ -51,39 +58,37 @@ std::string BrowseFile::operator()(NotClosed<Popup> popup, std::string& out_path
 			auto name = p.filename().generic_string();
 			name += "/";
 			if (ImGui::Selectable(name.c_str(), false)) {
-				out_path = p.generic_string();
+				cd(std::move(p));
 				break;
 			}
 			if (p.parent_path() == p) { break; }
 		}
 		ImGui::EndCombo();
 	}
-	if (fs_path.has_parent_path() && ImGui::Button("Up")) { out_path = fs_path.parent_path().generic_string(); }
+	if (fs_path.has_parent_path() && ImGui::Button("Up")) { cd(fs_path.parent_path()); }
 	if (auto documents = env::documents_path(); !documents.empty()) {
 		ImGui::SameLine();
-		if (ImGui::Button("Documents")) { out_path = std::move(documents); }
+		if (ImGui::Button("Documents")) { cd(std::move(documents)); }
 	}
 	if (auto downloads = env::downloads_path(); !downloads.empty()) {
 		ImGui::SameLine();
-		if (ImGui::Button("Downloads")) { out_path = std::move(downloads); }
+		if (ImGui::Button("Downloads")) { cd(std::move(downloads)); }
 	}
 
 	ImGui::Separator();
 	if (auto window = editor::Window{popup, "File Tree"}) {
 		env::GetDirEntries{.extensions = extensions}(out_entries, out_path.c_str());
-		if (fs_path.has_parent_path() && ImGui::Selectable("..", false, ImGuiSelectableFlags_DontClosePopups)) {
-			out_path = fs_path.parent_path().generic_string();
-		}
+		if (fs_path.has_parent_path() && ImGui::Selectable("..", false, ImGuiSelectableFlags_DontClosePopups)) { cd(fs_path.parent_path()); }
 		for (auto const& dir : out_entries.dirs) {
 			auto filename = env::to_filename(dir);
 			filename += "/";
-			if (ImGui::Selectable(filename.c_str(), false, ImGuiSelectableFlags_DontClosePopups)) { out_path = dir; }
+			if (ImGui::Selectable(filename.c_str(), false, ImGuiSelectableFlags_DontClosePopups)) { cd(dir); }
 		}
 		for (auto const& file : out_entries.files) {
-			if (ImGui::Selectable(env::to_filename(file).c_str(), false, ImGuiSelectableFlags_DontClosePopups)) { return file; }
+			if (ImGui::Selectable(env::to_filename(file).c_str(), false, ImGuiSelectableFlags_DontClosePopups)) { ret.selected = file; }
 		}
 	}
 
-	return {};
+	return ret;
 }
 } // namespace facade::editor

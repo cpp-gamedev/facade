@@ -57,8 +57,12 @@ if(FACADE_BUILD_EXE)
     src/config/config.hpp
     src/events/common.hpp
     src/events/events.hpp
-    src/main_menu/main_menu.cpp
-    src/main_menu/main_menu.hpp
+    src/gui/events.hpp
+    src/gui/gltf_sources.hpp
+    src/gui/gltf_sources.cpp
+    src/gui/main_menu.cpp
+    src/gui/main_menu.hpp
+    src/gui/path_source.hpp
 
     src/main.cpp
 

@@ -9,7 +9,7 @@
 #include <facade/util/error.hpp>
 #include <facade/util/fixed_string.hpp>
 #include <facade/util/logger.hpp>
-#include <main_menu/main_menu.hpp>
+#include <gui/main_menu.hpp>
 
 namespace facade {
 void WindowMenu::display_menu(editor::NotClosed<editor::MainMenu> main) {

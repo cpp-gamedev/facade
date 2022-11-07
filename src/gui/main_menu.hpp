@@ -2,19 +2,13 @@
 #include <facade/engine/editor/common.hpp>
 #include <facade/engine/editor/log.hpp>
 #include <facade/engine/editor/scene_tree.hpp>
+#include <gui/events.hpp>
 #include <string>
 #include <vector>
 
 namespace facade {
 struct Lights;
 class Events;
-
-namespace event {
-struct OpenRecent {
-	std::string path{};
-};
-struct OpenFile {};
-} // namespace event
 
 class FileMenu {
   public:

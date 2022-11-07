@@ -14,7 +14,8 @@
 #include <config/config.hpp>
 #include <events/common.hpp>
 #include <events/events.hpp>
-#include <main_menu/main_menu.hpp>
+#include <gui/gltf_sources.hpp>
+#include <gui/main_menu.hpp>
 
 #include <djson/json.hpp>
 
@@ -24,17 +25,6 @@
 #include <iostream>
 
 using namespace facade;
-
-namespace facade {
-namespace event {
-struct BrowseCd {
-	std::string path{};
-};
-struct FileDrop {
-	std::string path{};
-};
-} // namespace event
-} // namespace facade
 
 namespace {
 namespace fs = std::filesystem;
@@ -130,74 +120,6 @@ void log_prologue() {
 	logger::info("facade v{}.{}.{} | {} |", v.major, v.minor, v.patch, buf);
 }
 
-fs::path find_gltf(fs::path root) {
-	if (root.extension() == ".gltf") { return root; }
-	if (!fs::is_directory(root)) { return {}; }
-	for (auto const& it : fs::directory_iterator{root}) {
-		if (!it.is_regular_file()) { continue; }
-		auto path = it.path();
-		if (path.extension() == ".gltf") { return path; }
-	}
-	return {};
-}
-
-struct BrowseGltf {
-	std::shared_ptr<Events> events;
-	Observer<event::OpenFile> observer;
-	bool trigger{};
-
-	env::DirEntries dir_entries{};
-	std::string browse_path{};
-
-	BrowseGltf(std::shared_ptr<Events> events, std::string browse_path)
-		: events(std::move(events)), observer(this->events, [this](event::OpenFile) { trigger = true; }), browse_path(std::move(browse_path)) {}
-
-	fs::path update() {
-		if (trigger) {
-			editor::Popup::open("Browse...");
-			trigger = false;
-		}
-		if (ImGui::IsPopupOpen("Browse...")) { ImGui::SetNextWindowSize({400.0f, 250.0f}, ImGuiCond_FirstUseEver); }
-		if (auto popup = editor::Modal{"Browse..."}) {
-			static constexpr std::string_view gltf_ext_v[] = {".gltf"};
-			auto [selected, dir_changed] = editor::BrowseFile{.out_entries = dir_entries, .extensions = gltf_ext_v}(popup, browse_path);
-			if (dir_changed) { events->dispatch(event::BrowseCd{browse_path}); }
-			if (!selected.empty()) {
-				popup.close_current();
-				return selected;
-			}
-		}
-		return {};
-	}
-};
-
-struct OpenRecent {
-	Observer<event::OpenRecent> observer;
-	std::string path{};
-
-	OpenRecent(std::shared_ptr<Events> const& events) : observer(events, [this](event::OpenRecent const& recent) { this->path = recent.path; }) {}
-
-	fs::path update() { return std::exchange(path, {}); }
-};
-
-struct DropFile {
-	Observer<event::FileDrop> observer;
-	std::string path{};
-
-	DropFile(std::shared_ptr<Events> const& events) : observer(events, [this](event::FileDrop const& fd) { path = fd.path; }) {}
-
-	fs::path update() {
-		if (path.empty()) { return {}; }
-		if (auto ret = find_gltf(path); fs::is_regular_file(ret)) {
-			path.clear();
-			return ret;
-		}
-		logger::error("Failed to locate .gltf in path: [{}]", path);
-		path.clear();
-		return {};
-	}
-};
-
 void run() {
 	auto events = std::make_shared<Events>();
 	auto engine = std::optional<Engine>{};
@@ -270,9 +192,11 @@ void run() {
 		return false;
 	};
 
-	auto drop_file = DropFile{events};
-	auto browse_gltf = BrowseGltf{events, config.config.file_menu.browse_path};
-	auto open_recent = OpenRecent{events};
+	auto path_sources = PathSource::List{};
+	path_sources.sources.push_back(std::make_unique<DropFile>(events));
+	path_sources.sources.push_back(std::make_unique<BrowseGltf>(events, config.config.file_menu.browse_path));
+	path_sources.sources.push_back(std::make_unique<OpenRecent>(events));
+
 	auto quit = Observer<event::Shutdown>{events, [&engine](event::Shutdown) { engine->request_stop(); }};
 	auto browse_cd = Observer<event::BrowseCd>{events, [&config](event::BrowseCd const& cd) { config.config.file_menu.browse_path = cd.path; }};
 
@@ -313,9 +237,7 @@ void run() {
 			window_menu.display_menu(menu);
 			window_menu.display_windows(*engine);
 
-			if (auto path = browse_gltf.update(); !path.empty()) { load_async(std::move(path)); }
-			if (auto path = open_recent.update(); !path.empty()) { load_async(std::move(path)); }
-			if (auto path = drop_file.update(); !path.empty()) { load_async(std::move(path)); }
+			if (auto path = path_sources.update(); !path.empty()) { load_async(std::move(path)); }
 		}
 
 		config.update(*engine);

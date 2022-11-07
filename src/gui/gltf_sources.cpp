@@ -22,8 +22,8 @@ fs::path find_gltf(fs::path root) {
 }
 } // namespace
 
-BrowseGltf::BrowseGltf(std::shared_ptr<Events> events, std::string browse_path)
-	: m_events(std::move(events)), m_observer(this->m_events, [this](event::OpenFile) { m_trigger = true; }), m_browse_path(std::move(browse_path)) {}
+BrowseGltf::BrowseGltf(std::shared_ptr<Events> const& events, std::string browse_path)
+	: m_events(events), m_observer(events, [this](event::OpenFile) { m_trigger = true; }), m_browse_path(std::move(browse_path)) {}
 
 std::string BrowseGltf::update() {
 	if (m_trigger) {
@@ -34,7 +34,9 @@ std::string BrowseGltf::update() {
 	if (auto popup = editor::Modal{"Browse..."}) {
 		static constexpr std::string_view gltf_ext_v[] = {".gltf"};
 		auto [selected, dir_changed] = editor::BrowseFile{.out_entries = m_dir_entries, .extensions = gltf_ext_v}(popup, m_browse_path);
-		if (dir_changed) { m_events->dispatch(event::BrowseCd{m_browse_path}); }
+		if (dir_changed) {
+			if (auto events = m_events.lock()) { events->dispatch(event::BrowseCd{m_browse_path}); }
+		}
 		if (!selected.empty()) {
 			popup.close_current();
 			return selected;

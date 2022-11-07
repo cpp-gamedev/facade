@@ -7,10 +7,10 @@
 namespace facade {
 class BrowseGltf : public PathSource {
   public:
-	BrowseGltf(std::shared_ptr<Events> events, std::string browse_path);
+	BrowseGltf(std::shared_ptr<Events> const& events, std::string browse_path);
 
   private:
-	std::shared_ptr<Events> m_events;
+	std::weak_ptr<Events> m_events;
 	Observer<event::OpenFile> m_observer;
 	env::DirEntries m_dir_entries{};
 	std::string m_browse_path{};

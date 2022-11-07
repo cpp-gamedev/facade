@@ -55,7 +55,6 @@ if(FACADE_BUILD_EXE)
   target_sources(${PROJECT_NAME} PRIVATE
     src/config/config.cpp
     src/config/config.hpp
-    src/events/common.hpp
     src/events/events.hpp
     src/gui/events.hpp
     src/gui/gltf_sources.hpp

@@ -2,6 +2,7 @@
 #include <string>
 
 namespace facade::event {
+struct Shutdown {};
 struct OpenRecent {
 	std::string path{};
 };

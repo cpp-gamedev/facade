@@ -12,7 +12,6 @@
 
 #include <bin/shaders.hpp>
 #include <config/config.hpp>
-#include <events/common.hpp>
 #include <events/events.hpp>
 #include <gui/gltf_sources.hpp>
 #include <gui/main_menu.hpp>

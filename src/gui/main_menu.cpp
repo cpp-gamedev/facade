@@ -1,5 +1,4 @@
 #include <imgui.h>
-#include <events/common.hpp>
 #include <events/events.hpp>
 #include <facade/engine/editor/inspector.hpp>
 #include <facade/engine/editor/scene_tree.hpp>

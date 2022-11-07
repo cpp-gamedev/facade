@@ -22,16 +22,19 @@ fs::path find_gltf(fs::path root) {
 }
 } // namespace
 
+BrowseGltf::BrowseGltf(std::shared_ptr<Events> events, std::string browse_path)
+	: m_events(std::move(events)), m_observer(this->m_events, [this](event::OpenFile) { m_trigger = true; }), m_browse_path(std::move(browse_path)) {}
+
 std::string BrowseGltf::update() {
-	if (trigger) {
+	if (m_trigger) {
 		editor::Popup::open("Browse...");
-		trigger = false;
+		m_trigger = false;
 	}
 	if (ImGui::IsPopupOpen("Browse...")) { ImGui::SetNextWindowSize({400.0f, 250.0f}, ImGuiCond_FirstUseEver); }
 	if (auto popup = editor::Modal{"Browse..."}) {
 		static constexpr std::string_view gltf_ext_v[] = {".gltf"};
-		auto [selected, dir_changed] = editor::BrowseFile{.out_entries = dir_entries, .extensions = gltf_ext_v}(popup, browse_path);
-		if (dir_changed) { events->dispatch(event::BrowseCd{browse_path}); }
+		auto [selected, dir_changed] = editor::BrowseFile{.out_entries = m_dir_entries, .extensions = gltf_ext_v}(popup, m_browse_path);
+		if (dir_changed) { m_events->dispatch(event::BrowseCd{m_browse_path}); }
 		if (!selected.empty()) {
 			popup.close_current();
 			return selected;
@@ -40,16 +43,20 @@ std::string BrowseGltf::update() {
 	return {};
 }
 
-std::string OpenRecent::update() { return std::exchange(path, {}); }
+OpenRecent::OpenRecent(std::shared_ptr<Events> const& events) : m_observer(events, [this](event::OpenRecent const& recent) { m_path = recent.path; }) {}
+
+std::string OpenRecent::update() { return std::exchange(m_path, {}); }
+
+DropFile::DropFile(std::shared_ptr<Events> const& events) : m_observer(events, [this](event::FileDrop const& fd) { m_path = fd.path; }) {}
 
 std::string DropFile::update() {
-	if (path.empty()) { return {}; }
-	if (auto ret = find_gltf(path); fs::is_regular_file(ret)) {
-		path.clear();
+	if (m_path.empty()) { return {}; }
+	if (auto ret = find_gltf(m_path); fs::is_regular_file(ret)) {
+		m_path.clear();
 		return ret.generic_string();
 	}
-	logger::error("Failed to locate .gltf in path: [{}]", path);
-	path.clear();
+	logger::error("Failed to locate .gltf in path: [{}]", m_path);
+	m_path.clear();
 	return {};
 }
 } // namespace facade

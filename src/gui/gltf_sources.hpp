@@ -5,34 +5,38 @@
 #include <gui/path_source.hpp>
 
 namespace facade {
-struct BrowseGltf : PathSource {
-	std::shared_ptr<Events> events;
-	Observer<event::OpenFile> observer;
-	bool trigger{};
+class BrowseGltf : public PathSource {
+  public:
+	BrowseGltf(std::shared_ptr<Events> events, std::string browse_path);
 
-	env::DirEntries dir_entries{};
-	std::string browse_path{};
-
-	BrowseGltf(std::shared_ptr<Events> events, std::string browse_path)
-		: events(std::move(events)), observer(this->events, [this](event::OpenFile) { trigger = true; }), browse_path(std::move(browse_path)) {}
-
-	std::string update() final;
-};
-
-struct OpenRecent : PathSource {
-	Observer<event::OpenRecent> observer;
-	std::string path{};
-
-	OpenRecent(std::shared_ptr<Events> const& events) : observer(events, [this](event::OpenRecent const& recent) { this->path = recent.path; }) {}
+  private:
+	std::shared_ptr<Events> m_events;
+	Observer<event::OpenFile> m_observer;
+	env::DirEntries m_dir_entries{};
+	std::string m_browse_path{};
+	bool m_trigger{};
 
 	std::string update() final;
 };
 
-struct DropFile : PathSource {
-	Observer<event::FileDrop> observer;
-	std::string path{};
+class OpenRecent : public PathSource {
+  public:
+	OpenRecent(std::shared_ptr<Events> const& events);
 
-	DropFile(std::shared_ptr<Events> const& events) : observer(events, [this](event::FileDrop const& fd) { path = fd.path; }) {}
+  private:
+	Observer<event::OpenRecent> m_observer;
+	std::string m_path{};
+
+	std::string update() final;
+};
+
+class DropFile : public PathSource {
+  public:
+	DropFile(std::shared_ptr<Events> const& events);
+
+  private:
+	Observer<event::FileDrop> m_observer;
+	std::string m_path{};
 
 	std::string update() final;
 };

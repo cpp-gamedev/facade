@@ -46,14 +46,14 @@ SceneRenderer::SceneRenderer(Gfx const& gfx)
 void SceneRenderer::render(Scene const& scene, Renderer& renderer, vk::CommandBuffer cb) {
 	m_scene = &scene;
 	write_view(renderer.framebuffer_extent());
-	for (auto const& node : m_scene->m_tree.roots) { render(renderer, cb, node); }
+	for (auto const& node : m_scene->roots()) { render(renderer, cb, node); }
 }
 
 void SceneRenderer::write_view(glm::vec2 const extent) {
 	auto const& cam_node = m_scene->camera();
 	auto const* cam_id = cam_node.find<Id<Camera>>();
 	assert(cam_id);
-	auto const& cam = m_scene->m_storage.cameras[*cam_id];
+	auto const& cam = m_scene->resources().cameras[*cam_id];
 	struct {
 		glm::mat4x4 mat_v;
 		glm::mat4x4 mat_p;
@@ -89,19 +89,20 @@ std::span<glm::mat4x4 const> SceneRenderer::make_instances(Node const& node, glm
 }
 
 void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Node const& node, glm::mat4 const& parent) {
+	auto const resources = m_scene->resources();
 	if (auto const* mesh_id = node.find<Id<Mesh>>()) {
 		static auto const s_default_material = LitMaterial{};
-		auto const& mesh = m_scene->m_storage.meshes.at(*mesh_id);
+		auto const& mesh = resources.meshes[*mesh_id];
 		for (auto const& primitive : mesh.primitives) {
-			auto const& material =
-				primitive.material ? *m_scene->m_storage.materials.at(primitive.material->value()) : static_cast<Material const&>(s_default_material);
-			auto pipeline = renderer.bind_pipeline(cb, {}, material.shader_id());
+			auto const& material = primitive.material ? *resources.materials[primitive.material->value()] : static_cast<Material const&>(s_default_material);
+			auto pipeline = renderer.bind_pipeline(cb, m_scene->pipeline_state, material.shader_id());
+			pipeline.set_line_width(m_scene->pipeline_state.line_width);
 
 			update_view(pipeline);
-			auto const store = TextureStore{m_scene->m_storage.textures, m_white};
+			auto const store = TextureStore{resources.textures, m_white};
 			material.write_sets(pipeline, store);
 
-			auto const& static_mesh = m_scene->m_storage.static_meshes.at(primitive.static_mesh);
+			auto const& static_mesh = resources.static_meshes[primitive.static_mesh];
 			auto const instances = make_instances(node, parent);
 			renderer.draw(pipeline, static_mesh, instances);
 		}

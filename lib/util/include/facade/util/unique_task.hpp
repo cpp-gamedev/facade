@@ -40,13 +40,13 @@ class UniqueTask<Ret(Args...)> {
   private:
 	struct Base {
 		virtual ~Base() = default;
-		virtual void operator()() = 0;
+		virtual void operator()(Args...) = 0;
 	};
 	template <typename F>
 	struct Func : Base {
 		F f;
 		Func(F&& f) : f(std::move(f)) {}
-		void operator()() final { f(); }
+		void operator()(Args... args) final { f(args...); }
 	};
 
 	std::unique_ptr<Base> m_func{};

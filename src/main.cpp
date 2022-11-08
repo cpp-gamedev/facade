@@ -11,7 +11,10 @@
 #include <facade/engine/engine.hpp>
 
 #include <bin/shaders.hpp>
-#include <main_menu/main_menu.hpp>
+#include <config/config.hpp>
+#include <events/events.hpp>
+#include <gui/gltf_sources.hpp>
+#include <gui/main_menu.hpp>
 
 #include <djson/json.hpp>
 
@@ -116,34 +119,27 @@ void log_prologue() {
 	logger::info("facade v{}.{}.{} | {} |", v.major, v.minor, v.patch, buf);
 }
 
-fs::path find_gltf(fs::path root) {
-	if (root.extension() == ".gltf") { return root; }
-	if (!fs::is_directory(root)) { return {}; }
-	for (auto const& it : fs::directory_iterator{root}) {
-		if (!it.is_regular_file()) { continue; }
-		auto path = it.path();
-		if (path.extension() == ".gltf") { return path; }
-	}
-	return {};
-}
-
 void run() {
+	auto events = std::make_shared<Events>();
 	auto engine = std::optional<Engine>{};
+	auto engine_info = Engine::CreateInfo{};
+	auto config = Config::Scoped{};
+	engine_info.extent = config.config.window.extent;
+	engine_info.desired_msaa = config.config.window.msaa;
 
 	struct DummyDataProvider : DataProvider {
 		ByteBuffer load(std::string_view) const override { return {}; }
 	};
 
-	auto material_id = Id<Material>{};
 	auto node_id = Id<Node>{};
-	auto post_scene_load = [&]() {
+	auto post_scene_load = [&engine, &node_id]() {
 		auto& scene = engine->scene();
 		scene.lights.dir_lights.insert(DirLight{.direction = glm::normalize(glm::vec3{-1.0f, -1.0f, -1.0f}), .rgb = {.intensity = 5.0f}});
 		scene.camera().transform.set_position({0.0f, 0.0f, 5.0f});
 
 		auto material = std::make_unique<LitMaterial>();
 		material->albedo = {1.0f, 0.0f, 0.0f};
-		material_id = scene.add(std::move(material));
+		auto material_id = scene.add(std::move(material));
 		auto static_mesh_id = scene.add(make_cubed_sphere(1.0f, 32));
 		// auto static_mesh_id = scene.add(make_manipulator(0.125f, 1.0f, 16));
 		auto mesh_id = scene.add(Mesh{.primitives = {Mesh::Primitive{static_mesh_id, material_id}}});
@@ -156,7 +152,8 @@ void run() {
 	};
 
 	auto init = [&] {
-		engine.emplace();
+		engine.emplace(engine_info);
+		if (config.config.window.position) { glfwSetWindowPos(engine->window(), config.config.window.position->x, config.config.window.position->y); }
 		log_prologue();
 
 		auto lit = shaders::lit();
@@ -177,22 +174,30 @@ void run() {
 	auto file_menu = FileMenu{};
 	auto window_menu = WindowMenu{};
 
+	for (auto const& recent : config.config.file_menu.recents) { file_menu.add_recent(recent); }
+
 	struct {
 		LoadStatus status{};
 		std::string title{};
 	} loading{};
 
-	auto load_async = [&engine, &file_menu, &loading, &post_scene_load](fs::path const& path) {
+	auto load_async = [&engine, &file_menu, &loading, &post_scene_load, &config](fs::path const& path) {
 		if (engine->load_async(path.generic_string(), post_scene_load)) {
 			loading.title = fmt::format("Loading {}...", path.filename().generic_string());
 			file_menu.add_recent(path.generic_string());
+			config.config.file_menu.recents = {file_menu.recents().begin(), file_menu.recents().end()};
 			return true;
 		}
 		return false;
 	};
 
-	auto dir_entries = env::DirEntries{};
-	auto browse_path = std::string{};
+	auto path_sources = PathSource::List{};
+	path_sources.sources.push_back(std::make_unique<DropFile>(events));
+	path_sources.sources.push_back(std::make_unique<BrowseGltf>(events, config.config.file_menu.browse_path));
+	path_sources.sources.push_back(std::make_unique<OpenRecent>(events));
+
+	auto quit = Observer<event::Shutdown>{events, [&engine](event::Shutdown) { engine->request_stop(); }};
+	auto browse_cd = Observer<event::BrowseCd>{events, [&config](event::BrowseCd const& cd) { config.config.file_menu.browse_path = cd.path; }};
 
 	while (engine->running()) {
 		auto const& state = engine->poll();
@@ -202,17 +207,9 @@ void run() {
 
 		if (input.keyboard.pressed(GLFW_KEY_ESCAPE)) { engine->request_stop(); }
 		glfwSetInputMode(engine->window(), GLFW_CURSOR, mouse_look ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+		if (!state.file_drops.empty()) { events->dispatch(event::FileDrop{state.file_drops.front()}); }
 
-		if (!state.file_drops.empty() && engine->load_status().total == 0) {
-			auto path = find_gltf(state.file_drops.front());
-			if (!fs::is_regular_file(path)) {
-				logger::error("Failed to locate .gltf in path: [{}]", state.file_drops.front());
-			} else {
-				load_async(path);
-			}
-		}
 		loading.status = engine->load_status();
-
 		if (loading.status.stage > LoadStage::eNone) {
 			auto const* main_viewport = ImGui::GetMainViewport();
 			ImGui::SetNextWindowPos({0.0f, main_viewport->WorkPos.y + main_viewport->Size.y - 100.0f});
@@ -235,27 +232,14 @@ void run() {
 		}
 
 		if (auto menu = editor::MainMenu{}) {
-			auto file_command = file_menu.display(menu, {engine->load_status().stage > LoadStage::eNone});
+			file_menu.display(*events, menu, {engine->load_status().stage > LoadStage::eNone});
 			window_menu.display_menu(menu);
 			window_menu.display_windows(*engine);
-			static constexpr std::string_view gltf_ext_v[] = {".gltf"};
-			auto const visitor = Visitor{
-				[&engine](FileMenu::Shutdown) { engine->request_stop(); },
-				[&load_async](FileMenu::OpenRecent open_recent) { load_async(open_recent.path); },
-				[](std::monostate) {},
-				[](FileMenu::OpenFile) { editor::Popup::open("Browse..."); },
-			};
-			std::visit(visitor, file_command);
 
-			if (ImGui::IsPopupOpen("Browse...")) { ImGui::SetNextWindowSize({400.0f, 250.0f}, ImGuiCond_FirstUseEver); }
-			if (auto popup = editor::Modal{"Browse..."}) {
-				auto selected = editor::BrowseFile{.out_entries = dir_entries, .extensions = gltf_ext_v}(popup, browse_path);
-				if (!selected.empty()) {
-					popup.close_current();
-					load_async(selected);
-				}
-			}
+			if (auto path = path_sources.update(); !path.empty()) { load_async(std::move(path)); }
 		}
+
+		config.update(*engine);
 
 		// TEMP CODE
 		if (input.keyboard.pressed(GLFW_KEY_R)) {

@@ -93,6 +93,12 @@ std::vector<char const*> Glfw::vk_extensions() const {
 	return ret;
 }
 
+glm::ivec2 Glfw::Window::position() const {
+	auto ret = glm::ivec2{};
+	glfwGetWindowPos(win, &ret.x, &ret.y);
+	return ret;
+}
+
 glm::uvec2 Glfw::Window::window_extent() const {
 	auto ret = glm::ivec2{};
 	glfwGetWindowSize(win, &ret.x, &ret.y);

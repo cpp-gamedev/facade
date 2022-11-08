@@ -53,8 +53,15 @@ if(FACADE_BUILD_EXE)
   add_executable(${PROJECT_NAME})
 
   target_sources(${PROJECT_NAME} PRIVATE
-    src/main_menu/main_menu.cpp
-    src/main_menu/main_menu.hpp
+    src/config/config.cpp
+    src/config/config.hpp
+    src/events/events.hpp
+    src/gui/events.hpp
+    src/gui/gltf_sources.hpp
+    src/gui/gltf_sources.cpp
+    src/gui/main_menu.cpp
+    src/gui/main_menu.hpp
+    src/gui/path_source.hpp
 
     src/main.cpp
 

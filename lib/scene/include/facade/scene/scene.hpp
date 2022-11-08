@@ -12,6 +12,7 @@
 #include <facade/util/ptr.hpp>
 #include <facade/util/transform.hpp>
 #include <facade/vk/buffer.hpp>
+#include <facade/vk/pipeline.hpp>
 #include <facade/vk/static_mesh.hpp>
 #include <facade/vk/texture.hpp>
 #include <atomic>
@@ -247,6 +248,11 @@ class Scene {
 	///
 	Lights lights{};
 
+	///
+	/// \brief Global pipeline state.
+	///
+	Pipeline::State pipeline_state{};
+
   private:
 	struct TreeBuilder;
 
@@ -294,7 +300,5 @@ class Scene {
 	Storage m_storage{};
 	std::string m_name{};
 	TreeImpl m_tree{};
-
-	friend class SceneRenderer;
 };
 } // namespace facade

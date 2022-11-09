@@ -66,6 +66,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/util/async_queue.hpp
   include/${target_prefix}/util/bool.hpp
   include/${target_prefix}/util/byte_buffer.hpp
+  include/${target_prefix}/util/cli_opts.hpp
   include/${target_prefix}/util/colour_space.hpp
   include/${target_prefix}/util/data_provider.hpp
   include/${target_prefix}/util/enum_array.hpp
@@ -89,6 +90,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/util/version.hpp
   include/${target_prefix}/util/visitor.hpp
 
+  src/cli_opts.cpp
   src/data_provider.cpp
   src/env.cpp
   src/image.cpp

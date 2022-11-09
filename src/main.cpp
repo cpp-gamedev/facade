@@ -1,8 +1,10 @@
 #include <facade/defines.hpp>
 
+#include <facade/util/cli_opts.hpp>
 #include <facade/util/data_provider.hpp>
 #include <facade/util/error.hpp>
 #include <facade/util/logger.hpp>
+
 #include <facade/vk/geometry.hpp>
 
 #include <facade/scene/fly_cam.hpp>
@@ -16,8 +18,6 @@
 #include <gui/gltf_sources.hpp>
 #include <gui/main_menu.hpp>
 
-#include <djson/json.hpp>
-
 #include <imgui.h>
 
 #include <filesystem>
@@ -28,95 +28,16 @@ using namespace facade;
 namespace {
 namespace fs = std::filesystem;
 
-static constexpr auto test_json_v = R"(
-{
-  "scene": 0,
-  "scenes" : [
-    {
-      "nodes" : [ 0 ]
-    }
-  ],
-
-  "nodes" : [
-    {
-      "mesh" : 0
-    }
-  ],
-
-  "meshes" : [
-    {
-      "primitives" : [ {
-        "attributes" : {
-          "POSITION" : 1
-        },
-        "indices" : 0,
-        "material" : 0
-      } ]
-    }
-  ],
-
-  "buffers" : [
-    {
-      "uri" : "data:application/octet-stream;base64,AAABAAIAAAAAAAAAAAAAAAAAAAAAAIA/AAAAAAAAAAAAAAAAAACAPwAAAAA=",
-      "byteLength" : 44
-    }
-  ],
-  "bufferViews" : [
-    {
-      "buffer" : 0,
-      "byteOffset" : 0,
-      "byteLength" : 6,
-      "target" : 34963
-    },
-    {
-      "buffer" : 0,
-      "byteOffset" : 8,
-      "byteLength" : 36,
-      "target" : 34962
-    }
-  ],
-  "accessors" : [
-    {
-      "bufferView" : 0,
-      "byteOffset" : 0,
-      "componentType" : 5123,
-      "count" : 3,
-      "type" : "SCALAR",
-      "max" : [ 2 ],
-      "min" : [ 0 ]
-    },
-    {
-      "bufferView" : 1,
-      "byteOffset" : 0,
-      "componentType" : 5126,
-      "count" : 3,
-      "type" : "VEC3",
-      "max" : [ 1.0, 1.0, 0.0 ],
-      "min" : [ 0.0, 0.0, 0.0 ]
-    }
-  ],
-
-  "materials" : [
-    {
-      "pbrMetallicRoughness": {
-        "baseColorFactor": [ 1.000, 0.766, 0.336, 1.0 ],
-        "metallicFactor": 0.5,
-        "roughnessFactor": 0.1
-      }
-    }
-  ],
-  "asset" : {
-    "version" : "2.0"
-  }
+std::string_view version_string() {
+	static auto const ret = fmt::format("v{}.{}.{}", version_v.major, version_v.minor, version_v.patch);
+	return ret;
 }
-)";
 
 void log_prologue() {
 	auto const now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 	char buf[32]{};
 	std::strftime(buf, sizeof(buf), "%F %Z", std::localtime(&now));
-	static constexpr auto v = version_v;
-	logger::info("facade v{}.{}.{} | {} |", v.major, v.minor, v.patch, buf);
+	logger::info("facade {} | {} |", version_string(), buf);
 }
 
 void run() {
@@ -161,8 +82,6 @@ void run() {
 		engine->add_shader(lit);
 		engine->add_shader(shaders::unlit());
 
-		auto& scene = engine->scene();
-		scene.load_gltf(dj::Json::parse(test_json_v), DummyDataProvider{});
 		post_scene_load();
 		engine->show(true);
 	};
@@ -260,9 +179,14 @@ void run() {
 }
 } // namespace
 
-int main() {
+int main(int argc, char** argv) {
 	try {
 		auto logger_instance = logger::Instance{};
+		switch (CliOpts::parse(version_string(), argc, argv)) {
+		case CliOpts::Result::eExitSuccess: return EXIT_SUCCESS;
+		case CliOpts::Result::eExitFailure: return EXIT_FAILURE;
+		case CliOpts::Result::eContinue: break;
+		}
 		try {
 			run();
 		} catch (InitError const& e) {

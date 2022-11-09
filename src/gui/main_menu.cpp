@@ -4,6 +4,7 @@
 #include <facade/engine/editor/scene_tree.hpp>
 #include <facade/engine/engine.hpp>
 #include <facade/render/renderer.hpp>
+#include <facade/util/enumerate.hpp>
 #include <facade/util/env.hpp>
 #include <facade/util/error.hpp>
 #include <facade/util/fixed_string.hpp>
@@ -18,6 +19,7 @@ void WindowMenu::display_menu(editor::NotClosed<editor::MainMenu> main) {
 	if (ImGui::MenuItem("Scene")) { m_flags.scene = true; }
 	if (ImGui::MenuItem("Frame Stats")) { m_flags.stats = true; }
 	if (ImGui::MenuItem("Log")) { m_flags.log = true; }
+	if (ImGui::MenuItem("Resources")) { m_flags.resources = true; }
 	if (ImGui::MenuItem("Close All")) { m_flags = {}; }
 	ImGui::Separator();
 	if (ImGui::MenuItem("Dear ImGui Demo")) { m_flags.demo = true; }
@@ -28,6 +30,7 @@ void WindowMenu::display_windows(Engine& engine) {
 	if (m_flags.lights) { m_flags.lights = display_lights(engine.scene().lights); }
 	if (m_data.inspect && !display_inspector(engine.scene())) { m_data.inspect = {}; }
 	if (m_flags.log) { m_flags.log = display_log(); }
+	if (m_flags.resources) { m_flags.resources = display_resources(engine.scene()); }
 	if (m_flags.stats) { m_flags.stats = display_stats(engine); }
 	if (m_flags.demo) { ImGui::ShowDemoWindow(&m_flags.demo); }
 }
@@ -92,6 +95,13 @@ bool WindowMenu::display_log() {
 		logger::access_buffer(*this);
 		editor::display_log(window, m_data.log_state);
 	}
+	return show;
+}
+
+bool WindowMenu::display_resources(Scene& scene) {
+	bool show{true};
+	ImGui::SetNextWindowSize({600.0f, 200.0f}, ImGuiCond_FirstUseEver);
+	if (auto window = editor::Window{"Resources", &show}) { editor::ResourceInspector{window, scene.resources()}.display(); }
 	return show;
 }
 

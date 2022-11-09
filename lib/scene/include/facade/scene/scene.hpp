@@ -44,6 +44,18 @@ struct AtomicLoadStatus {
 };
 
 ///
+/// \brief Immutable view of the resources stored in the scene.
+///
+struct SceneResources {
+	std::span<Camera const> cameras{};
+	std::span<Sampler const> samplers{};
+	std::span<std::unique_ptr<Material> const> materials{};
+	std::span<StaticMesh const> static_meshes{};
+	std::span<Texture const> textures{};
+	std::span<Mesh const> meshes{};
+};
+
+///
 /// \brief Models a 3D scene.
 ///
 /// A single Scene holds all the data in a GLTF asset, which can contain *multiple* GLTF scenes.
@@ -51,22 +63,12 @@ struct AtomicLoadStatus {
 ///
 class Scene {
   public:
+	using Resources = SceneResources;
+
 	///
 	/// \brief Represents a single GTLF scene.
 	///
 	struct Tree {};
-
-	///
-	/// \brief Immutable view of the resources stored in the scene.
-	///
-	struct Resources {
-		std::span<Camera const> cameras{};
-		std::span<Sampler const> samplers{};
-		std::span<std::unique_ptr<Material> const> materials{};
-		std::span<StaticMesh const> static_meshes{};
-		std::span<Texture const> textures{};
-		std::span<Mesh const> meshes{};
-	};
 
 	///
 	/// \brief "Null" Id for a Node: refers to no Node.
@@ -118,7 +120,7 @@ class Scene {
 	/// \param geometry Geometry to initialize StaticMesh with
 	/// \returns Id to stored StaticMesh
 	///
-	Id<StaticMesh> add(Geometry const& geometry);
+	Id<StaticMesh> add(Geometry const& geometry, std::string name = "(unnamed)");
 	///
 	/// \brief Add a Texture.
 	/// \param image Image to use for the Texture

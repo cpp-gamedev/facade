@@ -7,8 +7,10 @@
 #include <limits>
 
 namespace facade {
+struct Camera;
 struct Mesh;
 struct Lights;
+struct SceneResources;
 class Scene;
 
 namespace editor {
@@ -58,6 +60,23 @@ class SceneInspector : public Inspector {
 
   private:
 	Scene& m_scene;
+};
+
+class ResourceInspector {
+  public:
+	ResourceInspector(NotClosed<Window>, SceneResources const& resources);
+
+	void display() const;
+	void display(Camera const& camera, std::size_t index, std::string_view prefix = {}) const;
+	void display(Texture const& texture, std::size_t index, std::string_view prefix = {}) const;
+	void display(Material const& material, std::size_t const index, std::string_view prefix = {}) const;
+	void display(Mesh const& mesh, std::size_t const index, std::string_view prefix = {}) const;
+
+  private:
+	void display(LitMaterial const& lit) const;
+	void display(UnlitMaterial const& unlit) const;
+
+	SceneResources const& m_resources;
 };
 } // namespace editor
 } // namespace facade

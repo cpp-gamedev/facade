@@ -48,10 +48,6 @@ void run() {
 	engine_info.extent = config.config.window.extent;
 	engine_info.desired_msaa = config.config.window.msaa;
 
-	struct DummyDataProvider : DataProvider {
-		ByteBuffer load(std::string_view) const override { return {}; }
-	};
-
 	auto node_id = Id<Node>{};
 	auto post_scene_load = [&engine, &node_id]() {
 		auto& scene = engine->scene();

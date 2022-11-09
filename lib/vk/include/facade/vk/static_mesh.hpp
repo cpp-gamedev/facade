@@ -8,8 +8,9 @@ struct Geometry;
 
 class StaticMesh {
   public:
-	StaticMesh(Gfx const& gfx, Geometry const& geometry);
+	StaticMesh(Gfx const& gfx, Geometry const& geometry, std::string name = "(unnamed)");
 
+	std::string_view name() const { return m_name; }
 	MeshView view() const;
 	operator MeshView() const { return view(); }
 
@@ -17,6 +18,7 @@ class StaticMesh {
 	BufferView vbo() const;
 	BufferView ibo() const;
 
+	std::string m_name{};
 	Defer<UniqueBuffer> m_buffer{};
 	std::size_t m_vbo_size{};
 	std::uint32_t m_vertices{};

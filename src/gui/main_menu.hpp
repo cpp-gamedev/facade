@@ -35,6 +35,7 @@ class WindowMenu : public logger::Accessor {
 	bool display_lights(Lights& lights);
 	bool display_stats(Engine& engine);
 	bool display_log();
+	bool display_resources(Scene& scene);
 
 	void change_vsync(Engine const& engine) const;
 
@@ -50,6 +51,7 @@ class WindowMenu : public logger::Accessor {
 		bool lights{};
 		bool stats{};
 		bool log{};
+		bool resources{};
 		bool close{};
 		bool demo{};
 	} m_flags{};

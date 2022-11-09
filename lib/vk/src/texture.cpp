@@ -88,7 +88,7 @@ bool can_mip(vk::PhysicalDevice const gpu, vk::Format const format) {
 }
 } // namespace
 
-Sampler::Sampler(Gfx const& gfx, CreateInfo const& info) {
+Sampler::Sampler(Gfx const& gfx, CreateInfo info) {
 	auto sci = vk::SamplerCreateInfo{};
 	sci.minFilter = info.min;
 	sci.magFilter = info.mag;
@@ -101,11 +101,12 @@ Sampler::Sampler(Gfx const& gfx, CreateInfo const& info) {
 	sci.addressModeW = info.mode_s;
 	sci.maxLod = VK_LOD_CLAMP_NONE;
 	m_sampler = {gfx.device.createSamplerUnique(sci), gfx.shared->defer_queue};
+	m_name = std::move(info.name);
 }
 
 std::uint32_t Texture::mip_levels(vk::Extent2D extent) { return static_cast<std::uint32_t>(std::floor(std::log2(std::max(extent.width, extent.height)))) + 1U; }
 
-Texture::Texture(Gfx const& gfx, vk::Sampler sampler, Image::View image, CreateInfo const& info) : sampler{sampler}, m_gfx{gfx} {
+Texture::Texture(Gfx const& gfx, vk::Sampler sampler, Image::View image, CreateInfo info) : sampler{sampler}, m_gfx{gfx}, m_name(std::move(info.name)) {
 	static constexpr std::uint8_t magenta_v[] = {0xff, 0x0, 0xff, 0xff};
 	m_info.format = info.colour_space == ColourSpace::eLinear ? vk::Format::eR8G8B8A8Unorm : vk::Format::eR8G8B8A8Srgb;
 	bool mip_mapped = info.mip_mapped;

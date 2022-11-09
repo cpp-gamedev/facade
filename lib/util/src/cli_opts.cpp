@@ -1,5 +1,5 @@
 #include <fmt/format.h>
-#include <facade/util/cmd_args.hpp>
+#include <facade/util/cli_opts.hpp>
 #include <facade/util/visitor.hpp>
 #include <algorithm>
 #include <cassert>
@@ -12,7 +12,7 @@ namespace facade {
 namespace {
 namespace fs = std::filesystem;
 
-CmdArgs::Opt const* find_opt(CmdArgs::Spec const& spec, std::variant<std::string_view, char> key) {
+CliOpts::Opt const* find_opt(CliOpts::Spec const& spec, std::variant<std::string_view, char> key) {
 	for (auto const& opt : spec.options) {
 		bool match{};
 		auto const visitor = Visitor{
@@ -30,22 +30,25 @@ CmdArgs::Opt const* find_opt(CmdArgs::Spec const& spec, std::variant<std::string
 }
 
 struct OptParser {
-	using Result = CmdArgs::Result;
+	using Result = CliOpts::Result;
 
-	CmdArgs::Spec spec{};
-	Ptr<CmdArgs::Parser> out;
+	CliOpts::Spec valid_spec{};
+	Ptr<CliOpts::Parser> out;
 	std::string exe_name{};
 
-	OptParser(CmdArgs::Spec spec, Ptr<CmdArgs::Parser> out, char const* arg0) : spec(std::move(spec)), out(out) {
-		std::erase_if(this->spec.options, [](CmdArgs::Opt const& o) { return !o.key.valid(); });
-		this->spec.options.push_back(CmdArgs::Opt{.key = {.full = "help"}, .help = "Show this help text"});
-		this->spec.options.push_back(CmdArgs::Opt{.key = {.full = "version"}, .help = "Show the version"});
+	OptParser(CliOpts::Spec spec, Ptr<CliOpts::Parser> out, char const* arg0) : out(out) {
+		valid_spec.version = spec.version.empty() ? "(unknown)" : spec.version;
+		std::erase_if(spec.options, [](CliOpts::Opt const& o) { return !o.key.valid(); });
+		valid_spec.options.reserve(spec.options.size() + 2);
+		std::move(spec.options.begin(), spec.options.end(), std::back_inserter(valid_spec.options));
+		valid_spec.options.push_back(CliOpts::Opt{.key = {.full = "help"}, .help = "Show this help text"});
+		valid_spec.options.push_back(CliOpts::Opt{.key = {.full = "version"}, .help = "Display the version"});
 		exe_name = fs::path{arg0}.filename().stem().generic_string();
 	}
 
 	std::size_t get_max_width() const {
 		auto ret = std::size_t{};
-		for (auto const& opt : spec.options) {
+		for (auto const& opt : valid_spec.options) {
 			auto width = opt.key.full.size();
 			if (!opt.value.empty()) {
 				width += 1; // =
@@ -64,7 +67,7 @@ struct OptParser {
 		str.reserve(1024);
 		fmt::format_to(std::back_inserter(str), "Usage: {} [OPTION]...\n\n", exe_name);
 		auto const max_width = get_max_width();
-		for (auto const& opt : spec.options) {
+		for (auto const& opt : valid_spec.options) {
 			fmt::format_to(std::back_inserter(str), "  {}{}", (opt.key.single ? '-' : ' '), (opt.key.single ? opt.key.single : ' '));
 			if (!opt.key.full.empty()) { fmt::format_to(std::back_inserter(str), "{} --{}", (opt.key.single ? ',' : ' '), opt.key.full); }
 			auto width = opt.key.full.size();
@@ -82,11 +85,11 @@ struct OptParser {
 	}
 
 	Result print_version() const {
-		std::cout << fmt::format("{} version {}\n", exe_name, spec.version);
+		std::cout << fmt::format("{} version {}\n", exe_name, valid_spec.version);
 		return Result::eExitSuccess;
 	}
 
-	CmdArgs::Result opt(CmdArgs::Key key, CmdArgs::Value value) const {
+	CliOpts::Result opt(CliOpts::Key key, CliOpts::Value value) const {
 		if (key.full == "help") { return print_help(); }
 		if (key.full == "version") { return print_version(); }
 		if (out) { out->opt(key, value); }
@@ -95,7 +98,7 @@ struct OptParser {
 };
 
 struct ParseOpt {
-	using Result = CmdArgs::Result;
+	using Result = CliOpts::Result;
 
 	OptParser const& out;
 
@@ -117,7 +120,7 @@ struct ParseOpt {
 		return Result::eExitFailure;
 	}
 
-	Result missing_value(CmdArgs::Opt const& opt) const {
+	Result missing_value(CliOpts::Opt const& opt) const {
 		auto str = opt.key.full;
 		if (str.empty()) { str = {&opt.key.single, 1}; }
 		std::cerr << fmt::format("missing required value for option: {}{}\n", (opt.key.full.empty() ? "-" : "--"), str);
@@ -126,15 +129,15 @@ struct ParseOpt {
 
 	Result parse_word() {
 		auto const it = current.find('=');
-		CmdArgs::Opt const* opt{};
-		auto value = CmdArgs::Value{};
+		CliOpts::Opt const* opt{};
+		auto value = CliOpts::Value{};
 		if (it != std::string_view::npos) {
 			auto const key = current.substr(0, it);
-			opt = find_opt(out.spec, key);
+			opt = find_opt(out.valid_spec, key);
 			if (!opt) { return unknown_option(key); }
 			value = current.substr(it + 1);
 		} else {
-			opt = find_opt(out.spec, current);
+			opt = find_opt(out.valid_spec, current);
 			if (!opt) { return unknown_option(current); }
 		}
 		if (!opt->value.empty() && !opt->is_optional_value && value.empty()) { return missing_value(*opt); }
@@ -145,14 +148,14 @@ struct ParseOpt {
 		char prev{};
 		while (!at_end() && peek() != '=') {
 			prev = advance();
-			auto const* opt = find_opt(out.spec, prev);
+			auto const* opt = find_opt(out.valid_spec, prev);
 			if (!opt) { return unknown_option({&prev, 1}); }
 			return out.opt(opt->key, {});
 		}
 		if (peek() == '=') {
 			if (prev == '\0') { return unknown_option(""); }
 			advance();
-			auto const* opt = find_opt(out.spec, prev);
+			auto const* opt = find_opt(out.valid_spec, prev);
 			if (!opt) { return unknown_option({&prev, 1}); }
 			return out.opt(opt->key, current);
 		}
@@ -176,7 +179,7 @@ struct ParseOpt {
 
 } // namespace
 
-auto CmdArgs::parse(Spec spec, Ptr<Parser> out, int argc, char const* const* argv) -> Result {
+auto CliOpts::parse(Spec spec, Ptr<Parser> out, int argc, char const* const* argv) -> Result {
 	if (argc < 1) { return Result::eContinue; }
 	auto opt_parser = OptParser{std::move(spec), out, argv[0]};
 	auto parse_opt = ParseOpt{opt_parser};
@@ -186,7 +189,7 @@ auto CmdArgs::parse(Spec spec, Ptr<Parser> out, int argc, char const* const* arg
 	return Result::eContinue;
 }
 
-auto CmdArgs::parse(std::string_view version, int argc, char const* const* argv) -> Result {
+auto CliOpts::parse(std::string_view version, int argc, char const* const* argv) -> Result {
 	auto spec = Spec{.version = version};
 	return parse(std::move(spec), {}, argc, argv);
 }

@@ -1,6 +1,6 @@
 #include <facade/defines.hpp>
 
-#include <facade/util/cmd_args.hpp>
+#include <facade/util/cli_opts.hpp>
 #include <facade/util/data_provider.hpp>
 #include <facade/util/error.hpp>
 #include <facade/util/logger.hpp>
@@ -28,12 +28,16 @@ using namespace facade;
 namespace {
 namespace fs = std::filesystem;
 
+std::string_view version_string() {
+	static auto const ret = fmt::format("v{}.{}.{}", version_v.major, version_v.minor, version_v.patch);
+	return ret;
+}
+
 void log_prologue() {
 	auto const now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 	char buf[32]{};
 	std::strftime(buf, sizeof(buf), "%F %Z", std::localtime(&now));
-	static constexpr auto v = version_v;
-	logger::info("facade v{}.{}.{} | {} |", v.major, v.minor, v.patch, buf);
+	logger::info("facade {} | {} |", version_string(), buf);
 }
 
 void run() {
@@ -178,11 +182,10 @@ void run() {
 int main(int argc, char** argv) {
 	try {
 		auto logger_instance = logger::Instance{};
-		auto const version_str = fmt::format("v{}.{}.{}", version_v.major, version_v.minor, version_v.patch);
-		switch (CmdArgs::parse(version_str, argc, argv)) {
-		case CmdArgs::Result::eExitSuccess: return EXIT_SUCCESS;
-		case CmdArgs::Result::eExitFailure: return EXIT_FAILURE;
-		case CmdArgs::Result::eContinue: break;
+		switch (CliOpts::parse(version_string(), argc, argv)) {
+		case CliOpts::Result::eExitSuccess: return EXIT_SUCCESS;
+		case CliOpts::Result::eExitFailure: return EXIT_FAILURE;
+		case CliOpts::Result::eContinue: break;
 		}
 		try {
 			run();

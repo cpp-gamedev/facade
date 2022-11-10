@@ -228,6 +228,7 @@ bool Engine::is_instance_active() { return s_instance != nullptr; }
 
 Engine::Engine(CreateInfo const& info) noexcept(false) {
 	if (s_instance) { throw Error{"Engine: active instance exists and has not been destroyed"}; }
+	if (info.force_thread_count) { logger::info("[Engine] Forcing load thread count: [{}]", *info.force_thread_count); }
 	m_impl = std::make_unique<Impl>(make_window(info.extent, info.title), info.desired_msaa, determine_validation(info.validation), info.force_thread_count);
 	if (info.auto_show) { show(true); }
 }

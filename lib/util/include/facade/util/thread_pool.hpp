@@ -2,6 +2,7 @@
 #include <facade/util/async_queue.hpp>
 #include <facade/util/unique_task.hpp>
 #include <future>
+#include <optional>
 #include <thread>
 #include <vector>
 
@@ -15,7 +16,7 @@ class ThreadPool {
 	/// \brief Construct a ThreadPool.
 	/// \param threads Number of threads to create
 	///
-	ThreadPool(std::uint32_t threads = std::thread::hardware_concurrency());
+	ThreadPool(std::optional<std::uint32_t> thread_count = {});
 	~ThreadPool();
 
 	///
@@ -31,6 +32,12 @@ class ThreadPool {
 		push(std::move(promise), std::move(func));
 		return ret;
 	}
+
+	///
+	/// \brief Obtain the number of worker threads active on the task queue.
+	/// \returns The number of worker threads active on the task queue
+	///
+	std::size_t thread_count() const { return m_threads.size(); }
 
   private:
 	template <typename T, typename F>
@@ -52,6 +59,6 @@ class ThreadPool {
 	}
 
 	AsyncQueue<UniqueTask<void()>> m_queue{};
-	std::vector<std::jthread> m_agents{};
+	std::vector<std::jthread> m_threads{};
 };
 } // namespace facade

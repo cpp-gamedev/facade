@@ -204,8 +204,9 @@ struct Engine::Impl {
 		UniqueTask<void()> callback{};
 	} load{};
 
-	Impl(UniqueWin window, std::uint8_t msaa, bool validation)
-		: window(std::move(window), std::make_unique<DearImGui>(), msaa, validation), renderer(this->window.gfx), scene(this->window.gfx), msaa(msaa) {
+	Impl(UniqueWin window, std::uint8_t msaa, bool validation, std::optional<std::uint32_t> thread_count)
+		: window(std::move(window), std::make_unique<DearImGui>(), msaa, validation), renderer(this->window.gfx), scene(this->window.gfx), msaa(msaa),
+		  thread_pool(thread_count) {
 		s_instance = this;
 		load.request.status.reset();
 	}
@@ -227,7 +228,7 @@ bool Engine::is_instance_active() { return s_instance != nullptr; }
 
 Engine::Engine(CreateInfo const& info) noexcept(false) {
 	if (s_instance) { throw Error{"Engine: active instance exists and has not been destroyed"}; }
-	m_impl = std::make_unique<Impl>(make_window(info.extent, info.title), info.desired_msaa, determine_validation(info.validation));
+	m_impl = std::make_unique<Impl>(make_window(info.extent, info.title), info.desired_msaa, determine_validation(info.validation), info.force_thread_count);
 	if (info.auto_show) { show(true); }
 }
 
@@ -271,6 +272,18 @@ bool Engine::load_async(std::string gltf_json_path, UniqueTask<void()> on_loaded
 		logger::error("[Engine] Invalid GLTF JSON path: [{}]", gltf_json_path);
 		return false;
 	}
+
+	// ensure thread pool queue has at least one worker thread, else load on this thread
+	if (m_impl->thread_pool.thread_count() == 0) {
+		auto const start = time::since_start();
+		if (!load_gltf(m_impl->scene, gltf_json_path.c_str(), m_impl->load.request.status, nullptr)) {
+			logger::error("[Engine] Failed to load GLTF: [{}]", gltf_json_path);
+			return false;
+		}
+		logger::info("...GLTF [{}] loaded in [{:.2f}s]", env::to_filename(gltf_json_path), time::since_start() - start);
+		return true;
+	}
+
 	// shared state will need to be accessed, lock the mutex
 	auto lock = std::scoped_lock{m_impl->mutex};
 	if (m_impl->load.request.future.valid()) {
@@ -286,7 +299,9 @@ bool Engine::load_async(std::string gltf_json_path, UniqueTask<void()> on_loaded
 	m_impl->load.request.path = std::move(gltf_json_path);
 	m_impl->load.request.status.reset();
 	m_impl->load.request.start_time = time::since_start();
-	auto func = [path = m_impl->load.request.path, gfx = m_impl->window.gfx, status = &m_impl->load.request.status, tp = &m_impl->thread_pool] {
+	// if thread pool queue has only one worker thread, can't dispatch tasks from within a task and then wait for them (deadlock)
+	auto* tp = m_impl->thread_pool.thread_count() > 1 ? &m_impl->thread_pool : nullptr;
+	auto func = [path = m_impl->load.request.path, gfx = m_impl->window.gfx, status = &m_impl->load.request.status, tp] {
 		auto scene = Scene{gfx};
 		if (!load_gltf(scene, path.c_str(), *status, tp)) { logger::error("[Engine] Failed to load GLTF: [{}]", path); }
 		// return the scene even on failure, it will be empty but valid
@@ -302,6 +317,8 @@ LoadStatus Engine::load_status() const {
 	auto const& status = m_impl->load.request.status;
 	return {.stage = status.stage.load(), .total = status.total, .done = status.done};
 }
+
+std::size_t Engine::load_thread_count() const { return m_impl->thread_pool.thread_count(); }
 
 Scene& Engine::scene() const { return m_impl->scene; }
 GLFWwindow* Engine::window() const { return m_impl->window.window.get(); }

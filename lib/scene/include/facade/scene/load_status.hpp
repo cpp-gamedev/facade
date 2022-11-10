@@ -9,8 +9,7 @@ namespace facade {
 enum class LoadStage : std::uint8_t {
 	eNone,
 	eParsingJson,
-	eUploadingTextures,
-	eUploadingMeshes,
+	eUploadingResources,
 	eBuildingScenes,
 	eCOUNT_,
 };
@@ -18,9 +17,7 @@ enum class LoadStage : std::uint8_t {
 ///
 /// \brief String map for LoadStage.
 ///
-constexpr auto load_stage_str = EnumArray<LoadStage, std::string_view>{
-	"None", "Parsing JSON", "Uploading Textures", "Uploading Meshes", "Building Scenes",
-};
+constexpr auto load_stage_str = EnumArray<LoadStage, std::string_view>{"None", "Parsing JSON", "Uploading Resources", "Building Scenes"};
 static_assert(std::size(load_stage_str.t) == static_cast<std::size_t>(LoadStage::eCOUNT_));
 
 struct LoadStatus {

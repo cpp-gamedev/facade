@@ -8,7 +8,7 @@ namespace {
 constexpr auto flags_v = vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eIndexBuffer | vk::BufferUsageFlagBits::eTransferDst;
 } // namespace
 
-StaticMesh::StaticMesh(Gfx const& gfx, Geometry const& geometry) : m_buffer{gfx.shared->defer_queue} {
+StaticMesh::StaticMesh(Gfx const& gfx, Geometry const& geometry, std::string name) : m_name(std::move(name)), m_buffer{gfx.shared->defer_queue} {
 	auto const vertices = std::span<Vertex const>{geometry.vertices};
 	auto const indices = std::span<std::uint32_t const>{geometry.indices};
 	m_vertices = static_cast<std::uint32_t>(vertices.size());

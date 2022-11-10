@@ -24,6 +24,7 @@ struct Mesh {
 		std::optional<Id<Material>> material{};
 	};
 
+	std::string name{"(unnamed)"};
 	///
 	/// \brief List of primitives in this mesh.
 	///

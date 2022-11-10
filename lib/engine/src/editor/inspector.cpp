@@ -163,7 +163,7 @@ bool Inspector::do_inspect(Transform& out_transform, Bool& out_unified_scaling, 
 	return ret.value;
 }
 
-SceneInspector::SceneInspector(NotClosed<Window> target, Scene& scene) : Inspector(target), m_scene(scene) {}
+SceneInspector::SceneInspector(NotClosed<Window> target, Scene& scene) : Inspector(target), m_scene(scene), m_target(target) {}
 
 bool SceneInspector::inspect(NotClosed<TreeNode>, UnlitMaterial& out_material) const {
 	auto ret = Modified{};
@@ -177,15 +177,14 @@ bool SceneInspector::inspect(NotClosed<TreeNode>, LitMaterial& out_material) con
 	ret(ImGui::SliderFloat("Roughness", &out_material.roughness, 0.0f, 1.0f));
 	ret(inspect_rgb("Albedo", out_material.albedo));
 	if (out_material.base_colour || out_material.roughness_metallic) {
-		if (auto tn = TreeNode{"Textures"}) {
-			if (out_material.base_colour) {
-				auto const* tex = m_scene.find(*out_material.base_colour);
-				TreeNode::leaf(FixedString{"Albedo: {} ({})", tex->name, *out_material.base_colour}.c_str());
-			}
-			if (out_material.roughness_metallic) {
-				auto const* tex = m_scene.find(*out_material.roughness_metallic);
-				TreeNode::leaf(FixedString{"Roughness-Metallic: {} ({})", tex->name, *out_material.roughness_metallic}.c_str());
-			}
+		auto const ri = ResourceInspector{m_target, m_scene.resources()};
+		if (out_material.base_colour) {
+			auto const* tex = m_scene.find(*out_material.base_colour);
+			ri.display(*tex, *out_material.base_colour, "Base Colour: ");
+		}
+		if (out_material.roughness_metallic) {
+			auto const* tex = m_scene.find(*out_material.roughness_metallic);
+			ri.display(*tex, *out_material.roughness_metallic, "Roughness Metallic: ");
 		}
 	}
 	return ret.value;
@@ -227,5 +226,93 @@ bool SceneInspector::inspect(Id<Node> node_id, Bool& out_unified_scaling) const 
 	ret(inspect(node->instances, out_unified_scaling));
 	if (auto const* mesh_id = node->find<Id<Mesh>>()) { ret(inspect(*mesh_id)); }
 	return ret.value;
+}
+
+namespace {
+template <typename Named>
+void display_resource(Named const& named, std::size_t const index, std::string_view prefix = {}) {
+	editor::TreeNode::leaf(FixedString<128>{"{}{} ({})", prefix, named.name(), index}.c_str());
+}
+} // namespace
+
+ResourceInspector::ResourceInspector(NotClosed<Window>, Scene::Resources const& resources) : m_resources(resources) {}
+
+void ResourceInspector::display() const {
+	static constexpr auto flags_v = ImGuiTreeNodeFlags_Framed;
+	if (auto tn = editor::TreeNode("Cameras", flags_v)) {
+		for (auto const [camera, index] : enumerate(m_resources.cameras)) { display(camera, index); }
+	}
+	if (auto tn = editor::TreeNode("Samplers", flags_v)) {
+		for (auto const [sampler, index] : enumerate(m_resources.samplers)) { display_resource(sampler, index); }
+	}
+	if (auto tn = editor::TreeNode("Textures", flags_v)) {
+		for (auto const [texture, index] : enumerate(m_resources.textures)) { display(texture, index); }
+	}
+	if (auto tn = editor::TreeNode("Materials", flags_v)) {
+		for (auto const [material, index] : enumerate(m_resources.materials)) { display(*material, index); }
+	}
+	if (auto tn = editor::TreeNode("Static Meshes", flags_v)) {
+		for (auto const [mesh, index] : enumerate(m_resources.static_meshes)) { display_resource(mesh, index); }
+	}
+	if (auto tn = editor::TreeNode("Meshes", flags_v)) {
+		for (auto const [mesh, index] : enumerate(m_resources.meshes)) { display(mesh, index); }
+	}
+}
+
+void ResourceInspector::display(Camera const& camera, std::size_t index, std::string_view prefix) const {
+	if (auto tn = editor::TreeNode{FixedString<128>{"{}{} ({})", prefix, camera.name, index}.c_str()}) {
+		auto const visitor = Visitor{
+			[](Camera::Orthographic const& o) {
+				ImGui::Text("%s", FixedString{"Near Plane: {}", o.view_plane.near}.c_str());
+				ImGui::Text("%s", FixedString{"Far Plane: {}", o.view_plane.near}.c_str());
+			},
+			[](Camera::Perspective const& p) {
+				ImGui::Text("%s", FixedString{"FoV: {}", p.field_of_view}.c_str());
+				ImGui::Text("%s", FixedString{"Near Plane: {}", p.view_plane.near}.c_str());
+				ImGui::Text("%s", FixedString{"Far Plane: {}", p.view_plane.near}.c_str());
+			},
+		};
+		std::visit(visitor, camera.type);
+	}
+}
+
+void ResourceInspector::display(Texture const& texture, std::size_t index, std::string_view prefix) const {
+	if (auto tn = editor::TreeNode{FixedString<128>{"{}{} ({})", prefix, texture.name(), index}.c_str()}) {
+		auto const view = texture.view();
+		editor::TreeNode::leaf(FixedString{"Extent: {}x{}", view.extent.width, view.extent.height}.c_str());
+		editor::TreeNode::leaf(FixedString{"Mip levels: {}", texture.mip_levels()}.c_str());
+		auto const cs = texture.colour_space() == ColourSpace::eLinear ? "linear" : "sRGB";
+		editor::TreeNode::leaf(FixedString{"Colour Space: {}", cs}.c_str());
+	}
+}
+
+void ResourceInspector::display(Material const& material, std::size_t const index, std::string_view prefix) const {
+	if (auto tn = editor::TreeNode{FixedString<128>{"{}{} ({})", prefix, material.name, index}.c_str()}) {
+		if (auto const* lit = dynamic_cast<LitMaterial const*>(&material)) { return display(*lit); }
+		if (auto const* unlit = dynamic_cast<UnlitMaterial const*>(&material)) { return display(*unlit); }
+	}
+}
+
+void ResourceInspector::display(Mesh const& mesh, std::size_t const index, std::string_view prefix) const {
+	if (auto tn = editor::TreeNode{FixedString<128>{"{}{} ({})", prefix, mesh.name, index}.c_str()}) {
+		for (auto const primitive : mesh.primitives) {
+			display_resource(m_resources.static_meshes[primitive.static_mesh], primitive.static_mesh, "Static Mesh: ");
+			if (primitive.material) { display(*m_resources.materials[*primitive.material], *primitive.material, "Material: "); }
+		}
+	}
+}
+
+void ResourceInspector::display(LitMaterial const& lit) const {
+	ImGui::Text("Albedo: ");
+	ImGui::SameLine();
+	ImGui::ColorButton("Albedo", {lit.albedo.x, lit.albedo.y, lit.albedo.z, 1.0f});
+	ImGui::Text("%s", FixedString{"Metallic: {:.2f}", lit.metallic}.c_str());
+	ImGui::Text("%s", FixedString{"Roughness: {:.2f}", lit.roughness}.c_str());
+	if (lit.base_colour) { display(m_resources.textures[*lit.base_colour], *lit.base_colour, "Base Colour: "); }
+	if (lit.roughness_metallic) { display(m_resources.textures[*lit.roughness_metallic], *lit.roughness_metallic, "Roughness Metallic: "); }
+}
+
+void ResourceInspector::display(UnlitMaterial const& unlit) const {
+	if (unlit.texture) { display(m_resources.textures[*unlit.texture], *unlit.texture, "Texture: "); }
 }
 } // namespace facade::editor

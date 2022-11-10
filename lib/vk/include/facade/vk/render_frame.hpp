@@ -23,7 +23,7 @@ struct RenderFrame {
 
 	Framebuffer refresh(vk::Device device, vk::RenderPass rp, RenderTarget const& rt);
 
-	void submit(vk::Queue queue) const;
+	void submit(std::scoped_lock<std::mutex> const& q_lock, vk::Queue queue) const;
 };
 
 template <std::size_t Size = buffering_v>

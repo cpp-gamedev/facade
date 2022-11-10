@@ -47,7 +47,7 @@ class Swapchain {
 	vk::Result refresh(Spec const& spec);
 
 	[[nodiscard]] vk::Result acquire(glm::uvec2 extent, ImageView& out, vk::Semaphore semaphore, vk::Fence fence = {});
-	vk::Result present(glm::uvec2 extent, vk::Semaphore wait);
+	vk::Result present(std::scoped_lock<std::mutex> const& q_lock, glm::uvec2 extent, vk::Semaphore wait);
 
 	vk::SwapchainCreateInfoKHR info{};
 

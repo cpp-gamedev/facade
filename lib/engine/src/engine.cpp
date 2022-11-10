@@ -8,6 +8,7 @@
 #include <facade/glfw/glfw_wsi.hpp>
 #include <facade/render/renderer.hpp>
 #include <facade/util/data_provider.hpp>
+#include <facade/util/env.hpp>
 #include <facade/util/error.hpp>
 #include <facade/util/logger.hpp>
 #include <facade/vk/cmd.hpp>
@@ -258,6 +259,7 @@ void Engine::render() {
 
 void Engine::request_stop() { glfwSetWindowShouldClose(window(), GLFW_TRUE); }
 
+glm::ivec2 Engine::window_position() const { return m_impl->window.window.get().position(); }
 glm::uvec2 Engine::window_extent() const { return m_impl->window.window.get().window_extent(); }
 glm::uvec2 Engine::framebuffer_extent() const { return m_impl->window.window.get().framebuffer_extent(); }
 
@@ -276,7 +278,7 @@ bool Engine::load_async(std::string gltf_json_path, UniqueTask<void()> on_loaded
 	}
 
 	// ready to start loading
-	logger::info("[Engine] Loading GLTF [{}]...", State::to_filename(gltf_json_path));
+	logger::info("[Engine] Loading GLTF [{}]...", env::to_filename(gltf_json_path));
 	// populate load request
 	m_impl->load.callback = std::move(on_loaded);
 	m_impl->load.request.path = std::move(gltf_json_path);
@@ -321,7 +323,7 @@ void Engine::update_load_request() {
 	auto const duration = time::since_start() - m_impl->load.request.start_time;
 	// unlock mutex to prevent possible deadlock (eg callback calls load_gltf again)
 	lock.unlock();
-	logger::info("...GLTF [{}] loaded in [{:.2f}s]", State::to_filename(path), duration);
+	logger::info("...GLTF [{}] loaded in [{:.2f}s]", env::to_filename(path), duration);
 	// invoke callback
 	if (callback) { callback(); }
 }

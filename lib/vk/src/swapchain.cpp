@@ -106,7 +106,7 @@ vk::Result Swapchain::acquire(glm::uvec2 extent, ImageView& out, vk::Semaphore s
 	return ret;
 }
 
-vk::Result Swapchain::present(glm::uvec2 extent, vk::Semaphore wait) {
+vk::Result Swapchain::present(std::scoped_lock<std::mutex> const&, glm::uvec2 extent, vk::Semaphore wait) {
 	if (!m_storage.acquired || is_zero(extent)) { return vk::Result::eNotReady; }
 	auto pi = vk::PresentInfoKHR{};
 	pi.swapchainCount = 1U;

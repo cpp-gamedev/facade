@@ -66,8 +66,8 @@ std::unique_ptr<Material> to_material(gltf::Material const& material) {
 	return ret;
 }
 
-Mesh to_mesh(gltf::Mesh const& mesh) {
-	auto ret = Mesh{};
+Mesh to_mesh(gltf::Mesh mesh) {
+	auto ret = Mesh{.name = std::move(mesh.name)};
 	for (auto const& primitive : mesh.primitives) {
 		ret.primitives.push_back(Mesh::Primitive{.static_mesh = primitive.geometry, .material = primitive.material});
 	}
@@ -182,8 +182,9 @@ bool Scene::load_gltf(dj::Json const& root, DataProvider const& provider, Atomic
 		return m_storage.samplers[*sampler_id].sampler();
 	};
 	for (auto& texture : asset.textures) {
-		auto const tci = Texture::CreateInfo{.mip_mapped = true, .colour_space = texture.colour_space};
-		m_storage.textures.emplace_back(m_gfx, get_sampler(texture.sampler), images.at(texture.source), tci).name = std::move(texture.name);
+		bool const mip_mapped = texture.colour_space == ColourSpace::eSrgb;
+		auto const tci = Texture::CreateInfo{.name = std::move(texture.name), .mip_mapped = mip_mapped, .colour_space = texture.colour_space};
+		m_storage.textures.emplace_back(m_gfx, get_sampler(texture.sampler), images.at(texture.source), tci);
 		if (out_status) { ++out_status->done; }
 	}
 
@@ -201,7 +202,7 @@ bool Scene::load_gltf(dj::Json const& root, DataProvider const& provider, Atomic
 	}
 	for (auto const& sampler : asset.samplers) { add(to_sampler_info(sampler)); }
 	for (auto const& material : asset.materials) { add(to_material(material)); }
-	for (auto const& mesh : asset.meshes) { add(to_mesh(mesh)); }
+	for (auto& mesh : asset.meshes) { add(to_mesh(std::move(mesh))); }
 
 	m_storage.data.nodes = std::move(asset.nodes);
 	for (auto& scene : asset.scenes) { m_storage.data.trees.push_back(TreeImpl::Data{.roots = std::move(scene.root_nodes)}); }
@@ -231,9 +232,9 @@ Id<Material> Scene::add(std::unique_ptr<Material> material) {
 	return id;
 }
 
-Id<StaticMesh> Scene::add(Geometry const& geometry) {
+Id<StaticMesh> Scene::add(Geometry const& geometry, std::string name) {
 	auto const id = m_storage.static_meshes.size();
-	m_storage.static_meshes.emplace_back(m_gfx, geometry);
+	m_storage.static_meshes.emplace_back(m_gfx, geometry, std::move(name));
 	return id;
 }
 

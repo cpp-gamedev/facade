@@ -9,6 +9,7 @@ class Pipeline {
 	struct State {
 		vk::PolygonMode mode{vk::PolygonMode::eFill};
 		vk::PrimitiveTopology topology{vk::PrimitiveTopology::eTriangleList};
+		float line_width{1.0f};
 		bool depth_test{true};
 
 		bool operator==(State const&) const = default;

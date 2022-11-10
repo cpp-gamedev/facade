@@ -68,14 +68,6 @@ struct Glfw::State {
 	/// \brief Delta-time between polls.
 	///
 	float dt{};
-
-	///
-	/// \brief Obtain the filename of a file drop path.
-	/// \param path Path to extract filename from
-	///
-	/// Passed path must be in generic form.
-	///
-	static std::string to_filename(std::string_view path);
 };
 
 ///
@@ -98,16 +90,24 @@ struct Glfw::Window {
 	static UniqueWin make();
 
 	///
+	/// \brief Obtain the window position in screen coordinates.
+	/// \returns Window position in screen coordinates
+	///
+	glm::ivec2 position() const;
+	///
 	/// \brief Obtain the extent (size) of the window.
+	/// \returns Extent (size) of the window
 	///
 	glm::uvec2 window_extent() const;
 	///
 	/// \brief Obtain the extent (size) of the framebuffer.
+	/// \returns Extent (size) of the framebuffer
 	///
 	glm::uvec2 framebuffer_extent() const;
 
 	///
 	/// \brief Obtain the state since the last poll.
+	/// \returns State since the last poll
 	///
 	State const& state() const;
 

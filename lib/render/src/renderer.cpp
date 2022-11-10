@@ -239,10 +239,11 @@ bool Renderer::render() {
 	// submit commands
 	{
 		auto lock = std::scoped_lock{m_impl->gfx.shared->mutex};
-		frame.submit(m_impl->gfx.queue);
+		frame.submit(lock, m_impl->gfx.queue);
+
+		// present image
+		m_impl->swapchain.present(lock, m_impl->window.framebuffer_extent(), *frame.sync.present);
 	}
-	// present image
-	m_impl->swapchain.present(m_impl->window.framebuffer_extent(), *frame.sync.present);
 
 	// rotate everything
 	m_impl->pipes.rotate();

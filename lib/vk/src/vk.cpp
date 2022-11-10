@@ -20,6 +20,7 @@ vk::UniqueInstance create_instance(std::vector<char const*> extensions, std::uin
 		if (std::find_if(available_layers.begin(), available_layers.end(), layer_search) != available_layers.end()) {
 			extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 		} else {
+			logger::warn("[Device] Validation layer requested but not found");
 			out_flags &= ~Vulkan::eValidation;
 		}
 	}
@@ -40,8 +41,15 @@ vk::UniqueInstance create_instance(std::vector<char const*> extensions, std::uin
 		ici.enabledLayerCount = 1;
 		ici.ppEnabledLayerNames = layers;
 	}
-	auto ret = vk::createInstanceUnique(ici);
-	if (ret) { VULKAN_HPP_DEFAULT_DISPATCHER.init(ret.get()); }
+	auto ret = vk::UniqueInstance{};
+	try {
+		ret = vk::createInstanceUnique(ici);
+	} catch (vk::LayerNotPresentError const& e) {
+		logger::error("[Device] {}", e.what());
+		ici.enabledLayerCount = 0;
+		ret = vk::createInstanceUnique(ici);
+	}
+	VULKAN_HPP_DEFAULT_DISPATCHER.init(ret.get());
 	return ret;
 }
 

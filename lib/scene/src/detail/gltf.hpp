@@ -82,7 +82,7 @@ struct Mesh {
 		std::optional<std::size_t> material{};
 	};
 
-	std::string name{};
+	std::string name{"(unnamed)"};
 	std::vector<Primitive> primitives{};
 };
 

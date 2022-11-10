@@ -12,6 +12,7 @@
 #include <facade/util/ptr.hpp>
 #include <facade/util/transform.hpp>
 #include <facade/vk/buffer.hpp>
+#include <facade/vk/pipeline.hpp>
 #include <facade/vk/static_mesh.hpp>
 #include <facade/vk/texture.hpp>
 #include <atomic>
@@ -43,6 +44,18 @@ struct AtomicLoadStatus {
 };
 
 ///
+/// \brief Immutable view of the resources stored in the scene.
+///
+struct SceneResources {
+	std::span<Camera const> cameras{};
+	std::span<Sampler const> samplers{};
+	std::span<std::unique_ptr<Material> const> materials{};
+	std::span<StaticMesh const> static_meshes{};
+	std::span<Texture const> textures{};
+	std::span<Mesh const> meshes{};
+};
+
+///
 /// \brief Models a 3D scene.
 ///
 /// A single Scene holds all the data in a GLTF asset, which can contain *multiple* GLTF scenes.
@@ -50,22 +63,12 @@ struct AtomicLoadStatus {
 ///
 class Scene {
   public:
+	using Resources = SceneResources;
+
 	///
 	/// \brief Represents a single GTLF scene.
 	///
 	struct Tree {};
-
-	///
-	/// \brief Immutable view of the resources stored in the scene.
-	///
-	struct Resources {
-		std::span<Camera const> cameras{};
-		std::span<Sampler const> samplers{};
-		std::span<std::unique_ptr<Material> const> materials{};
-		std::span<StaticMesh const> static_meshes{};
-		std::span<Texture const> textures{};
-		std::span<Mesh const> meshes{};
-	};
 
 	///
 	/// \brief "Null" Id for a Node: refers to no Node.
@@ -117,7 +120,7 @@ class Scene {
 	/// \param geometry Geometry to initialize StaticMesh with
 	/// \returns Id to stored StaticMesh
 	///
-	Id<StaticMesh> add(Geometry const& geometry);
+	Id<StaticMesh> add(Geometry const& geometry, std::string name = "(unnamed)");
 	///
 	/// \brief Add a Texture.
 	/// \param image Image to use for the Texture
@@ -247,6 +250,11 @@ class Scene {
 	///
 	Lights lights{};
 
+	///
+	/// \brief Global pipeline state.
+	///
+	Pipeline::State pipeline_state{};
+
   private:
 	struct TreeBuilder;
 
@@ -294,7 +302,5 @@ class Scene {
 	Storage m_storage{};
 	std::string m_name{};
 	TreeImpl m_tree{};
-
-	friend class SceneRenderer;
 };
 } // namespace facade

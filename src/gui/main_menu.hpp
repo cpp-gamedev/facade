@@ -2,28 +2,24 @@
 #include <facade/engine/editor/common.hpp>
 #include <facade/engine/editor/log.hpp>
 #include <facade/engine/editor/scene_tree.hpp>
+#include <gui/events.hpp>
 #include <string>
-#include <variant>
 #include <vector>
 
 namespace facade {
 struct Lights;
+class Events;
 
 class FileMenu {
   public:
-	struct OpenRecent {
-		std::string path{};
-	};
-	struct Shutdown {};
-	using Command = std::variant<std::monostate, OpenRecent, Shutdown>;
-
 	void add_recent(std::string path);
-	Command display(editor::NotClosed<editor::MainMenu> main);
+	void display(Events const& events, editor::NotClosed<editor::MainMenu> main, Bool loading);
+	std::span<std::string const> recents() const { return m_recents; }
 
 	std::uint8_t max_recents{8};
 
   private:
-	Command open_recent(editor::NotClosed<editor::MainMenu> main);
+	void open_recent(Events const& events, editor::NotClosed<editor::MainMenu> main, Bool loading);
 
 	std::vector<std::string> m_recents;
 };
@@ -39,6 +35,7 @@ class WindowMenu : public logger::Accessor {
 	bool display_lights(Lights& lights);
 	bool display_stats(Engine& engine);
 	bool display_log();
+	bool display_resources(Scene& scene);
 
 	void change_vsync(Engine const& engine) const;
 
@@ -54,6 +51,7 @@ class WindowMenu : public logger::Accessor {
 		bool lights{};
 		bool stats{};
 		bool log{};
+		bool resources{};
 		bool close{};
 		bool demo{};
 	} m_flags{};

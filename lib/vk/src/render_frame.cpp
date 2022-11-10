@@ -84,7 +84,7 @@ Framebuffer RenderFrame::refresh(vk::Device device, vk::RenderPass rp, RenderTar
 	return {rt.attachments(), *framebuffer, primary, secondary.span()};
 }
 
-void RenderFrame::submit(vk::Queue queue) const {
+void RenderFrame::submit(std::scoped_lock<std::mutex> const&, vk::Queue queue) const {
 	static constexpr vk::PipelineStageFlags wait = vk::PipelineStageFlagBits::eColorAttachmentOutput;
 	auto si = vk::SubmitInfo{*sync.draw, wait, primary, *sync.present};
 	queue.submit(si, *sync.drawn);

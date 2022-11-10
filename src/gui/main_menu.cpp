@@ -1,12 +1,15 @@
 #include <imgui.h>
+#include <events/events.hpp>
 #include <facade/engine/editor/inspector.hpp>
 #include <facade/engine/editor/scene_tree.hpp>
 #include <facade/engine/engine.hpp>
 #include <facade/render/renderer.hpp>
+#include <facade/util/enumerate.hpp>
+#include <facade/util/env.hpp>
 #include <facade/util/error.hpp>
 #include <facade/util/fixed_string.hpp>
 #include <facade/util/logger.hpp>
-#include <main_menu/main_menu.hpp>
+#include <gui/main_menu.hpp>
 
 namespace facade {
 void WindowMenu::display_menu(editor::NotClosed<editor::MainMenu> main) {
@@ -16,6 +19,7 @@ void WindowMenu::display_menu(editor::NotClosed<editor::MainMenu> main) {
 	if (ImGui::MenuItem("Scene")) { m_flags.scene = true; }
 	if (ImGui::MenuItem("Frame Stats")) { m_flags.stats = true; }
 	if (ImGui::MenuItem("Log")) { m_flags.log = true; }
+	if (ImGui::MenuItem("Resources")) { m_flags.resources = true; }
 	if (ImGui::MenuItem("Close All")) { m_flags = {}; }
 	ImGui::Separator();
 	if (ImGui::MenuItem("Dear ImGui Demo")) { m_flags.demo = true; }
@@ -26,7 +30,9 @@ void WindowMenu::display_windows(Engine& engine) {
 	if (m_flags.lights) { m_flags.lights = display_lights(engine.scene().lights); }
 	if (m_data.inspect && !display_inspector(engine.scene())) { m_data.inspect = {}; }
 	if (m_flags.log) { m_flags.log = display_log(); }
+	if (m_flags.resources) { m_flags.resources = display_resources(engine.scene()); }
 	if (m_flags.stats) { m_flags.stats = display_stats(engine); }
+	if (m_flags.demo) { ImGui::ShowDemoWindow(&m_flags.demo); }
 }
 
 bool WindowMenu::display_scene(Scene& scene) {
@@ -71,6 +77,13 @@ bool WindowMenu::display_stats(Engine& engine) {
 		if (ImGui::SmallButton("Vsync")) { change_vsync(engine); }
 		ImGui::SameLine();
 		ImGui::Text("%s", vsync_status(stats.mode).data());
+		auto& ps = engine.scene().pipeline_state;
+		bool wireframe = ps.mode == vk::PolygonMode::eLine;
+		if (ImGui::Checkbox("Wireframe", &wireframe)) { ps.mode = wireframe ? vk::PolygonMode::eLine : vk::PolygonMode::eFill; }
+		if (wireframe) {
+			ImGui::SameLine();
+			ImGui::DragFloat("Line Width", &ps.line_width, 0.1f, 1.0f, 10.0f);
+		}
 	}
 	return show;
 }
@@ -82,6 +95,13 @@ bool WindowMenu::display_log() {
 		logger::access_buffer(*this);
 		editor::display_log(window, m_data.log_state);
 	}
+	return show;
+}
+
+bool WindowMenu::display_resources(Scene& scene) {
+	bool show{true};
+	ImGui::SetNextWindowSize({600.0f, 200.0f}, ImGuiCond_FirstUseEver);
+	if (auto window = editor::Window{"Resources", &show}) { editor::ResourceInspector{window, scene.resources()}.display(); }
 	return show;
 }
 
@@ -121,23 +141,20 @@ void FileMenu::add_recent(std::string path) {
 	}
 }
 
-auto FileMenu::display(editor::NotClosed<editor::MainMenu> main) -> Command {
-	auto ret = Command{};
+void FileMenu::display(Events const& events, editor::NotClosed<editor::MainMenu> main, Bool loading) {
 	if (auto file = editor::Menu{main, "File"}) {
-		if (!m_recents.empty()) { ret = open_recent(main); }
+		if (ImGui::MenuItem("Open...", {}, false, !loading)) { events.dispatch(event::OpenFile{}); }
+		if (!m_recents.empty()) { open_recent(events, main, loading); }
 		ImGui::Separator();
-		if (ImGui::MenuItem("Exit")) { ret = Shutdown{}; }
+		if (ImGui::MenuItem("Exit")) { events.dispatch(event::Shutdown{}); }
 	}
-	return ret;
 }
 
-auto FileMenu::open_recent(editor::NotClosed<editor::MainMenu> main) -> Command {
-	auto ret = Command{};
+void FileMenu::open_recent(Events const& events, editor::NotClosed<editor::MainMenu> main, Bool loading) {
 	if (auto open_recent = editor::Menu{main, "Open Recent"}) {
 		for (auto it = m_recents.rbegin(); it != m_recents.rend(); ++it) {
-			if (ImGui::MenuItem(Engine::State::to_filename(*it).c_str())) { ret = OpenRecent{.path = *it}; }
+			if (ImGui::MenuItem(env::to_filename(*it).c_str(), {}, false, !loading)) { events.dispatch(event::OpenRecent{*it}); }
 		}
 	}
-	return ret;
 }
 } // namespace facade

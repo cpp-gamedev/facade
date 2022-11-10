@@ -55,11 +55,6 @@ void Glfw::poll_events() {
 
 void Glfw::reset_dt() { g_states.dt = {}; }
 
-std::string Glfw::State::to_filename(std::string_view path) {
-	if (auto const i = path.find_last_of('/'); i != std::string_view::npos) { path = path.substr(i + 1); }
-	return std::string{path};
-}
-
 auto Glfw::Window::make() -> UniqueWin {
 	auto ret = Window{};
 	ret.glfw = get_or_make_glfw();
@@ -95,6 +90,12 @@ std::vector<char const*> Glfw::vk_extensions() const {
 	auto count = std::uint32_t{};
 	auto* extensions = glfwGetRequiredInstanceExtensions(&count);
 	for (std::uint32_t i = 0; i < count; ++i) { ret.push_back(extensions[i]); }
+	return ret;
+}
+
+glm::ivec2 Glfw::Window::position() const {
+	auto ret = glm::ivec2{};
+	glfwGetWindowPos(win, &ret.x, &ret.y);
 	return ret;
 }
 

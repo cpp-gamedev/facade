@@ -7,6 +7,7 @@
 #include <facade/engine/scene_renderer.hpp>
 #include <facade/glfw/glfw_wsi.hpp>
 #include <facade/render/renderer.hpp>
+#include <facade/scene/loader.hpp>
 #include <facade/util/data_provider.hpp>
 #include <facade/util/env.hpp>
 #include <facade/util/error.hpp>
@@ -159,10 +160,10 @@ struct RenderWindow {
 		  renderer(gfx, this->window, gui.get(), Renderer::CreateInfo{command_buffers_v, msaa}), gui(std::move(gui)) {}
 };
 
-bool load_gltf(Scene& out_scene, char const* path, AtomicLoadStatus* out_status) {
+bool load_gltf(Scene& out_scene, char const* path, AtomicLoadStatus& out_status) {
 	auto const provider = FileDataProvider::mount_parent_dir(path);
 	auto json = dj::Json::from_file(path);
-	return out_scene.load_gltf(json, provider, out_status);
+	return Scene::Loader{out_scene, out_status}(json, provider);
 }
 
 template <typename T>
@@ -286,7 +287,7 @@ bool Engine::load_async(std::string gltf_json_path, UniqueTask<void()> on_loaded
 	m_impl->load.request.start_time = time::since_start();
 	auto func = [path = m_impl->load.request.path, gfx = m_impl->window.gfx, status = &m_impl->load.request.status] {
 		auto scene = Scene{gfx};
-		if (!load_gltf(scene, path.c_str(), status)) { logger::error("[Engine] Failed to load GLTF: [{}]", path); }
+		if (!load_gltf(scene, path.c_str(), *status)) { logger::error("[Engine] Failed to load GLTF: [{}]", path); }
 		// return the scene even on failure, it will be empty but valid
 		return scene;
 	};

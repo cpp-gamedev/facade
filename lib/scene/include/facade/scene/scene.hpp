@@ -2,46 +2,22 @@
 #include <facade/scene/camera.hpp>
 #include <facade/scene/id.hpp>
 #include <facade/scene/lights.hpp>
-#include <facade/scene/load_status.hpp>
 #include <facade/scene/material.hpp>
 #include <facade/scene/mesh.hpp>
 #include <facade/scene/node.hpp>
 #include <facade/scene/node_data.hpp>
-#include <facade/util/enum_array.hpp>
 #include <facade/util/image.hpp>
 #include <facade/util/ptr.hpp>
 #include <facade/util/transform.hpp>
-#include <facade/vk/buffer.hpp>
 #include <facade/vk/pipeline.hpp>
 #include <facade/vk/static_mesh.hpp>
 #include <facade/vk/texture.hpp>
-#include <atomic>
 #include <memory>
-#include <optional>
 #include <span>
 #include <vector>
 
-namespace dj {
-class Json;
-}
-
 namespace facade {
 struct DataProvider;
-
-///
-/// \brief Concurrent status for multi-threaded loading
-///
-struct AtomicLoadStatus {
-	std::atomic<LoadStage> stage{};
-	std::atomic<std::size_t> total{};
-	std::atomic<std::size_t> done{};
-
-	void reset() {
-		stage = LoadStage::eNone;
-		total = {};
-		done = {};
-	}
-};
 
 ///
 /// \brief Immutable view of the resources stored in the scene.
@@ -64,6 +40,8 @@ struct SceneResources {
 class Scene {
   public:
 	using Resources = SceneResources;
+	// defined in loader.hpp
+	class Loader;
 
 	///
 	/// \brief Represents a single GTLF scene.
@@ -84,18 +62,6 @@ class Scene {
 	/// An active Gfx instance is not directly accessible; Engine owns any Scenes in use and offers APIs to access / modify / async-load them.
 	///
 	explicit Scene(Gfx const& gfx);
-
-	///
-	/// \brief Load data from a GLTF file.
-	/// \param root The root JSON node for the GLTF asset
-	/// \param provider Data provider with the JSON parent directory mounted
-	/// \param out_status Optional pointer to AtomicLoadStatus to be updated by the Scene
-	/// \returns true If successfully loaded
-	///
-	/// If the GLTF data fails to load, the scene data will remain unchanged.
-	/// This function purposely throws on fatal errors.
-	///
-	bool load_gltf(dj::Json const& root, DataProvider const& provider, AtomicLoadStatus* out_status = {}) noexcept(false);
 
 	///
 	/// \brief Add a Camera.

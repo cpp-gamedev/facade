@@ -1,6 +1,7 @@
 #pragma once
 #include <facade/build_version.hpp>
 #include <facade/glfw/glfw.hpp>
+#include <facade/scene/load_status.hpp>
 #include <facade/scene/scene.hpp>
 #include <facade/util/time.hpp>
 #include <facade/util/unique_task.hpp>

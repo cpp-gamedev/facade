@@ -1,5 +1,3 @@
-#include <detail/gltf.hpp>
-#include <djson/json.hpp>
 #include <facade/scene/scene.hpp>
 #include <facade/util/error.hpp>
 #include <facade/util/logger.hpp>
@@ -8,72 +6,6 @@
 
 namespace facade {
 namespace {
-Camera to_camera(gltf::Camera cam) {
-	auto ret = Camera{};
-	ret.name = std::move(cam.name);
-	switch (cam.type) {
-	case gltf::Camera::Type::eOrthographic: {
-		auto orthographic = Camera::Orthographic{};
-		orthographic.view_plane = {.near = cam.orthographic.znear, .far = cam.orthographic.zfar};
-		ret.type = orthographic;
-		break;
-	}
-	default: {
-		auto perspective = Camera::Perspective{};
-		perspective.view_plane = {.near = cam.perspective.znear, .far = cam.perspective.zfar.value_or(10000.0f)};
-		perspective.field_of_view = cam.perspective.yfov;
-		break;
-	}
-	}
-	return ret;
-}
-
-constexpr vk::SamplerAddressMode to_address_mode(gltf::Wrap const wrap) {
-	switch (wrap) {
-	case gltf::Wrap::eClampEdge: return vk::SamplerAddressMode::eClampToEdge;
-	case gltf::Wrap::eMirrorRepeat: return vk::SamplerAddressMode::eMirroredRepeat;
-	default:
-	case gltf::Wrap::eRepeat: return vk::SamplerAddressMode::eRepeat;
-	}
-}
-
-constexpr vk::Filter to_filter(gltf::Filter const filter) {
-	switch (filter) {
-	default:
-	case gltf::Filter::eLinear: return vk::Filter::eLinear;
-	case gltf::Filter::eNearest: return vk::Filter::eNearest;
-	}
-}
-
-Sampler::CreateInfo to_sampler_info(gltf::Sampler const& sampler) {
-	auto ret = Sampler::CreateInfo{};
-	ret.mode_s = to_address_mode(sampler.wrap_s);
-	ret.mode_t = to_address_mode(sampler.wrap_t);
-	if (sampler.min_filter) { ret.min = to_filter(*sampler.min_filter); }
-	if (sampler.mag_filter) { ret.mag = to_filter(*sampler.mag_filter); }
-	return ret;
-}
-
-std::unique_ptr<Material> to_material(gltf::Material const& material) {
-	auto ret = std::make_unique<LitMaterial>();
-	ret->albedo = material.pbr.base_colour_factor;
-	ret->metallic = material.pbr.metallic_factor;
-	ret->roughness = material.pbr.roughness_factor;
-	ret->alpha_mode = material.alpha_mode;
-	ret->alpha_cutoff = material.alpha_cutoff;
-	if (material.pbr.base_colour_texture) { ret->base_colour = material.pbr.base_colour_texture->texture; }
-	if (material.pbr.metallic_roughness_texture) { ret->roughness_metallic = material.pbr.metallic_roughness_texture->texture; }
-	return ret;
-}
-
-Mesh to_mesh(gltf::Mesh mesh) {
-	auto ret = Mesh{.name = std::move(mesh.name)};
-	for (auto const& primitive : mesh.primitives) {
-		ret.primitives.push_back(Mesh::Primitive{.static_mesh = primitive.geometry, .material = primitive.material});
-	}
-	return ret;
-}
-
 struct Img1x1 {
 	std::byte bytes[4]{};
 
@@ -148,69 +80,6 @@ struct Scene::TreeBuilder {
 		return ret;
 	}
 };
-
-bool Scene::load_gltf(dj::Json const& root, DataProvider const& provider, AtomicLoadStatus* out_status) noexcept(false) {
-	if (out_status) {
-		auto const meta = gltf::Asset::peek(root);
-		out_status->done = 0;
-		out_status->total = 1 + meta.images + meta.textures + meta.primitives + 1;
-		out_status->stage = LoadStage::eParsingJson;
-	}
-
-	auto asset = gltf::Asset::parse(root, provider);
-	if (asset.geometries.empty() || asset.scenes.empty()) {
-		if (out_status) { out_status->reset(); }
-		return false;
-	}
-	if (asset.start_scene >= asset.scenes.size()) { throw Error{fmt::format("Invalid start scene: {}", asset.start_scene)}; }
-
-	if (out_status) {
-		++out_status->done;
-		out_status->stage = LoadStage::eLoadingImages;
-	}
-	auto images = std::vector<Image>{};
-	images.reserve(asset.images.size());
-	for (auto& image : asset.images) {
-		images.emplace_back(image.bytes.span(), std::move(image.name));
-		if (out_status) { ++out_status->done; }
-	}
-
-	m_storage = {};
-	if (out_status) { out_status->stage = LoadStage::eUploadingTextures; }
-	auto get_sampler = [this](std::optional<std::size_t> sampler_id) {
-		if (!sampler_id || sampler_id >= m_storage.samplers.size()) { return default_sampler(); }
-		return m_storage.samplers[*sampler_id].sampler();
-	};
-	for (auto& texture : asset.textures) {
-		bool const mip_mapped = texture.colour_space == ColourSpace::eSrgb;
-		auto const tci = Texture::CreateInfo{.name = std::move(texture.name), .mip_mapped = mip_mapped, .colour_space = texture.colour_space};
-		m_storage.textures.emplace_back(m_gfx, get_sampler(texture.sampler), images.at(texture.source), tci);
-		if (out_status) { ++out_status->done; }
-	}
-
-	if (out_status) { out_status->stage = LoadStage::eUploadingMeshes; }
-	for (auto const& geometry : asset.geometries) {
-		add(geometry);
-		if (out_status) { ++out_status->done; }
-	}
-
-	if (out_status) { out_status->stage = LoadStage::eBuildingScenes; }
-	if (asset.cameras.empty()) {
-		add(Camera{.name = "default"});
-	} else {
-		for (auto gltf_camera : asset.cameras) { add(to_camera(std::move(gltf_camera))); }
-	}
-	for (auto const& sampler : asset.samplers) { add(to_sampler_info(sampler)); }
-	for (auto const& material : asset.materials) { add(to_material(material)); }
-	for (auto& mesh : asset.meshes) { add(to_mesh(std::move(mesh))); }
-
-	m_storage.data.nodes = std::move(asset.nodes);
-	for (auto& scene : asset.scenes) { m_storage.data.trees.push_back(TreeImpl::Data{.roots = std::move(scene.root_nodes)}); }
-
-	auto const ret = load(asset.start_scene);
-	if (out_status) { out_status->reset(); }
-	return ret;
-}
 
 Scene::Scene(Gfx const& gfx) : m_gfx(gfx), m_sampler(gfx) { add_default_camera(); }
 

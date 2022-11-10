@@ -60,6 +60,7 @@ class SceneInspector : public Inspector {
 
   private:
 	Scene& m_scene;
+	NotClosed<Window> m_target;
 };
 
 class ResourceInspector {

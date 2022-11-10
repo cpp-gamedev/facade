@@ -163,7 +163,7 @@ bool Inspector::do_inspect(Transform& out_transform, Bool& out_unified_scaling, 
 	return ret.value;
 }
 
-SceneInspector::SceneInspector(NotClosed<Window> target, Scene& scene) : Inspector(target), m_scene(scene) {}
+SceneInspector::SceneInspector(NotClosed<Window> target, Scene& scene) : Inspector(target), m_scene(scene), m_target(target) {}
 
 bool SceneInspector::inspect(NotClosed<TreeNode>, UnlitMaterial& out_material) const {
 	auto ret = Modified{};
@@ -177,15 +177,14 @@ bool SceneInspector::inspect(NotClosed<TreeNode>, LitMaterial& out_material) con
 	ret(ImGui::SliderFloat("Roughness", &out_material.roughness, 0.0f, 1.0f));
 	ret(inspect_rgb("Albedo", out_material.albedo));
 	if (out_material.base_colour || out_material.roughness_metallic) {
-		if (auto tn = TreeNode{"Textures"}) {
-			if (out_material.base_colour) {
-				auto const* tex = m_scene.find(*out_material.base_colour);
-				TreeNode::leaf(FixedString{"Albedo: {} ({})", tex->name(), *out_material.base_colour}.c_str());
-			}
-			if (out_material.roughness_metallic) {
-				auto const* tex = m_scene.find(*out_material.roughness_metallic);
-				TreeNode::leaf(FixedString{"Roughness-Metallic: {} ({})", tex->name(), *out_material.roughness_metallic}.c_str());
-			}
+		auto const ri = ResourceInspector{m_target, m_scene.resources()};
+		if (out_material.base_colour) {
+			auto const* tex = m_scene.find(*out_material.base_colour);
+			ri.display(*tex, *out_material.base_colour, "Base Colour: ");
+		}
+		if (out_material.roughness_metallic) {
+			auto const* tex = m_scene.find(*out_material.roughness_metallic);
+			ri.display(*tex, *out_material.roughness_metallic, "Roughness Metallic: ");
 		}
 	}
 	return ret.value;

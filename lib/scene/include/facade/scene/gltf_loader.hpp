@@ -23,13 +23,18 @@ struct AtomicLoadStatus {
 
 class Scene::GltfLoader {
   public:
+	///
+	/// \brief Construct a GltfLoader.
+	/// \param out_scene The scene to load into
+	/// \param out_status AtomicLoadStatus to be updated as the scene is loaded
+	///
 	GltfLoader(Scene& out_scene, AtomicLoadStatus& out_status) : m_scene(out_scene), m_status(out_status) { m_status.reset(); }
 
 	///
 	/// \brief Load data from a GLTF file.
-	/// \param root The root JSON node for the GLTF asset
+	/// \param json The root JSON node for the GLTF asset
 	/// \param provider Data provider with the JSON parent directory mounted
-	/// \param out_status Optional pointer to AtomicLoadStatus to be updated by the Scene
+	/// \param thread_pool Optional pointer to thread pool to use for async loading of images and buffers
 	/// \returns true If successfully loaded
 	///
 	/// If the GLTF data fails to load, the scene data will remain unchanged.

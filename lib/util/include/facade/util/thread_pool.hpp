@@ -6,11 +6,23 @@
 #include <vector>
 
 namespace facade {
+///
+/// \brief Pool of fixed number of threads and a single shared task queue.
+///
 class ThreadPool {
   public:
+	///
+	/// \brief Construct a ThreadPool.
+	/// \param threads Number of threads to create
+	///
 	ThreadPool(std::uint32_t threads = std::thread::hardware_concurrency());
 	~ThreadPool();
 
+	///
+	/// \brief Schedule a task to be run on the thread pool.
+	/// \param func The task to enqueue.
+	/// \returns Future of task invocation result
+	///
 	template <typename F>
 	auto enqueue(F func) -> std::future<std::invoke_result_t<F>> {
 		using Ret = std::invoke_result_t<F>;

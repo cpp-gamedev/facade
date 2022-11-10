@@ -41,7 +41,7 @@ class Scene {
   public:
 	using Resources = SceneResources;
 	// defined in loader.hpp
-	class Loader;
+	class GltfLoader;
 
 	///
 	/// \brief Represents a single GTLF scene.

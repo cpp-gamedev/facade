@@ -35,10 +35,10 @@ endif()
 target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/scene/camera.hpp
   include/${target_prefix}/scene/fly_cam.hpp
+  include/${target_prefix}/scene/gltf_loader.hpp
   include/${target_prefix}/scene/id.hpp
   include/${target_prefix}/scene/lights.hpp
   include/${target_prefix}/scene/load_status.hpp
-  include/${target_prefix}/scene/loader.hpp
   include/${target_prefix}/scene/material.hpp
   include/${target_prefix}/scene/mesh.hpp
   include/${target_prefix}/scene/node_data.hpp
@@ -49,7 +49,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   src/detail/gltf.hpp
 
   src/camera.cpp
-  src/loader.cpp
+  src/gltf_loader.cpp
   src/material.cpp
   src/scene.cpp
   src/transform.cpp

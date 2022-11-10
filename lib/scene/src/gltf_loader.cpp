@@ -1,7 +1,7 @@
 #include <detail/gltf.hpp>
-#include <facade/scene/loader.hpp>
+#include <facade/scene/gltf_loader.hpp>
 #include <facade/util/error.hpp>
-#include <future>
+#include <facade/util/thread_pool.hpp>
 
 namespace facade {
 namespace {
@@ -70,12 +70,46 @@ Mesh to_mesh(gltf::Mesh mesh) {
 	}
 	return ret;
 }
+
+template <typename T>
+struct MaybeFuture {
+	std::future<T> future{};
+	std::optional<T> t{};
+
+	template <typename F>
+		requires(std::same_as<std::invoke_result_t<F>, T>)
+	MaybeFuture(ThreadPool& pool, F func) : future(pool.enqueue(std::move(func))) {}
+
+	template <typename F>
+		requires(std::same_as<std::invoke_result_t<F>, T>)
+	MaybeFuture(F func) : t(func()) {}
+
+	T get() {
+		assert(future.valid() || t.has_value());
+		if (future.valid()) { return future.get(); }
+		return std::move(*t);
+	}
+};
+
+template <typename F>
+static auto make_maybe_future(ThreadPool* pool, F func) -> MaybeFuture<std::invoke_result_t<F>> {
+	if (pool) { return {*pool, std::move(func)}; }
+	return {std::move(func)};
+}
+
+template <typename T>
+std::vector<T> from_maybe_futures(std::vector<MaybeFuture<T>>&& futures) {
+	auto ret = std::vector<T>{};
+	ret.reserve(futures.size());
+	for (auto& future : futures) { ret.push_back(future.get()); }
+	return ret;
+}
 } // namespace
 
-bool Scene::Loader::operator()(dj::Json const& root, DataProvider const& provider) noexcept(false) {
+bool Scene::GltfLoader::operator()(dj::Json const& root, DataProvider const& provider, ThreadPool* thread_pool) noexcept(false) {
 	auto const meta = gltf::Asset::peek(root);
 	m_status.done = 0;
-	m_status.total = 1 + meta.images + meta.textures + meta.primitives + 1;
+	m_status.total = 1 + meta.textures + meta.primitives + 1;
 	m_status.stage = LoadStage::eParsingJson;
 
 	auto asset = gltf::Asset::parse(root, provider);
@@ -83,32 +117,21 @@ bool Scene::Loader::operator()(dj::Json const& root, DataProvider const& provide
 	if (asset.start_scene >= asset.scenes.size()) { throw Error{fmt::format("Invalid start scene: {}", asset.start_scene)}; }
 
 	++m_status.done;
-	m_status.stage = LoadStage::eLoadingImages;
-	auto images = std::vector<Image>{};
-	auto image_futures = std::vector<std::future<Image>>{};
+	m_status.stage = LoadStage::eUploadingTextures;
+	auto images = std::vector<MaybeFuture<Image>>{};
 	images.reserve(asset.images.size());
 	for (auto& image : asset.images) {
-		// image_futures.push_back(std::async([&image] { return Image{image.bytes.span(), std::move(image.name)}; }));
-		images.emplace_back(image.bytes.span(), std::move(image.name));
-		++m_status.done;
+		images.push_back(make_maybe_future(thread_pool, [i = std::move(image)] { return Image{i.bytes.span(), std::move(i.name)}; }));
 	}
-
 	m_scene.m_storage = {};
-	m_status.stage = LoadStage::eUploadingTextures;
 	auto get_sampler = [this](std::optional<std::size_t> sampler_id) {
 		if (!sampler_id || sampler_id >= m_scene.m_storage.samplers.size()) { return m_scene.default_sampler(); }
 		return m_scene.m_storage.samplers[*sampler_id].sampler();
 	};
-	auto texture_futures = std::vector<std::future<Texture>>{};
 	for (auto& texture : asset.textures) {
-		auto const tci = Texture::CreateInfo{
-			.name = std::move(texture.name), .mip_mapped = texture.colour_space == ColourSpace::eSrgb, .colour_space = texture.colour_space};
-		m_scene.m_storage.textures.emplace_back(m_scene.m_gfx, get_sampler(texture.sampler), images[texture.source], tci);
-		// texture_futures.push_back(std::async([&] {
-		// 	bool const mip_mapped = texture.colour_space == ColourSpace::eSrgb;
-		// 	auto const tci = Texture::CreateInfo{.name = std::move(texture.name), .mip_mapped = mip_mapped, .colour_space = texture.colour_space};
-		// 	return Texture{m_out.m_gfx, get_sampler(texture.sampler), image_futures[texture.source].get(), tci};
-		// }));
+		bool const mip_mapped = texture.colour_space == ColourSpace::eSrgb;
+		auto const tci = Texture::CreateInfo{.name = std::move(texture.name), .mip_mapped = mip_mapped, .colour_space = texture.colour_space};
+		m_scene.m_storage.textures.emplace_back(m_scene.m_gfx, get_sampler(texture.sampler), images[texture.source].get(), tci);
 		++m_status.done;
 	}
 
@@ -125,7 +148,6 @@ bool Scene::Loader::operator()(dj::Json const& root, DataProvider const& provide
 		for (auto gltf_camera : asset.cameras) { m_scene.add(to_camera(std::move(gltf_camera))); }
 	}
 	for (auto const& sampler : asset.samplers) { m_scene.add(to_sampler_info(sampler)); }
-	// for (auto& future : texture_futures) { m_out.m_storage.textures.push_back(future.get()); }
 	for (auto const& material : asset.materials) { m_scene.add(to_material(material)); }
 	for (auto& mesh : asset.meshes) { m_scene.add(to_mesh(std::move(mesh))); }
 

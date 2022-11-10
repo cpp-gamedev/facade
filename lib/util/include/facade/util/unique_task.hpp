@@ -1,4 +1,5 @@
 #pragma once
+#include <cassert>
 #include <memory>
 
 namespace facade {

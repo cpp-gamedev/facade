@@ -7,17 +7,17 @@
 #include <facade/engine/scene_renderer.hpp>
 #include <facade/glfw/glfw_wsi.hpp>
 #include <facade/render/renderer.hpp>
-#include <facade/scene/loader.hpp>
+#include <facade/scene/gltf_loader.hpp>
 #include <facade/util/data_provider.hpp>
 #include <facade/util/env.hpp>
 #include <facade/util/error.hpp>
 #include <facade/util/logger.hpp>
+#include <facade/util/thread_pool.hpp>
 #include <facade/vk/cmd.hpp>
 #include <facade/vk/vk.hpp>
 #include <glm/gtc/color_space.hpp>
 #include <glm/mat4x4.hpp>
 #include <filesystem>
-#include <future>
 
 namespace facade {
 namespace fs = std::filesystem;
@@ -160,10 +160,10 @@ struct RenderWindow {
 		  renderer(gfx, this->window, gui.get(), Renderer::CreateInfo{command_buffers_v, msaa}), gui(std::move(gui)) {}
 };
 
-bool load_gltf(Scene& out_scene, char const* path, AtomicLoadStatus& out_status) {
+bool load_gltf(Scene& out_scene, char const* path, AtomicLoadStatus& out_status, ThreadPool* thread_pool) {
 	auto const provider = FileDataProvider::mount_parent_dir(path);
 	auto json = dj::Json::from_file(path);
-	return Scene::Loader{out_scene, out_status}(json, provider);
+	return Scene::GltfLoader{out_scene, out_status}(json, provider, thread_pool);
 }
 
 template <typename T>
@@ -196,6 +196,7 @@ struct Engine::Impl {
 
 	std::uint8_t msaa;
 
+	ThreadPool thread_pool{};
 	std::mutex mutex{};
 
 	struct {
@@ -285,14 +286,14 @@ bool Engine::load_async(std::string gltf_json_path, UniqueTask<void()> on_loaded
 	m_impl->load.request.path = std::move(gltf_json_path);
 	m_impl->load.request.status.reset();
 	m_impl->load.request.start_time = time::since_start();
-	auto func = [path = m_impl->load.request.path, gfx = m_impl->window.gfx, status = &m_impl->load.request.status] {
+	auto func = [path = m_impl->load.request.path, gfx = m_impl->window.gfx, status = &m_impl->load.request.status, tp = &m_impl->thread_pool] {
 		auto scene = Scene{gfx};
-		if (!load_gltf(scene, path.c_str(), *status)) { logger::error("[Engine] Failed to load GLTF: [{}]", path); }
+		if (!load_gltf(scene, path.c_str(), *status, tp)) { logger::error("[Engine] Failed to load GLTF: [{}]", path); }
 		// return the scene even on failure, it will be empty but valid
 		return scene;
 	};
 	// store future
-	m_impl->load.request.future = std::async(std::launch::async, func);
+	m_impl->load.request.future = m_impl->thread_pool.enqueue(func);
 	return true;
 }
 

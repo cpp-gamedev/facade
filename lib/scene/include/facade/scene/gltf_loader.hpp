@@ -4,6 +4,8 @@
 #include <atomic>
 
 namespace facade {
+class ThreadPool;
+
 ///
 /// \brief Concurrent status for multi-threaded loading
 ///
@@ -19,9 +21,9 @@ struct AtomicLoadStatus {
 	}
 };
 
-class Scene::Loader {
+class Scene::GltfLoader {
   public:
-	Loader(Scene& out_scene, AtomicLoadStatus& out_status) : m_scene(out_scene), m_status(out_status) { m_status.reset(); }
+	GltfLoader(Scene& out_scene, AtomicLoadStatus& out_status) : m_scene(out_scene), m_status(out_status) { m_status.reset(); }
 
 	///
 	/// \brief Load data from a GLTF file.
@@ -33,7 +35,7 @@ class Scene::Loader {
 	/// If the GLTF data fails to load, the scene data will remain unchanged.
 	/// This function purposely throws on fatal errors.
 	///
-	bool operator()(dj::Json const& json, DataProvider const& provider) noexcept(false);
+	bool operator()(dj::Json const& json, DataProvider const& provider, ThreadPool* thread_pool = {}) noexcept(false);
 	///
 	/// \brief Obtain the load status.
 	///

@@ -91,7 +91,7 @@ vk::Result Swapchain::refresh(Spec const& spec) {
 	return ret;
 }
 
-vk::Result Swapchain::acquire(glm::uvec2 extent, ImageView& out, vk::Semaphore sempahore, vk::Fence fence) {
+vk::Result Swapchain::acquire(Lock const&, glm::uvec2 extent, ImageView& out, vk::Semaphore sempahore, vk::Fence fence) {
 	if (m_storage.acquired || is_zero(extent)) { return vk::Result::eNotReady; }
 	auto index = std::uint32_t{};
 	auto const ret = m_gfx.device.acquireNextImageKHR(*m_storage.swapchain, std::numeric_limits<std::uint64_t>::max(), sempahore, fence, &index);
@@ -106,7 +106,7 @@ vk::Result Swapchain::acquire(glm::uvec2 extent, ImageView& out, vk::Semaphore s
 	return ret;
 }
 
-vk::Result Swapchain::present(std::scoped_lock<std::mutex> const&, glm::uvec2 extent, vk::Semaphore wait) {
+vk::Result Swapchain::present(Lock const&, glm::uvec2 extent, vk::Semaphore wait) {
 	if (!m_storage.acquired || is_zero(extent)) { return vk::Result::eNotReady; }
 	auto pi = vk::PresentInfoKHR{};
 	pi.swapchainCount = 1U;

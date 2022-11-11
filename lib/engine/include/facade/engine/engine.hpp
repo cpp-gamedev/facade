@@ -1,6 +1,7 @@
 #pragma once
 #include <facade/build_version.hpp>
 #include <facade/glfw/glfw.hpp>
+#include <facade/scene/load_status.hpp>
 #include <facade/scene/scene.hpp>
 #include <facade/util/time.hpp>
 #include <facade/util/unique_task.hpp>
@@ -20,6 +21,7 @@ struct EngineCreateInfo {
 	std::uint8_t desired_msaa{2};
 	bool auto_show{false};
 	Validation validation{Validation::eDefault};
+	std::optional<std::uint32_t> force_thread_count{};
 };
 
 ///
@@ -81,15 +83,19 @@ class Engine {
 	void request_stop();
 
 	///
-	/// \brief Load a GLTF scene asynchronously
+	/// \brief Load a GLTF scene asynchronously.
 	///
 	/// Subsequent requests will be rejected if one is in flight
 	///
 	bool load_async(std::string gltf_json_path, UniqueTask<void()> on_loaded = {});
 	///
-	/// \brief Obtain status of in-flight async load request (if active)
+	/// \brief Obtain status of in-flight async load request (if active).
 	///
 	LoadStatus load_status() const;
+	///
+	/// \brief Obtain the number of loading threads.
+	///
+	std::size_t load_thread_count() const;
 
 	glm::ivec2 window_position() const;
 	glm::uvec2 window_extent() const;

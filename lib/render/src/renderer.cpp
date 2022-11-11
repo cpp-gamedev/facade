@@ -179,7 +179,10 @@ bool Renderer::next_frame(std::span<vk::CommandBuffer> out) {
 
 	// acquire swapchain image
 	auto acquired = ImageView{};
-	if (m_impl->swapchain.acquire(m_impl->window.framebuffer_extent(), acquired, *frame.sync.draw) != vk::Result::eSuccess) { return false; }
+	{
+		auto lock = std::scoped_lock{m_impl->gfx.shared->mutex};
+		if (m_impl->swapchain.acquire(lock, m_impl->window.framebuffer_extent(), acquired, *frame.sync.draw) != vk::Result::eSuccess) { return false; }
+	}
 	m_impl->gfx.reset(*frame.sync.drawn);
 	m_impl->gfx.shared->defer_queue.next();
 

@@ -40,13 +40,18 @@ void log_prologue() {
 	logger::info("facade {} | {} |", version_string(), buf);
 }
 
-void run() {
+struct AppOpts {
+	std::optional<std::uint32_t> force_threads{};
+};
+
+void run(AppOpts const& opts) {
 	auto events = std::make_shared<Events>();
 	auto engine = std::optional<Engine>{};
 	auto engine_info = Engine::CreateInfo{};
 	auto config = Config::Scoped{};
 	engine_info.extent = config.config.window.extent;
 	engine_info.desired_msaa = config.config.window.msaa;
+	engine_info.force_thread_count = opts.force_threads;
 
 	auto node_id = Id<Node>{};
 	auto post_scene_load = [&engine, &node_id]() {
@@ -173,18 +178,51 @@ void run() {
 		engine->render();
 	}
 }
+
+std::optional<std::uint32_t> to_u32(std::string const& s) {
+	try {
+		int i = std::stoi(s);
+		if (i < 0) {
+			logger::error("Invalid value: {}", i);
+			return {};
+		}
+		return static_cast<std::uint32_t>(i);
+	} catch (std::exception const& e) { logger::error("Invalid value: {} ({})", s, e.what()); }
+	return {};
+}
 } // namespace
 
 int main(int argc, char** argv) {
 	try {
 		auto logger_instance = logger::Instance{};
-		switch (CliOpts::parse(version_string(), argc, argv)) {
+		struct Parser : CliOpts::Parser {
+			AppOpts app_opts{};
+
+			void opt(CliOpts::Key key, CliOpts::Value value) final {
+				switch (key.single) {
+				case 't': app_opts.force_threads = to_u32(std::string{value}); return;
+				default: break;
+				}
+			}
+		};
+		auto spec = CliOpts::Spec{};
+		spec.options = {
+			CliOpts::Opt{
+				.key = CliOpts::Key{.full = "force-threads", .single = 't'},
+				.value = "COUNT",
+				.is_optional_value = false,
+				.help = "Force number of loading threads",
+			},
+		};
+		spec.version = version_string();
+		auto parser = Parser{};
+		switch (CliOpts::parse(std::move(spec), &parser, argc, argv)) {
 		case CliOpts::Result::eExitSuccess: return EXIT_SUCCESS;
 		case CliOpts::Result::eExitFailure: return EXIT_FAILURE;
 		case CliOpts::Result::eContinue: break;
 		}
 		try {
-			run();
+			run(parser.app_opts);
 		} catch (InitError const& e) {
 			logger::error("Initialization failure: {}", e.what());
 			return EXIT_FAILURE;

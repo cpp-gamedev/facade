@@ -74,6 +74,7 @@ bool WindowMenu::display_stats(Engine& engine) {
 		ImGui::Text("%s", FixedString{"Frame time: {:.2f}ms", engine.state().dt * 1000.0f}.c_str());
 		ImGui::Text("%s", FixedString{"GPU: {}", stats.gpu_name}.c_str());
 		ImGui::Text("%s", FixedString{"MSAA: {}x", to_int(stats.msaa)}.c_str());
+		ImGui::Text("%s", FixedString{"Load threads: {}", engine.load_thread_count()}.c_str());
 		if (ImGui::SmallButton("Vsync")) { change_vsync(engine); }
 		ImGui::SameLine();
 		ImGui::Text("%s", vsync_status(stats.mode).data());

@@ -30,6 +30,7 @@ struct SurfaceFormats {
 class Swapchain {
   public:
 	static constexpr std::size_t max_images_v{8};
+	using Lock = std::scoped_lock<std::mutex>;
 
 	struct Spec {
 		glm::uvec2 extent{};
@@ -46,8 +47,8 @@ class Swapchain {
 	std::unordered_set<vk::PresentModeKHR> const& supported_present_modes() const { return m_supported_modes; }
 	vk::Result refresh(Spec const& spec);
 
-	[[nodiscard]] vk::Result acquire(glm::uvec2 extent, ImageView& out, vk::Semaphore semaphore, vk::Fence fence = {});
-	vk::Result present(std::scoped_lock<std::mutex> const& q_lock, glm::uvec2 extent, vk::Semaphore wait);
+	[[nodiscard]] vk::Result acquire(Lock const& q_lock, glm::uvec2 extent, ImageView& out, vk::Semaphore semaphore, vk::Fence fence = {});
+	vk::Result present(Lock const& q_lock, glm::uvec2 extent, vk::Semaphore wait);
 
 	vk::SwapchainCreateInfoKHR info{};
 

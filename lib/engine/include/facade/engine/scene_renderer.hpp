@@ -1,6 +1,7 @@
 #pragma once
 #include <facade/render/renderer.hpp>
 #include <facade/scene/scene.hpp>
+#include <facade/vk/buffer.hpp>
 
 namespace facade {
 class SceneRenderer {

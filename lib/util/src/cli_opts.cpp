@@ -146,8 +146,9 @@ struct ParseOpt {
 
 	Result parse_singles() {
 		char prev{};
-		while (!at_end() && peek() != '=') {
+		while (!at_end()) {
 			prev = advance();
+			if (peek() == '=') { break; }
 			auto const* opt = find_opt(out.valid_spec, prev);
 			if (!opt) { return unknown_option({&prev, 1}); }
 			return out.opt(opt->key, {});
@@ -163,8 +164,9 @@ struct ParseOpt {
 	}
 
 	Result parse() {
-		auto const c = advance();
-		if (c == '-') {
+		if (peek() != '-') { return unknown_option(current); }
+		advance();
+		if (peek() == '-') {
 			advance();
 			return parse_word();
 		}

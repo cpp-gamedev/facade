@@ -41,7 +41,8 @@ struct DirLightSSBO {
 
 SceneRenderer::SceneRenderer(Gfx const& gfx)
 	: m_gfx(gfx), m_sampler(gfx), m_view_proj(gfx, Buffer::Type::eUniform), m_dir_lights(gfx, Buffer::Type::eStorage),
-	  m_white(gfx, m_sampler.sampler(), Img1x1::make({0xff, 0xff, 0xff, 0xff}).view(), Texture::CreateInfo{.mip_mapped = false}) {}
+	  m_white(gfx, m_sampler.sampler(), Img1x1::make({0xff, 0xff, 0xff, 0xff}).view(), Texture::CreateInfo{.mip_mapped = false}),
+	  m_black(gfx, m_sampler.sampler(), Img1x1::make({0x0, 0x0, 0x0, 0xff}).view(), Texture::CreateInfo{.mip_mapped = false}) {}
 
 void SceneRenderer::render(Scene const& scene, Renderer& renderer, vk::CommandBuffer cb) {
 	m_scene = &scene;
@@ -57,11 +58,11 @@ void SceneRenderer::write_view(glm::vec2 const extent) {
 	struct {
 		glm::mat4x4 mat_v;
 		glm::mat4x4 mat_p;
-		glm::vec4 pos_v;
+		glm::vec4 vpos_exposure;
 	} vp{
 		.mat_v = cam.view(cam_node.transform),
 		.mat_p = cam.projection(extent),
-		.pos_v = {cam_node.transform.position(), 1.0f},
+		.vpos_exposure = {cam_node.transform.position(), cam.exposure},
 	};
 	m_view_proj.write(&vp, sizeof(vp));
 	auto dir_lights = FlexArray<DirLightSSBO, 4>{};
@@ -99,7 +100,7 @@ void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Node const&
 			pipeline.set_line_width(m_scene->pipeline_state.line_width);
 
 			update_view(pipeline);
-			auto const store = TextureStore{resources.textures, m_white};
+			auto const store = TextureStore{resources.textures, m_white, m_black};
 			material.write_sets(pipeline, store);
 
 			auto const& static_mesh = resources.static_meshes[primitive.static_mesh];

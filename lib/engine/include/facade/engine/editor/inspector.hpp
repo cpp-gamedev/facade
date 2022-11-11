@@ -54,7 +54,8 @@ class SceneInspector : public Inspector {
 	bool inspect(NotClosed<TreeNode>, UnlitMaterial& out_material) const;
 	bool inspect(NotClosed<TreeNode> node, LitMaterial& out_material) const;
 	bool inspect(Id<Material> material_id) const;
-	bool inspect(Id<Mesh> mesh) const;
+	bool inspect(Id<Mesh> mesh_id) const;
+	bool inspect(Id<Camera> camera_id) const;
 
 	bool inspect(Id<Node> node_id, Bool& out_unified_scaling) const;
 

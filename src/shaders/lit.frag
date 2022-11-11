@@ -13,6 +13,7 @@ const uint ALPHA_MASK = 2;
 struct Material {
 	vec4 albedo;
 	vec4 m_r_aco_am;
+	vec4 emissive;
 };
 
 layout (set = 0, binding = 1) readonly buffer DL {
@@ -21,6 +22,7 @@ layout (set = 0, binding = 1) readonly buffer DL {
 
 layout (set = 1, binding = 0) uniform sampler2D base_colour;
 layout (set = 1, binding = 1) uniform sampler2D roughness_metallic;
+layout (set = 1, binding = 2) uniform sampler2D emissive;
 
 layout (set = 2, binding = 0) uniform M {
 	Material material;
@@ -29,8 +31,8 @@ layout (set = 2, binding = 0) uniform M {
 layout (location = 0) in vec3 in_rgb;
 layout (location = 1) in vec2 in_uv;
 layout (location = 2) in vec3 in_normal;
-layout (location = 3) in vec3 in_pos_frag;
-layout (location = 4) in vec3 in_pos_view;
+layout (location = 3) in vec3 in_fpos;
+layout (location = 4) in vec4 in_vpos_exposure;
 
 layout (location = 0) out vec4 out_rgba;
 
@@ -82,7 +84,7 @@ vec3 cook_torrance() {
 	vec3 f0 = mix(vec3(0.04), vec3(material.albedo), metallic);
 
 	vec3 L0 = vec3(0.0);
-	vec3 V = normalize(in_pos_view - in_pos_frag);
+	vec3 V = normalize(vec3(in_vpos_exposure) - in_fpos);
 	vec3 N = in_normal;
 	for (int i = 0; i < dir_lights.length(); ++i) {
 		DirLight light = dir_lights[i];
@@ -104,7 +106,7 @@ vec3 cook_torrance() {
 		float denom = 4.0 * NdotV * NdotL + 0.0001;
 		vec3 spec = num / denom;
 
-		L0 += (kD * vec3(material.albedo) / pi_v + spec) * light.diffuse * NdotL;
+		L0 += (kD * vec3(material.albedo) / pi_v + spec) * light.diffuse * max(in_vpos_exposure.w, 0.0) * NdotL;
 	}
 
 	vec3 colour = L0;
@@ -123,5 +125,5 @@ void main() {
 		if (diffuse.w < alpha_cutoff) { discard; }
 		diffuse.w = 1.0;
 	}
-	out_rgba = vec4(cook_torrance(), 1.0) * diffuse;
+	out_rgba = vec4(cook_torrance(), 1.0) * diffuse + material.emissive * texture(emissive, in_uv);
 }

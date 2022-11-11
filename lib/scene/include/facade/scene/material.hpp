@@ -23,11 +23,19 @@ struct TextureStore {
 	/// \brief White texture.
 	///
 	Texture const& white;
+	///
+	/// \brief Black texture;
+	///
+	Texture const& black;
 
+	///
+	/// \brief Obtain a texture corresponding to index if present, else fallback.
+	///
+	Texture const& get(std::optional<std::size_t> index, Texture const& fallback) const;
 	///
 	/// \brief Obtain a texture corresponding to index if present, else white.
 	///
-	Texture const& get(std::optional<std::size_t> index) const;
+	Texture const& get(std::optional<std::size_t> index) const { return get(index, white); }
 };
 
 ///
@@ -98,6 +106,10 @@ class LitMaterial : public Material {
 	///
 	glm::vec3 albedo{1.0f};
 	///
+	/// \brief Emissive factor.
+	///
+	glm::vec3 emissive_factor{0.0f};
+	///
 	/// \brief Metallic factor.
 	///
 	float metallic{0.5f};
@@ -113,6 +125,11 @@ class LitMaterial : public Material {
 	/// \brief Roughness-metallic texture.
 	///
 	std::optional<Id<Texture>> roughness_metallic{};
+	///
+	/// \brief Emissive texture.
+	///
+	std::optional<Id<Texture>> emissive{};
+
 	float alpha_cutoff{};
 	AlphaMode alpha_mode{AlphaMode::eOpaque};
 

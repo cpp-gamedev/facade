@@ -156,11 +156,17 @@ class Scene {
 	///
 	Ptr<Texture const> find(Id<Texture> id) const;
 	///
-	/// \brief Obtain an immutable pointer to the Mesh corresponding to its Id.
+	/// \brief Obtain a mutable pointer to the Mesh corresponding to its Id.
 	/// \param id Id of the Mesh
 	/// \returns nullptr if id is invalid (out of bounds)
 	///
-	Ptr<Mesh const> find(Id<Mesh> id) const;
+	Ptr<Mesh> find(Id<Mesh> id);
+	///
+	/// \brief Obtain a mutable pointer to the Camera corresponding to its Id.
+	/// \param id Id of the Camera
+	/// \returns nullptr if id is invalid (out of bounds)
+	///
+	Ptr<Camera> find(Id<Camera> id);
 
 	///
 	/// \brief Obtain a mutable view into all the root nodes attached to the active Tree.

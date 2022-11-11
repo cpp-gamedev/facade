@@ -143,7 +143,8 @@ Ptr<Node const> Scene::find(Id<Node> id) const { return find_node(m_tree.roots, 
 Ptr<Material> Scene::find(Id<Material> id) const { return id >= m_storage.materials.size() ? nullptr : m_storage.materials[id].get(); }
 Ptr<StaticMesh const> Scene::find(Id<StaticMesh> id) const { return id >= m_storage.static_meshes.size() ? nullptr : &m_storage.static_meshes[id]; }
 Ptr<Texture const> Scene::find(Id<Texture> id) const { return id >= m_storage.textures.size() ? nullptr : &m_storage.textures[id]; }
-Ptr<Mesh const> Scene::find(Id<Mesh> id) const { return id >= m_storage.meshes.size() ? nullptr : &m_storage.meshes[id]; }
+Ptr<Mesh> Scene::find(Id<Mesh> id) { return id >= m_storage.meshes.size() ? nullptr : &m_storage.meshes[id]; }
+Ptr<Camera> Scene::find(Id<Camera> id) { return id >= m_storage.cameras.size() ? nullptr : &m_storage.cameras[id]; }
 
 bool Scene::select(Id<Camera> id) {
 	if (id >= camera_count()) { return false; }

@@ -58,8 +58,10 @@ std::unique_ptr<Material> to_material(gltf::Material const& material) {
 	ret->roughness = material.pbr.roughness_factor;
 	ret->alpha_mode = material.alpha_mode;
 	ret->alpha_cutoff = material.alpha_cutoff;
-	if (material.pbr.base_colour_texture) { ret->base_colour = material.pbr.base_colour_texture->texture; }
-	if (material.pbr.metallic_roughness_texture) { ret->roughness_metallic = material.pbr.metallic_roughness_texture->texture; }
+	ret->base_colour = material.pbr.base_colour_texture->texture;
+	ret->roughness_metallic = material.pbr.metallic_roughness_texture->texture;
+	ret->emissive = material.emissive_texture->texture;
+	ret->emissive_factor = material.emissive_factor;
 	return ret;
 }
 

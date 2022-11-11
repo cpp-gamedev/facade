@@ -18,7 +18,7 @@ struct Modified {
 	}
 };
 
-using DragFloatFunc = bool (*)(const char*, float* v, float, float, float, const char*, ImGuiSliderFlags);
+using DragFloatFunc = bool (*)(char const*, float* v, float, float, float, char const*, ImGuiSliderFlags);
 
 constexpr DragFloatFunc drag_float_vtable[] = {
 	nullptr, &ImGui::DragFloat, &ImGui::DragFloat2, &ImGui::DragFloat3, &ImGui::DragFloat4,
@@ -153,14 +153,14 @@ bool Inspector::inspect(Lights& out_lights) const {
 bool Inspector::do_inspect(Transform& out_transform, Bool& out_unified_scaling, Bool scaling_toggle) const {
 	auto ret = Modified{};
 	auto vec3 = out_transform.position();
-	if (ret(inspect("Position", vec3))) { out_transform.set_position(vec3); }
+	if (ret(inspect("Position", vec3, 0.1f))) { out_transform.set_position(vec3); }
 	auto quat = out_transform.orientation();
 	if (ret(inspect("Orientation", quat))) { out_transform.set_orientation(quat); }
 	vec3 = out_transform.scale();
 	if (out_unified_scaling) {
-		if (ret(ImGui::DragFloat("Scale", &vec3.x, 0.1f))) { out_transform.set_scale({vec3.x, vec3.x, vec3.x}); }
+		if (ret(ImGui::DragFloat("Scale", &vec3.x, 0.05f))) { out_transform.set_scale({vec3.x, vec3.x, vec3.x}); }
 	} else {
-		if (ret(inspect("Scale", vec3, 0.1f))) { out_transform.set_scale(vec3); }
+		if (ret(inspect("Scale", vec3, 0.05f))) { out_transform.set_scale(vec3); }
 	}
 	if (scaling_toggle) {
 		ImGui::SameLine();
@@ -182,15 +182,27 @@ bool SceneInspector::inspect(NotClosed<TreeNode>, LitMaterial& out_material) con
 	ret(ImGui::SliderFloat("Metallic", &out_material.metallic, 0.0f, 1.0f));
 	ret(ImGui::SliderFloat("Roughness", &out_material.roughness, 0.0f, 1.0f));
 	ret(inspect_rgb("Albedo", out_material.albedo));
+	if (out_material.emissive) { ret(inspect_rgb("Emission", out_material.emissive_factor)); }
 	if (out_material.base_colour || out_material.roughness_metallic) {
 		auto const ri = ResourceInspector{m_target, m_scene.resources()};
 		if (out_material.base_colour) {
 			auto const* tex = m_scene.find(*out_material.base_colour);
 			ri.display(*tex, *out_material.base_colour, "Base Colour: ");
+			if (ImGui::BeginDragDropTarget()) {
+				if (ImGuiPayload const* payload = ImGui::AcceptDragDropPayload("ID_TEXTURE")) {
+					assert(payload->DataSize == sizeof(std::size_t));
+					out_material.base_colour = *reinterpret_cast<std::size_t*>(payload->Data);
+				}
+				ImGui::EndDragDropTarget();
+			}
 		}
 		if (out_material.roughness_metallic) {
 			auto const* tex = m_scene.find(*out_material.roughness_metallic);
 			ri.display(*tex, *out_material.roughness_metallic, "Roughness Metallic: ");
+		}
+		if (out_material.emissive) {
+			auto const* tex = m_scene.find(*out_material.emissive);
+			ri.display(*tex, *out_material.emissive, "Emissive: ");
 		}
 	}
 	return ret.value;
@@ -224,6 +236,16 @@ bool SceneInspector::inspect(Id<Mesh> mesh_id) const {
 	return ret.value;
 }
 
+bool SceneInspector::inspect(Id<Camera> camera_id) const {
+	auto ret = Modified{};
+	auto* camera = m_scene.find(camera_id);
+	if (!camera) { return ret.value; }
+	if (ImGui::CollapsingHeader(FixedString{"Camera ({})###Camera", camera_id}.c_str())) {
+		ret(ImGui::DragFloat("Exposure", &camera->exposure, 0.1f, 0.0f, 10.0f));
+	}
+	return ret.value;
+}
+
 bool SceneInspector::inspect(Id<Node> node_id, Bool& out_unified_scaling) const {
 	auto ret = Modified{};
 	auto* node = m_scene.find(node_id);
@@ -231,6 +253,7 @@ bool SceneInspector::inspect(Id<Node> node_id, Bool& out_unified_scaling) const 
 	ret(inspect(node->transform, out_unified_scaling));
 	ret(inspect(node->instances, out_unified_scaling));
 	if (auto const* mesh_id = node->find<Id<Mesh>>()) { ret(inspect(*mesh_id)); }
+	if (auto const* camera_id = node->find<Id<Camera>>()) { ret(inspect(*camera_id)); }
 	return ret.value;
 }
 
@@ -283,12 +306,19 @@ void ResourceInspector::display(Camera const& camera, std::size_t index, std::st
 }
 
 void ResourceInspector::display(Texture const& texture, std::size_t index, std::string_view prefix) const {
-	if (auto tn = editor::TreeNode{FixedString<128>{"{}{} ({})", prefix, texture.name(), index}.c_str()}) {
+	auto const name = FixedString<128>{"{}{} ({})", prefix, texture.name(), index};
+	if (auto tn = editor::TreeNode{name.c_str()}) {
 		auto const view = texture.view();
 		editor::TreeNode::leaf(FixedString{"Extent: {}x{}", view.extent.width, view.extent.height}.c_str());
 		editor::TreeNode::leaf(FixedString{"Mip levels: {}", texture.mip_levels()}.c_str());
 		auto const cs = texture.colour_space() == ColourSpace::eLinear ? "linear" : "sRGB";
 		editor::TreeNode::leaf(FixedString{"Colour Space: {}", cs}.c_str());
+	}
+
+	if (ImGui::BeginDragDropSource()) {
+		ImGui::SetDragDropPayload("ID_TEXTURE", &index, sizeof(index));
+		ImGui::Text("%s", name.c_str());
+		ImGui::EndDragDropSource();
 	}
 }
 

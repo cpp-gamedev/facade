@@ -35,5 +35,6 @@ struct Camera {
 
 	std::string name{};
 	std::variant<Perspective, Orthographic> type{Perspective{}};
+	float exposure{2.0f};
 };
 } // namespace facade

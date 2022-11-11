@@ -483,12 +483,11 @@ struct Data {
 			auto set_linear = [this](std::size_t index) { storage.textures.at(index).colour_space = ColourSpace::eLinear; };
 
 			// Determine whether a texture points to colour data by referring to the material(s) it is used in
-			// In our case all material textures except pbr.base_colour_texture are linear
+			// In our case all material textures except pbr.base_colour_texture and emissive_texture are linear
 			// The GLTF spec mandates image formats for corresponding material textures:
 			// https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html#reference-material
 			for (auto const& m : storage.materials) {
 				if (m.pbr.metallic_roughness_texture) { set_linear(m.pbr.metallic_roughness_texture->texture); }
-				if (m.emissive_texture) { set_linear(m.emissive_texture->texture); }
 				if (m.occlusion_texture) { set_linear(m.occlusion_texture->info.texture); }
 				if (m.normal_texture) { set_linear(m.normal_texture->info.texture); }
 			}

@@ -22,6 +22,7 @@ class SceneRenderer {
 	Buffer m_view_proj;
 	Buffer m_dir_lights;
 	Texture m_white;
+	Texture m_black;
 
 	std::vector<glm::mat4x4> m_instance_mats{};
 	Scene const* m_scene{};

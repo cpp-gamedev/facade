@@ -2,6 +2,7 @@
 #include <djson/json.hpp>
 #include <facade/util/data_provider.hpp>
 #include <facade/util/error.hpp>
+#include <facade/util/flex_array.hpp>
 #include <facade/vk/geometry.hpp>
 #include <algorithm>
 #include <bit>
@@ -112,10 +113,43 @@ struct Buffer {
 	ByteBuffer bytes{};
 };
 
-template <typename T>
-struct Range {
-	T min{};
-	T max{};
+enum class Bound { eFloor, eCeil };
+
+template <Bound B, typename T>
+constexpr std::span<double const> limit(T& out, std::span<double const> range) {
+	if (range.empty()) { return {}; }
+	if constexpr (B == Bound::eFloor) {
+		out = std::min(out, static_cast<T>(range[0]));
+	} else {
+		out = std::max(out, static_cast<T>(range[0]));
+	}
+	return range.subspan(1);
+}
+
+template <Bound B, typename T, glm::length_t Dim>
+constexpr std::span<double const> limit(glm::vec<Dim, T>& out, std::span<double const> range) {
+	if (range.empty()) { return {}; }
+	assert(range.size() == Dim);
+	range = limit<B>(out.x, range);
+	if constexpr (Dim > 1) { range = limit<B>(out.y, range); }
+	if constexpr (Dim > 2) { range = limit<B>(out.z, range); }
+	if constexpr (Dim > 3) { range = limit<B>(out.w, range); }
+	return range;
+}
+
+struct ClampRange {
+	FlexArray<double, 4> min{};
+	FlexArray<double, 4> max{};
+
+	constexpr bool active() const { return !min.empty() || !max.empty(); }
+
+	template <typename T>
+	constexpr T operator()(T const& t) const {
+		auto ret = t;
+		limit<Bound::eCeil>(ret, min.span());
+		limit<Bound::eFloor>(ret, max.span());
+		return ret;
+	}
 };
 
 struct BufferView {
@@ -154,7 +188,7 @@ struct Accessor {
 	bool normalized{false};
 	std::size_t count{};
 	Type type{};
-	Range<std::array<std::optional<float>, 16>> ranges{};
+	ClampRange clamp{};
 };
 
 struct Attributes {
@@ -230,15 +264,19 @@ struct Data {
 		assert(a.type == Accessor::Type::eScalar);
 		if (!a.buffer_view) { return std::vector<T>(a.count); }
 		auto const v = view_buffer(*a.buffer_view).subspan(a.byte_offset);
+		auto ret = std::vector<T>{};
 		switch (a.component_type) {
-		case Accessor::ComponentType::eByte: return convert_vec<T>(vec_from_bytes<std::int8_t>(v, a.count));
-		case Accessor::ComponentType::eUnsignedByte: return convert_vec<T>(vec_from_bytes<std::uint8_t>(v, a.count));
-		case Accessor::ComponentType::eShort: return convert_vec<T>(vec_from_bytes<std::int16_t>(v, a.count));
-		case Accessor::ComponentType::eUnsignedShort: return convert_vec<T>(vec_from_bytes<std::uint16_t>(v, a.count));
-		case Accessor::ComponentType::eUnsignedInt: return convert_vec<T>(vec_from_bytes<std::uint32_t>(v, a.count));
-		case Accessor::ComponentType::eFloat: return convert_vec<T>(vec_from_bytes<float>(v, a.count));
+		case Accessor::ComponentType::eByte: ret = convert_vec<T>(vec_from_bytes<std::int8_t>(v, a.count)); break;
+		case Accessor::ComponentType::eUnsignedByte: ret = convert_vec<T>(vec_from_bytes<std::uint8_t>(v, a.count)); break;
+		case Accessor::ComponentType::eShort: ret = convert_vec<T>(vec_from_bytes<std::int16_t>(v, a.count)); break;
+		case Accessor::ComponentType::eUnsignedShort: ret = convert_vec<T>(vec_from_bytes<std::uint16_t>(v, a.count)); break;
+		case Accessor::ComponentType::eUnsignedInt: ret = convert_vec<T>(vec_from_bytes<std::uint32_t>(v, a.count)); break;
+		case Accessor::ComponentType::eFloat: ret = convert_vec<T>(vec_from_bytes<float>(v, a.count)); break;
 		}
-		return {};
+		if (a.clamp.active()) {
+			for (auto& t : ret) { t = a.clamp(t); }
+		}
+		return ret;
 	}
 
 	template <typename T, glm::length_t Dim>
@@ -249,15 +287,19 @@ struct Data {
 		assert(Accessor::is_vec_type(a.type, Dim));
 		if (!a.buffer_view) { return std::vector<glm::vec<Dim, T>>(a.count); }
 		auto const v = view_buffer(*a.buffer_view).subspan(a.byte_offset);
+		auto ret = std::vector<glm::vec<Dim, T>>{};
 		switch (a.component_type) {
-		case Accessor::ComponentType::eByte: return convert_vec<glm::vec<Dim, T>>(vec_from_bytes<glm::vec<Dim, std::int8_t>>(v, a.count));
-		case Accessor::ComponentType::eUnsignedByte: return convert_vec<glm::vec<Dim, T>>(vec_from_bytes<glm::vec<Dim, std::uint8_t>>(v, a.count));
-		case Accessor::ComponentType::eShort: return convert_vec<glm::vec<Dim, T>>(vec_from_bytes<glm::vec<Dim, std::int16_t>>(v, a.count));
-		case Accessor::ComponentType::eUnsignedShort: return convert_vec<glm::vec<Dim, T>>(vec_from_bytes<glm::vec<Dim, std::uint16_t>>(v, a.count));
-		case Accessor::ComponentType::eUnsignedInt: return convert_vec<glm::vec<Dim, T>>(vec_from_bytes<glm::vec<Dim, std::uint32_t>>(v, a.count));
-		case Accessor::ComponentType::eFloat: return convert_vec<glm::vec<Dim, T>>(vec_from_bytes<glm::vec<Dim, float>>(v, a.count));
+		case Accessor::ComponentType::eByte: ret = convert_vec<glm::vec<Dim, T>>(vec_from_bytes<glm::vec<Dim, std::int8_t>>(v, a.count)); break;
+		case Accessor::ComponentType::eUnsignedByte: ret = convert_vec<glm::vec<Dim, T>>(vec_from_bytes<glm::vec<Dim, std::uint8_t>>(v, a.count)); break;
+		case Accessor::ComponentType::eShort: ret = convert_vec<glm::vec<Dim, T>>(vec_from_bytes<glm::vec<Dim, std::int16_t>>(v, a.count)); break;
+		case Accessor::ComponentType::eUnsignedShort: ret = convert_vec<glm::vec<Dim, T>>(vec_from_bytes<glm::vec<Dim, std::uint16_t>>(v, a.count)); break;
+		case Accessor::ComponentType::eUnsignedInt: ret = convert_vec<glm::vec<Dim, T>>(vec_from_bytes<glm::vec<Dim, std::uint32_t>>(v, a.count)); break;
+		case Accessor::ComponentType::eFloat: ret = convert_vec<glm::vec<Dim, T>>(vec_from_bytes<glm::vec<Dim, float>>(v, a.count)); break;
 		}
-		return {};
+		if (a.clamp.active()) {
+			for (auto& t : ret) { t = a.clamp(t); }
+		}
+		return ret;
 	}
 
 	struct Storage {
@@ -320,7 +362,8 @@ struct Data {
 			a.byte_offset = json["byteOffset"].as<std::size_t>(0U);
 			a.normalized = json["normalized"].as_bool(dj::Boolean{false}).value;
 			a.name = json["name"].as_string("(Unnamed)");
-			// TODO range
+			for (auto const& min : json["min"].array_view()) { a.clamp.min.insert(min.as_double()); }
+			for (auto const& max : json["max"].array_view()) { a.clamp.max.insert(max.as_double()); }
 		}
 
 		Camera::Orthographic orthographic(dj::Json const& json) const {

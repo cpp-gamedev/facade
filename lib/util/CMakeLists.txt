@@ -99,4 +99,5 @@ target_sources(${PROJECT_NAME} PRIVATE
   src/rgb.cpp
   src/thread_pool.cpp
   src/time.cpp
+  src/transform.cpp
 )

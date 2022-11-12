@@ -20,7 +20,10 @@ void WindowMenu::display_menu(editor::NotClosed<editor::MainMenu> main) {
 	if (ImGui::MenuItem("Frame Stats")) { m_flags.stats = true; }
 	if (ImGui::MenuItem("Log")) { m_flags.log = true; }
 	if (ImGui::MenuItem("Resources")) { m_flags.resources = true; }
-	if (ImGui::MenuItem("Close All")) { m_flags = {}; }
+	if (ImGui::MenuItem("Close All")) {
+		m_flags = {};
+		m_data.inspect = {};
+	}
 	ImGui::Separator();
 	if (ImGui::MenuItem("Dear ImGui Demo")) { m_flags.demo = true; }
 }

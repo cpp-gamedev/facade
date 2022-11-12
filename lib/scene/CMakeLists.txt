@@ -52,5 +52,4 @@ target_sources(${PROJECT_NAME} PRIVATE
   src/gltf_loader.cpp
   src/material.cpp
   src/scene.cpp
-  src/transform.cpp
 )

@@ -26,8 +26,8 @@ TreeNode::~TreeNode() {
 }
 
 bool TreeNode::leaf(char const* label, int flags) {
-	if (TreeNode{label, flags | ImGuiTreeNodeFlags_Leaf}) { return true; }
-	return false;
+	auto tn = TreeNode{label, flags | ImGuiTreeNodeFlags_Leaf};
+	return ImGui::IsItemClicked();
 }
 
 Window::Menu::Menu(NotClosed<Canvas>) : MenuBar(ImGui::BeginMenuBar()) {}

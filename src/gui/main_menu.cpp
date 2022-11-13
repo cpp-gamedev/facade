@@ -55,21 +55,23 @@ bool WindowMenu::display_scene(Scene& scene) {
 bool WindowMenu::display_camera(Scene& scene) {
 	ImGui::SetNextWindowSize({400.0f, 400.0f}, ImGuiCond_FirstUseEver);
 	bool show{true};
-	if (auto window = editor::Window{"Camera", &show}) { editor::Inspector{window, scene}.camera(); }
+	if (auto window = editor::Window{"Camera", &show}) { editor::SceneInspector{window, scene}.camera(); }
 	return show;
 }
 
 bool WindowMenu::display_lights(Scene& scene) {
 	ImGui::SetNextWindowSize({400.0f, 400.0f}, ImGuiCond_FirstUseEver);
 	bool show{true};
-	if (auto window = editor::Window{"Lights", &show}) { editor::Inspector{window, scene}.lights(); }
+	if (auto window = editor::Window{"Lights", &show}) { editor::SceneInspector{window, scene}.lights(); }
 	return show;
 }
 
 bool WindowMenu::display_inspector(Scene& scene) {
 	bool show = true;
 	ImGui::SetNextWindowSize({400.0f, 400.0f}, ImGuiCond_FirstUseEver);
-	if (auto window = editor::Window{m_data.inspect.name.c_str(), &show}) { editor::Inspector{window, scene}.node(m_data.inspect.id, m_data.unified_scaling); }
+	if (auto window = editor::Window{m_data.inspect.name.c_str(), &show}) {
+		editor::SceneInspector{window, scene}.node(m_data.inspect.id, m_data.unified_scaling);
+	}
 	return m_data.inspect && show;
 }
 
@@ -113,7 +115,7 @@ bool WindowMenu::display_log() {
 bool WindowMenu::display_resources(Scene& scene) {
 	bool show{true};
 	ImGui::SetNextWindowSize({600.0f, 200.0f}, ImGuiCond_FirstUseEver);
-	if (auto window = editor::Window{"Resources", &show}) { editor::Inspector{window, scene}.resources(m_data.name_buf); }
+	if (auto window = editor::Window{"Resources", &show}) { editor::SceneInspector{window, scene}.resources(m_data.name_buf); }
 	return show;
 }
 

@@ -33,7 +33,7 @@ void edit_material(SceneResourcesMut resources, UnlitMaterial& unlit) {
 }
 } // namespace
 
-void Inspector::view(Texture const& texture, Id<Texture> id) const {
+void ResourceInspector::view(Texture const& texture, Id<Texture> id) const {
 	auto const name = FixedString<128>{"{} ({})", texture.name(), id};
 	auto tn = TreeNode{name.c_str()};
 	drag_payload(id, name.c_str());
@@ -46,7 +46,7 @@ void Inspector::view(Texture const& texture, Id<Texture> id) const {
 	}
 }
 
-void Inspector::view(StaticMesh const& mesh, Id<StaticMesh> id) const {
+void ResourceInspector::view(StaticMesh const& mesh, Id<StaticMesh> id) const {
 	auto const name = FixedString<128>{"{} ({})", mesh.name(), id};
 	auto tn = TreeNode{name.c_str()};
 	drag_payload(id, name.c_str());
@@ -56,7 +56,7 @@ void Inspector::view(StaticMesh const& mesh, Id<StaticMesh> id) const {
 	}
 }
 
-void Inspector::edit(Material& out_material, Id<Material> id) const {
+void ResourceInspector::edit(Material& out_material, Id<Material> id) const {
 	auto const name = FixedString<128>{"{} ({})", out_material.name, id};
 	auto tn = TreeNode{name.c_str()};
 	drag_payload(id, name.c_str());
@@ -66,7 +66,7 @@ void Inspector::edit(Material& out_material, Id<Material> id) const {
 	}
 }
 
-void Inspector::edit(Mesh& out_mesh, Id<Mesh> id) const {
+void ResourceInspector::edit(Mesh& out_mesh, Id<Mesh> id) const {
 	auto name = FixedString<128>{"{} ({})", m_resources.meshes[id].name, id};
 	auto tn = TreeNode{name.c_str()};
 	drag_payload(id, name.c_str());
@@ -95,21 +95,22 @@ void Inspector::edit(Mesh& out_mesh, Id<Mesh> id) const {
 	}
 }
 
-void Inspector::resources(std::string& out_name_buf) const {
+void SceneInspector::resources(std::string& out_name_buf) const {
+	auto const ri = ResourceInspector{m_target, m_scene};
 	static constexpr auto flags_v = ImGuiTreeNodeFlags_Framed;
 	bool add_material{}, add_mesh{};
 	if (auto tn = TreeNode("Textures", flags_v)) {
-		for (auto [texture, id] : enumerate(m_resources.textures)) { view(texture, id); }
+		for (auto [texture, id] : enumerate(m_resources.textures)) { ri.view(texture, id); }
 	}
 	if (auto tn = TreeNode("Static Meshes", flags_v)) {
-		for (auto [static_mesh, id] : enumerate(m_resources.static_meshes)) { view(static_mesh, id); }
+		for (auto [static_mesh, id] : enumerate(m_resources.static_meshes)) { ri.view(static_mesh, id); }
 	}
 	if (auto tn = TreeNode("Materials", flags_v)) {
-		for (auto [material, id] : enumerate(m_resources.materials)) { edit(*material, id); }
+		for (auto [material, id] : enumerate(m_resources.materials)) { ri.edit(*material, id); }
 		if (ImGui::Button("Add...")) { add_material = true; }
 	}
 	if (auto tn = TreeNode{"Meshes", flags_v}) {
-		for (auto [mesh, id] : enumerate(m_resources.meshes)) { edit(mesh, id); }
+		for (auto [mesh, id] : enumerate(m_resources.meshes)) { ri.edit(mesh, id); }
 		if (ImGui::Button("Add...")) { add_mesh = true; }
 	}
 
@@ -136,7 +137,7 @@ void Inspector::resources(std::string& out_name_buf) const {
 	open_popup("Add Mesh", [this](char const* name) { m_scene.add(Mesh{.name = name}); });
 }
 
-void Inspector::camera() const {
+void SceneInspector::camera() const {
 	auto& node = m_scene.camera();
 	auto* id = node.find<Id<Camera>>();
 	assert(id && id->value() < m_resources.cameras.size());
@@ -167,7 +168,7 @@ void Inspector::camera() const {
 	}
 }
 
-void Inspector::lights() const {
+void SceneInspector::lights() const {
 	auto to_remove = std::optional<std::size_t>{};
 	bool allow_removal = m_scene.lights.dir_lights.size() > 1;
 	auto const reflect = Reflector{m_target};
@@ -192,13 +193,13 @@ void Inspector::lights() const {
 	if (m_scene.lights.dir_lights.size() < Lights::max_lights_v && ImGui::SmallButton("+##add_light")) { m_scene.lights.dir_lights.insert(DirLight{}); }
 }
 
-void Inspector::transform(Node& out_node, Bool& out_unified_scaling) const {
+void SceneInspector::transform(Node& out_node, Bool& out_unified_scaling) const {
 	if (auto tn = TreeNode("Transform", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed)) {
 		Reflector{m_target}(out_node.transform, out_unified_scaling, {true});
 	}
 }
 
-void Inspector::instances(Node& out_node, Bool unified_scaling) const {
+void SceneInspector::instances(Node& out_node, Bool unified_scaling) const {
 	if (auto tn = TreeNode{"Instances", ImGuiTreeNodeFlags_Framed}) {
 		auto const reflect = Reflector{m_target};
 		auto to_remove = std::optional<std::size_t>{};
@@ -213,7 +214,7 @@ void Inspector::instances(Node& out_node, Bool unified_scaling) const {
 	}
 }
 
-void Inspector::mesh(Node& out_node) const {
+void SceneInspector::mesh(Node& out_node) const {
 	auto* mesh_id = out_node.find<Id<Mesh>>();
 	if (auto tn = TreeNode{"Mesh", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed}) {
 		auto name = FixedString<128>{};
@@ -222,7 +223,7 @@ void Inspector::mesh(Node& out_node) const {
 	}
 }
 
-void Inspector::node(Id<Node> node_id, Bool& out_unified_scaling) const {
+void SceneInspector::node(Id<Node> node_id, Bool& out_unified_scaling) const {
 	auto* node = m_scene.find(node_id);
 	if (!node) { return; }
 	transform(*node, out_unified_scaling);

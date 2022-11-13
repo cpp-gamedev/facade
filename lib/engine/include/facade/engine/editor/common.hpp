@@ -18,6 +18,11 @@ namespace facade::editor {
 ///
 glm::vec2 max_size(std::span<char const* const> strings);
 
+///
+/// \brief Create a small red button.
+/// \param label Label on the button
+/// \returns true if clicked
+///
 bool small_button_red(char const* label);
 
 ///

@@ -8,7 +8,7 @@
 
 namespace facade::editor {
 ///
-/// \brief Stateless ImGui helper to reflect various properties
+/// \brief Stateless ImGui helper to reflect various properties.
 ///
 class Reflector {
   public:
@@ -20,7 +20,7 @@ class Reflector {
 	static constexpr auto max_v{std::numeric_limits<float>::max()};
 
 	///
-	/// \brief Construct an Reflector instance
+	/// \brief Construct an Reflector instance.
 	///
 	/// Reflectors don't do anything on construction, constructors exist to enforce invariants instance-wide.
 	/// For all Reflectors, an existing Window target is required, Reflector instances will not create any

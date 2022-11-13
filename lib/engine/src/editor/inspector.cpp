@@ -9,9 +9,6 @@
 
 namespace facade::editor {
 namespace {
-enum class Payload { eTexture, eMaterial, eStaticMesh, eMesh, eCOUNT_ };
-constexpr EnumArray<Payload, char const*> type_v{"ID_TEXTURE", "ID_MATERIAL", "ID_STATIC_MESH", "ID_MESH"};
-
 void edit_material(NotClosed<Window> target, SceneResources const& resources, LitMaterial& lit) {
 	auto const reflect = Reflector{target};
 	reflect("Albedo", Reflector::AsRgb{lit.albedo});
@@ -20,26 +17,26 @@ void edit_material(NotClosed<Window> target, SceneResources const& resources, Li
 
 	auto name = FixedString<128>{};
 	if (lit.base_colour) { name = FixedString<128>{"{} ({})", resources.textures[*lit.base_colour].name(), *lit.base_colour}; }
-	make_id_slot(lit.base_colour, "Base Colour Texture", name.c_str(), type_v[Payload::eTexture], {true});
+	make_id_slot(lit.base_colour, "Base Colour Texture", name.c_str(), {true});
 	name = {};
 	if (lit.roughness_metallic) { name = FixedString<128>{"{} ({})", resources.textures[*lit.roughness_metallic].name(), *lit.roughness_metallic}; }
-	make_id_slot(lit.roughness_metallic, "Roughness Metallic", name.c_str(), type_v[Payload::eTexture], {true});
+	make_id_slot(lit.roughness_metallic, "Roughness Metallic", name.c_str(), {true});
 	name = {};
 	if (lit.emissive) { name = FixedString<128>{"{} ({})", resources.textures[*lit.emissive].name(), *lit.emissive}; }
-	make_id_slot(lit.emissive, "Emissive", name.c_str(), type_v[Payload::eTexture], {true});
+	make_id_slot(lit.emissive, "Emissive", name.c_str(), {true});
 }
 
 void edit_material(SceneResourcesMut resources, UnlitMaterial& unlit) {
 	auto name = FixedString<128>{};
 	if (unlit.texture) { name = FixedString<128>{"{} ({})", resources.textures[*unlit.texture].name(), *unlit.texture}; }
-	make_id_slot(unlit.texture, "Texture", name.c_str(), type_v[Payload::eTexture], {true});
+	make_id_slot(unlit.texture, "Texture", name.c_str(), {true});
 }
 } // namespace
 
 void Inspector::view(Texture const& texture, Id<Texture> id) const {
 	auto const name = FixedString<128>{"{} ({})", texture.name(), id};
 	auto tn = TreeNode{name.c_str()};
-	drag_payload(id, type_v[Payload::eTexture], name.c_str());
+	drag_payload(id, name.c_str());
 	if (tn) {
 		auto const view = texture.view();
 		TreeNode::leaf(FixedString{"Extent: {}x{}", view.extent.width, view.extent.height}.c_str());
@@ -52,7 +49,7 @@ void Inspector::view(Texture const& texture, Id<Texture> id) const {
 void Inspector::view(StaticMesh const& mesh, Id<StaticMesh> id) const {
 	auto const name = FixedString<128>{"{} ({})", mesh.name(), id};
 	auto tn = TreeNode{name.c_str()};
-	drag_payload(id, type_v[Payload::eStaticMesh], name.c_str());
+	drag_payload(id, name.c_str());
 	if (tn) {
 		ImGui::Text("%s", FixedString{"Vertices: {}", mesh.view().vertex_count}.c_str());
 		ImGui::Text("%s", FixedString{"Indices: {}", mesh.view().index_count}.c_str());
@@ -62,7 +59,7 @@ void Inspector::view(StaticMesh const& mesh, Id<StaticMesh> id) const {
 void Inspector::edit(Material& out_material, Id<Material> id) const {
 	auto const name = FixedString<128>{"{} ({})", out_material.name, id};
 	auto tn = TreeNode{name.c_str()};
-	drag_payload(id, type_v[Payload::eMaterial], name.c_str());
+	drag_payload(id, name.c_str());
 	if (tn) {
 		if (auto* lit = dynamic_cast<LitMaterial*>(&out_material)) { return edit_material(m_target, m_resources, *lit); }
 		if (auto* unlit = dynamic_cast<UnlitMaterial*>(&out_material)) { return edit_material(m_resources, *unlit); }
@@ -72,17 +69,17 @@ void Inspector::edit(Material& out_material, Id<Material> id) const {
 void Inspector::edit(Mesh& out_mesh, Id<Mesh> id) const {
 	auto name = FixedString<128>{"{} ({})", m_resources.meshes[id].name, id};
 	auto tn = TreeNode{name.c_str()};
-	drag_payload(id, type_v[Payload::eMesh], name.c_str());
+	drag_payload(id, name.c_str());
 	if (tn) {
 		auto to_erase = std::optional<std::size_t>{};
 		for (auto [primitive, index] : enumerate(out_mesh.primitives)) {
 			if (auto tn = TreeNode{FixedString{"Primitive [{}]", index}.c_str()}) {
 				name = FixedString<128>{"{} ({})", m_resources.static_meshes[primitive.static_mesh].name(), primitive.static_mesh};
-				make_id_slot(primitive.static_mesh, "Static Mesh", name.c_str(), type_v[Payload::eStaticMesh]);
+				make_id_slot(primitive.static_mesh, "Static Mesh", name.c_str());
 
 				name = {};
 				if (primitive.material) { name = FixedString<128>{"{} ({})", m_resources.materials[*primitive.material]->name, *primitive.material}; }
-				make_id_slot(primitive.material, "Material", name.c_str(), type_v[Payload::eMaterial], {true});
+				make_id_slot(primitive.material, "Material", name.c_str(), {true});
 
 				if (small_button_red("x###remove_primitive")) { to_erase = index; }
 			}
@@ -221,7 +218,7 @@ void Inspector::mesh(Node& out_node) const {
 	if (auto tn = TreeNode{"Mesh", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed}) {
 		auto name = FixedString<128>{};
 		if (mesh_id) { name = FixedString<128>{"{} ({})", m_scene.find(*mesh_id)->name, *mesh_id}; }
-		make_id_slot<Mesh>(out_node, "Mesh", name.c_str(), type_v[Payload::eMesh]);
+		make_id_slot<Mesh>(out_node, "Mesh", name.c_str());
 	}
 }
 

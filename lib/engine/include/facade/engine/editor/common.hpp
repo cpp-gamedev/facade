@@ -18,6 +18,8 @@ namespace facade::editor {
 ///
 glm::vec2 max_size(std::span<char const* const> strings);
 
+bool small_button_red(char const* label);
+
 ///
 /// \brief Base class for RAII Dear ImGui wrappers whose widgets return a boolean on Begin()
 ///

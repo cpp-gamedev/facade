@@ -42,8 +42,11 @@ target_sources(${PROJECT_NAME} PRIVATE
 
   include/${target_prefix}/engine/editor/browse_file.hpp
   include/${target_prefix}/engine/editor/common.hpp
+  include/${target_prefix}/engine/editor/drag_drop_id.hpp
+  include/${target_prefix}/engine/editor/inspector_old.hpp
   include/${target_prefix}/engine/editor/inspector.hpp
   include/${target_prefix}/engine/editor/log.hpp
+  include/${target_prefix}/engine/editor/reflector.hpp
   include/${target_prefix}/engine/editor/scene_tree.hpp
 
   src/scene_renderer.cpp
@@ -51,7 +54,9 @@ target_sources(${PROJECT_NAME} PRIVATE
 
   src/editor/browse_file.cpp
   src/editor/common.cpp
+  src/editor/inspector_old.cpp
   src/editor/inspector.cpp
   src/editor/log.cpp
+  src/editor/reflector.cpp
   src/editor/scene_tree.cpp
 )

@@ -1,5 +1,6 @@
 #pragma once
 #include <facade/engine/editor/common.hpp>
+#include <facade/engine/editor/inspect_data.hpp>
 #include <facade/engine/editor/log.hpp>
 #include <facade/engine/editor/scene_tree.hpp>
 #include <gui/events.hpp>
@@ -45,7 +46,7 @@ class WindowMenu : public logger::Accessor {
 	struct {
 		editor::LogState log_state{};
 		editor::InspectNode inspect{};
-		std::string name_buf{};
+		editor::InspectData inspect_data{};
 		Bool unified_scaling{true};
 	} m_data{};
 	struct {

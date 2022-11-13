@@ -43,6 +43,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/engine/editor/browse_file.hpp
   include/${target_prefix}/engine/editor/common.hpp
   include/${target_prefix}/engine/editor/drag_drop_id.hpp
+  include/${target_prefix}/engine/editor/inspect_data.hpp
   include/${target_prefix}/engine/editor/inspector.hpp
   include/${target_prefix}/engine/editor/log.hpp
   include/${target_prefix}/engine/editor/reflector.hpp

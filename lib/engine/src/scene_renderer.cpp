@@ -90,17 +90,17 @@ std::span<glm::mat4x4 const> SceneRenderer::make_instances(Node const& node, glm
 }
 
 void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Node const& node, glm::mat4 const& parent) {
-	auto const resources = m_scene->resources();
+	auto const& resources = m_scene->resources();
 	if (auto const* mesh_id = node.find<Id<Mesh>>()) {
-		static auto const s_default_material = LitMaterial{};
+		static auto const s_default_material = Material{std::make_unique<LitMaterial>()};
 		auto const& mesh = resources.meshes[*mesh_id];
 		for (auto const& primitive : mesh.primitives) {
-			auto const& material = primitive.material ? *resources.materials[primitive.material->value()] : static_cast<Material const&>(s_default_material);
+			auto const& material = primitive.material ? resources.materials[primitive.material->value()] : static_cast<Material const&>(s_default_material);
 			auto pipeline = renderer.bind_pipeline(cb, m_scene->pipeline_state, material.shader_id());
 			pipeline.set_line_width(m_scene->pipeline_state.line_width);
 
 			update_view(pipeline);
-			auto const store = TextureStore{resources.textures, m_white, m_black};
+			auto const store = TextureStore{resources.textures.view(), m_white, m_black};
 			material.write_sets(pipeline, store);
 
 			auto const& static_mesh = resources.static_meshes[primitive.static_mesh];

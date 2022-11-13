@@ -51,7 +51,7 @@ Sampler::CreateInfo to_sampler_info(gltf::Sampler const& sampler) {
 	return ret;
 }
 
-std::unique_ptr<Material> to_material(gltf::Material const& material) {
+Material to_material(gltf::Material const& material) {
 	auto ret = std::make_unique<LitMaterial>();
 	ret->albedo = material.pbr.base_colour_factor;
 	ret->metallic = material.pbr.metallic_factor;
@@ -62,7 +62,7 @@ std::unique_ptr<Material> to_material(gltf::Material const& material) {
 	ret->roughness_metallic = material.pbr.metallic_roughness_texture->texture;
 	ret->emissive = material.emissive_texture->texture;
 	ret->emissive_factor = material.emissive_factor;
-	return ret;
+	return {std::move(ret)};
 }
 
 Mesh to_mesh(gltf::Mesh mesh) {
@@ -137,8 +137,8 @@ bool Scene::GltfLoader::operator()(dj::Json const& root, DataProvider const& pro
 
 	for (auto const& sampler : asset.samplers) { m_scene.add(to_sampler_info(sampler)); }
 	auto get_sampler = [this](std::optional<std::size_t> sampler_id) {
-		if (!sampler_id || sampler_id >= m_scene.m_storage.samplers.size()) { return m_scene.default_sampler(); }
-		return m_scene.m_storage.samplers[*sampler_id].sampler();
+		if (!sampler_id || sampler_id >= m_scene.m_storage.resources.samplers.size()) { return m_scene.default_sampler(); }
+		return m_scene.m_storage.resources.samplers[*sampler_id].sampler();
 	};
 
 	auto textures = std::vector<MaybeFuture<Texture>>{};
@@ -157,8 +157,8 @@ bool Scene::GltfLoader::operator()(dj::Json const& root, DataProvider const& pro
 		static_meshes.push_back(make_maybe_future(thread_pool, m_status.done, [g = std::move(geometry), this] { return StaticMesh{m_scene.m_gfx, g}; }));
 	}
 
-	m_scene.m_storage.textures = from_maybe_futures(std::move(textures));
-	m_scene.m_storage.static_meshes = from_maybe_futures(std::move(static_meshes));
+	m_scene.replace(from_maybe_futures(std::move(textures)));
+	m_scene.replace(from_maybe_futures(std::move(static_meshes)));
 
 	m_status.stage = LoadStage::eBuildingScenes;
 	if (asset.cameras.empty()) {

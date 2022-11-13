@@ -30,8 +30,9 @@ void edit_material(NotClosed<Window> target, SceneResources const& resources, Li
 }
 
 void edit_material(SceneResourcesMut resources, UnlitMaterial& unlit) {
-	char const* name = unlit.texture ? resources.textures[*unlit.texture].name().data() : "";
-	make_id_slot(unlit.texture, "Texture", name, type_v[Payload::eTexture], {true});
+	auto name = FixedString<128>{};
+	if (unlit.texture) { name = FixedString<128>{"{} ({})", resources.textures[*unlit.texture].name(), *unlit.texture}; }
+	make_id_slot(unlit.texture, "Texture", name.c_str(), type_v[Payload::eTexture], {true});
 }
 } // namespace
 
@@ -73,22 +74,20 @@ void Inspector::edit(Mesh& out_mesh, Id<Mesh> id) const {
 	auto tn = TreeNode{name.c_str()};
 	drag_payload(id, type_v[Payload::eMesh], name.c_str());
 	if (tn) {
+		auto to_erase = std::optional<std::size_t>{};
 		for (auto [primitive, index] : enumerate(out_mesh.primitives)) {
-			auto tn = TreeNode{FixedString{"Primitive [{}]", index}.c_str()};
-			ImGui::SameLine();
-			if (small_button_red("x###remove_primitive")) {
-				out_mesh.primitives.erase(out_mesh.primitives.begin() + static_cast<std::ptrdiff_t>(index));
-				return;
-			}
-			if (tn) {
+			if (auto tn = TreeNode{FixedString{"Primitive [{}]", index}.c_str()}) {
 				name = FixedString<128>{"{} ({})", m_resources.static_meshes[primitive.static_mesh].name(), primitive.static_mesh};
 				make_id_slot(primitive.static_mesh, "Static Mesh", name.c_str(), type_v[Payload::eStaticMesh]);
 
 				name = {};
 				if (primitive.material) { name = FixedString<128>{"{} ({})", m_resources.materials[*primitive.material]->name, *primitive.material}; }
 				make_id_slot(primitive.material, "Material", name.c_str(), type_v[Payload::eMaterial], {true});
+
+				if (small_button_red("x###remove_primitive")) { to_erase = index; }
 			}
 		}
+		if (to_erase) { out_mesh.primitives.erase(out_mesh.primitives.begin() + static_cast<std::ptrdiff_t>(*to_erase)); }
 		if (ImGui::SmallButton("+###add_primitive")) {
 			if (!out_mesh.primitives.empty()) {
 				out_mesh.primitives.push_back(out_mesh.primitives.front());
@@ -176,11 +175,10 @@ void Inspector::lights() const {
 	bool allow_removal = m_scene.lights.dir_lights.size() > 1;
 	auto const reflect = Reflector{m_target};
 	auto inspect_dir_light = [&](DirLight& out_light, std::size_t index) {
-		auto tn = TreeNode{FixedString{"[{}]", index}.c_str()};
-		if (allow_removal && small_button_red("x###remove_light")) { to_remove = index; }
-		if (tn) {
+		if (auto tn = TreeNode{FixedString{"[{}]", index}.c_str()}) {
 			reflect("Direction", out_light.direction);
 			if (auto tn = TreeNode{"Albedo"}) { reflect(out_light.rgb); }
+			if (allow_removal && small_button_red("x###remove_light")) { to_remove = index; }
 		}
 	};
 	if (auto tn = TreeNode{"DirLights", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed}) {
@@ -204,15 +202,14 @@ void Inspector::transform(Node& out_node, Bool& out_unified_scaling) const {
 }
 
 void Inspector::instances(Node& out_node, Bool unified_scaling) const {
-	if (out_node.instances.empty()) { return; }
 	if (auto tn = TreeNode{"Instances", ImGuiTreeNodeFlags_Framed}) {
 		auto const reflect = Reflector{m_target};
 		auto to_remove = std::optional<std::size_t>{};
 		for (auto [instance, index] : enumerate(out_node.instances)) {
-			auto tn = TreeNode{FixedString{"[{}]", index}.c_str()};
-			ImGui::SameLine();
-			if (small_button_red("x###remove_instance") && !to_remove) { to_remove = index; }
-			if (tn) { reflect(instance, unified_scaling, {false}); }
+			if (auto tn = TreeNode{FixedString{"[{}]", index}.c_str()}) {
+				reflect(instance, unified_scaling, {false});
+				if (small_button_red("x###remove_instance") && !to_remove) { to_remove = index; }
+			}
 		}
 		if (to_remove) { out_node.instances.erase(out_node.instances.begin() + static_cast<std::ptrdiff_t>(*to_remove)); }
 		if (ImGui::SmallButton("+###add_instance")) { out_node.instances.emplace_back(); }

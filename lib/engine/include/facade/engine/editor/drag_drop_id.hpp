@@ -32,7 +32,6 @@ bool accept_drop(Id<T>& out, char const* type) {
 
 template <typename T>
 void make_id_slot(std::optional<Id<T>>& out_id, char const* label, char const* payload_name, char const* payload_type, Bool removable) {
-	using namespace editor;
 	ImGui::Text("%s", label);
 	if (out_id) {
 		if (removable) {

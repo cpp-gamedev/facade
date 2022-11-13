@@ -2,15 +2,13 @@
 #include <facade/engine/editor/common.hpp>
 #include <facade/scene/material.hpp>
 #include <facade/scene/node.hpp>
+#include <facade/scene/scene_resources.hpp>
 #include <facade/util/nvec3.hpp>
 #include <facade/util/rgb.hpp>
 #include <limits>
 
 namespace facade {
-struct Camera;
-struct Mesh;
 struct Lights;
-struct SceneResources;
 class Scene;
 
 namespace editor {

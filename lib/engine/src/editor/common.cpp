@@ -3,6 +3,16 @@
 #include <cassert>
 
 namespace facade::editor {
+glm::vec2 max_size(std::span<char const* const> strings) {
+	auto ret = glm::vec2{};
+	for (auto const* str : strings) {
+		auto const size = ImGui::CalcTextSize(str);
+		ret.x = std::max(ret.x, size.x);
+		ret.y = std::max(ret.y, size.y);
+	}
+	return ret;
+}
+
 Openable::Openable(bool is_open) : m_open(is_open) {}
 
 Window::Window(char const* label, bool* open_if, int flags) : Canvas(ImGui::Begin(label, open_if, flags)) {}

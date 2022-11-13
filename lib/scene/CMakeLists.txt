@@ -43,6 +43,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/scene/mesh.hpp
   include/${target_prefix}/scene/node_data.hpp
   include/${target_prefix}/scene/node.hpp
+  include/${target_prefix}/scene/scene_resources.hpp
   include/${target_prefix}/scene/scene.hpp
 
   src/detail/gltf.cpp

@@ -31,8 +31,9 @@ class WindowMenu : public logger::Accessor {
 
   private:
 	bool display_scene(Scene& scene);
+	bool display_camera(Scene& scene);
 	bool display_inspector(Scene& scene);
-	bool display_lights(Lights& lights);
+	bool display_lights(Scene& scene);
 	bool display_stats(Engine& engine);
 	bool display_log();
 	bool display_resources(Scene& scene);
@@ -44,10 +45,12 @@ class WindowMenu : public logger::Accessor {
 	struct {
 		editor::LogState log_state{};
 		editor::InspectNode inspect{};
+		std::string name_buf{};
 		Bool unified_scaling{true};
 	} m_data{};
 	struct {
 		bool scene{};
+		bool camera{};
 		bool lights{};
 		bool stats{};
 		bool log{};

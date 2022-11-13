@@ -12,6 +12,20 @@ class Engine;
 
 namespace facade::editor {
 ///
+/// \brief Obtain the maximum width and height of a number of ImGui Texts.
+/// \param strings Array of C strings to compute sizes of
+/// \returns Maximum width and height (independent) of all strings
+///
+glm::vec2 max_size(std::span<char const* const> strings);
+
+///
+/// \brief Create a small red button.
+/// \param label Label on the button
+/// \returns true if clicked
+///
+bool small_button_red(char const* label);
+
+///
 /// \brief Base class for RAII Dear ImGui wrappers whose widgets return a boolean on Begin()
 ///
 class Openable : public Pinned {

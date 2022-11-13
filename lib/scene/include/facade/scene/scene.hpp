@@ -1,35 +1,19 @@
 #pragma once
-#include <facade/scene/camera.hpp>
 #include <facade/scene/id.hpp>
 #include <facade/scene/lights.hpp>
-#include <facade/scene/material.hpp>
-#include <facade/scene/mesh.hpp>
 #include <facade/scene/node.hpp>
 #include <facade/scene/node_data.hpp>
+#include <facade/scene/scene_resources.hpp>
 #include <facade/util/image.hpp>
 #include <facade/util/ptr.hpp>
 #include <facade/util/transform.hpp>
 #include <facade/vk/pipeline.hpp>
-#include <facade/vk/static_mesh.hpp>
-#include <facade/vk/texture.hpp>
 #include <memory>
 #include <span>
 #include <vector>
 
 namespace facade {
 struct DataProvider;
-
-///
-/// \brief Immutable view of the resources stored in the scene.
-///
-struct SceneResources {
-	std::span<Camera const> cameras{};
-	std::span<Sampler const> samplers{};
-	std::span<std::unique_ptr<Material> const> materials{};
-	std::span<StaticMesh const> static_meshes{};
-	std::span<Texture const> textures{};
-	std::span<Mesh const> meshes{};
-};
 
 ///
 /// \brief Models a 3D scene.
@@ -40,6 +24,8 @@ struct SceneResources {
 class Scene {
   public:
 	using Resources = SceneResources;
+	using ResourcesMut = SceneResourcesMut;
+
 	// defined in loader.hpp
 	class GltfLoader;
 
@@ -86,7 +72,7 @@ class Scene {
 	/// \param geometry Geometry to initialize StaticMesh with
 	/// \returns Id to stored StaticMesh
 	///
-	Id<StaticMesh> add(Geometry const& geometry, std::string name = "(unnamed)");
+	Id<StaticMesh> add(Geometry const& geometry, std::string name = "(Unnamed)");
 	///
 	/// \brief Add a Texture.
 	/// \param image Image to use for the Texture
@@ -215,6 +201,7 @@ class Scene {
 	/// \brief Obtain a view into the stored resources.
 	/// \returns A Resources object
 	///
+	ResourcesMut resources() { return m_storage.resources(); }
 	Resources resources() const { return m_storage.resources(); }
 
 	///
@@ -255,6 +242,7 @@ class Scene {
 
 		Data data{};
 
+		ResourcesMut resources() { return {cameras, samplers, materials, static_meshes, textures, meshes}; }
 		Resources resources() const { return {cameras, samplers, materials, static_meshes, textures, meshes}; }
 	};
 

@@ -30,7 +30,8 @@ void WindowMenu::display_menu(editor::NotClosed<editor::MainMenu> main) {
 
 void WindowMenu::display_windows(Engine& engine) {
 	if (m_flags.scene) { m_flags.scene = display_scene(engine.scene()); }
-	if (m_flags.lights) { m_flags.lights = display_lights(engine.scene().lights); }
+	if (m_flags.camera) { m_flags.camera = display_camera(engine.scene()); }
+	if (m_flags.lights) { m_flags.lights = display_lights(engine.scene()); }
 	if (m_data.inspect && !display_inspector(engine.scene())) { m_data.inspect = {}; }
 	if (m_flags.log) { m_flags.log = display_log(); }
 	if (m_flags.resources) { m_flags.resources = display_resources(engine.scene()); }
@@ -43,30 +44,39 @@ bool WindowMenu::display_scene(Scene& scene) {
 	bool show{true};
 	if (auto window = editor::Window{"Scene", &show}) {
 		if (ImGui::Button("Lights")) { m_flags.lights = true; }
+		ImGui::SameLine();
+		if (ImGui::Button("Camera")) { m_flags.camera = true; }
 		ImGui::Separator();
 		editor::SceneTree{scene}.render(window, m_data.inspect);
 	}
 	return show;
 }
 
-bool WindowMenu::display_lights(Lights& lights) {
-	ImGui::SetNextWindowSize({400.0f, 400.0f}, ImGuiCond_FirstUseEver);
+bool WindowMenu::display_camera(Scene& scene) {
+	ImGui::SetNextWindowSize({400.0f, 250.0f}, ImGuiCond_FirstUseEver);
 	bool show{true};
-	if (auto window = editor::Window{"Lights", &show}) { editor::Inspector{window}.inspect(lights); }
+	if (auto window = editor::Window{"Camera", &show}) { editor::SceneInspector{window, scene}.camera(); }
+	return show;
+}
+
+bool WindowMenu::display_lights(Scene& scene) {
+	ImGui::SetNextWindowSize({500.0f, 250.0f}, ImGuiCond_FirstUseEver);
+	bool show{true};
+	if (auto window = editor::Window{"Lights", &show}) { editor::SceneInspector{window, scene}.lights(); }
 	return show;
 }
 
 bool WindowMenu::display_inspector(Scene& scene) {
 	bool show = true;
-	ImGui::SetNextWindowSize({400.0f, 400.0f}, ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSize({500.0f, 250.0f}, ImGuiCond_FirstUseEver);
 	if (auto window = editor::Window{m_data.inspect.name.c_str(), &show}) {
-		editor::SceneInspector{window, scene}.inspect(m_data.inspect.id, m_data.unified_scaling);
+		editor::SceneInspector{window, scene}.node(m_data.inspect.id, m_data.unified_scaling);
 	}
 	return m_data.inspect && show;
 }
 
 bool WindowMenu::display_stats(Engine& engine) {
-	ImGui::SetNextWindowSize({250.0f, 200.0f}, ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSize({250.0f, 250.0f}, ImGuiCond_FirstUseEver);
 	bool show{true};
 	if (auto window = editor::Window{"Frame Stats", &show}) {
 		auto const& stats = engine.renderer().frame_stats();
@@ -94,7 +104,10 @@ bool WindowMenu::display_stats(Engine& engine) {
 
 bool WindowMenu::display_log() {
 	bool show{true};
-	ImGui::SetNextWindowSize({600.0f, 200.0f}, ImGuiCond_FirstUseEver);
+	static constexpr auto extent_v{ImVec2{800.0f, 150.0f}};
+	static auto const size = ImVec2{0.5f * (ImGui::GetMainViewport()->Size.x - extent_v.x), (ImGui::GetMainViewport()->Size.y - extent_v.y - 20.0f)};
+	ImGui::SetNextWindowPos(size, ImGuiCond_Once);
+	ImGui::SetNextWindowSize(extent_v, ImGuiCond_Once);
 	if (auto window = editor::Window{"Log", &show}) {
 		logger::access_buffer(*this);
 		editor::display_log(window, m_data.log_state);
@@ -104,8 +117,8 @@ bool WindowMenu::display_log() {
 
 bool WindowMenu::display_resources(Scene& scene) {
 	bool show{true};
-	ImGui::SetNextWindowSize({600.0f, 200.0f}, ImGuiCond_FirstUseEver);
-	if (auto window = editor::Window{"Resources", &show}) { editor::ResourceInspector{window, scene.resources()}.display(); }
+	ImGui::SetNextWindowSize({400.0f, 300.0f}, ImGuiCond_FirstUseEver);
+	if (auto window = editor::Window{"Resources", &show}) { editor::SceneInspector{window, scene}.resources(m_data.name_buf); }
 	return show;
 }
 

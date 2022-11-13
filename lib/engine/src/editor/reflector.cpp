@@ -102,6 +102,8 @@ bool Reflector::operator()(Transform& out_transform, Bool& out_unified_scaling, 
 	if (ret((*this)("Position", vec3, 0.1f))) { out_transform.set_position(vec3); }
 	auto quat = out_transform.orientation();
 	if (ret((*this)("Orientation", quat))) { out_transform.set_orientation(quat); }
+	ImGui::SameLine();
+	if (ImGui::SmallButton("Reset")) { out_transform.set_orientation(quat_identity_v); }
 	vec3 = out_transform.scale();
 	if (out_unified_scaling) {
 		if (ret(ImGui::DragFloat("Scale", &vec3.x, 0.05f))) { out_transform.set_scale({vec3.x, vec3.x, vec3.x}); }

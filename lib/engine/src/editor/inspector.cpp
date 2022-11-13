@@ -151,7 +151,7 @@ void SceneInspector::camera() const {
 		if (reflect("Orientation", quat)) { node.transform.set_orientation(quat); }
 	}
 	if (auto tn = TreeNode{"Camera", flags_v}) {
-		ImGui::DragFloat("Exposure", &camera.exposure, 0.05f, 0.0f, 10.0f);
+		ImGui::DragFloat("Exposure", &camera.exposure, 0.01f, 0.0f, 10.0f);
 		auto const visitor = Visitor{
 			[](Camera::Orthographic& o) {
 				ImGui::DragFloat("Near Plane", &o.view_plane.near);
@@ -190,7 +190,7 @@ void SceneInspector::lights() const {
 		}
 		m_scene.lights.dir_lights = std::move(replace);
 	}
-	if (m_scene.lights.dir_lights.size() < Lights::max_lights_v && ImGui::SmallButton("+##add_light")) { m_scene.lights.dir_lights.insert(DirLight{}); }
+	if (m_scene.lights.dir_lights.size() < Lights::max_lights_v && ImGui::Button("Add###add_light")) { m_scene.lights.dir_lights.insert(DirLight{}); }
 }
 
 void SceneInspector::transform(Node& out_node, Bool& out_unified_scaling) const {

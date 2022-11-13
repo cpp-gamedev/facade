@@ -99,14 +99,14 @@ bool Reflector::operator()(Rgb& out_rgb) const {
 bool Reflector::operator()(Transform& out_transform, Bool& out_unified_scaling, Bool scaling_toggle) const {
 	auto ret = Modified{};
 	auto vec3 = out_transform.position();
-	if (ret(operator()("Position", vec3, 0.1f))) { out_transform.set_position(vec3); }
+	if (ret((*this)("Position", vec3, 0.1f))) { out_transform.set_position(vec3); }
 	auto quat = out_transform.orientation();
-	if (ret(operator()("Orientation", quat))) { out_transform.set_orientation(quat); }
+	if (ret((*this)("Orientation", quat))) { out_transform.set_orientation(quat); }
 	vec3 = out_transform.scale();
 	if (out_unified_scaling) {
 		if (ret(ImGui::DragFloat("Scale", &vec3.x, 0.05f))) { out_transform.set_scale({vec3.x, vec3.x, vec3.x}); }
 	} else {
-		if (ret(operator()("Scale", vec3, 0.05f))) { out_transform.set_scale(vec3); }
+		if (ret((*this)("Scale", vec3, 0.05f))) { out_transform.set_scale(vec3); }
 	}
 	if (scaling_toggle) {
 		ImGui::SameLine();

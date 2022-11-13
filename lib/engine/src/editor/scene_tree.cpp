@@ -19,10 +19,13 @@ InspectNode inspect(Node const& node) {
 	return ret;
 }
 
-void walk(Node& node, InspectNode& inout) {
+void walk(Node const& camera, Node& node, InspectNode& inout) {
 	auto flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
 	if (node.id() == inout.id) { flags |= ImGuiTreeNodeFlags_Selected; }
-	if (node.children().empty()) { flags |= ImGuiTreeNodeFlags_Leaf; }
+	if (node.children().empty()) {
+		flags |= ImGuiTreeNodeFlags_Leaf;
+		if (&node == &camera && node.attachment_count() == 1) { return; }
+	}
 	auto tn = editor::TreeNode{node_name(node).c_str(), flags};
 	if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
 		inout = inspect(node);
@@ -30,7 +33,7 @@ void walk(Node& node, InspectNode& inout) {
 		inout = {};
 	}
 	if (tn) {
-		for (auto& child : node.children()) { walk(child, inout); }
+		for (auto& child : node.children()) { walk(camera, child, inout); }
 	}
 }
 } // namespace
@@ -38,7 +41,7 @@ void walk(Node& node, InspectNode& inout) {
 bool SceneTree::render(NotClosed<Window>, InspectNode& inout) const {
 	auto const in = inout.id;
 	if (!m_scene.find(in)) { inout = {}; }
-	for (auto& root : m_scene.roots()) { walk(root, inout); }
+	for (auto& root : m_scene.roots()) { walk(m_scene.camera(), root, inout); }
 	return inout.id != in;
 }
 } // namespace facade::editor

@@ -38,7 +38,7 @@ class Node {
 	template <Attachable Type>
 	Type& attach(Type t) {
 		auto ret = std::make_unique<Model<Type>>(std::move(t));
-		auto [it, _] = m_components.insert_or_assign(TypeId::make<Type>(), std::move(ret));
+		auto [it, _] = m_attachments.insert_or_assign(TypeId::make<Type>(), std::move(ret));
 		return static_cast<Model<Type>&>(*it->second).t;
 	}
 
@@ -48,7 +48,7 @@ class Node {
 	///
 	template <Attachable Type>
 	Type* find() const {
-		if (auto it = m_components.find(TypeId::make<Type>()); it != m_components.end()) { return &static_cast<Model<Type>&>(*it->second).t; }
+		if (auto it = m_attachments.find(TypeId::make<Type>()); it != m_attachments.end()) { return &static_cast<Model<Type>&>(*it->second).t; }
 		return nullptr;
 	}
 
@@ -57,8 +57,10 @@ class Node {
 	///
 	template <Attachable Type>
 	void detach() {
-		m_components.erase(TypeId::make<Type>());
+		m_attachments.erase(TypeId::make<Type>());
 	}
+
+	std::size_t attachment_count() const { return m_attachments.size(); }
 
 	///
 	/// \brief Obtain the Id of the node
@@ -101,7 +103,7 @@ class Node {
 		Model(T&& t) : t(std::move(t)) {}
 	};
 
-	std::unordered_map<TypeId, std::unique_ptr<Base>, Hasher> m_components{};
+	std::unordered_map<TypeId, std::unique_ptr<Base>, Hasher> m_attachments{};
 	std::vector<Node> m_children{};
 	Id<Node> m_id{};
 

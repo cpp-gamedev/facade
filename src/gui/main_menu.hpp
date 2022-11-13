@@ -45,6 +45,7 @@ class WindowMenu : public logger::Accessor {
 	struct {
 		editor::LogState log_state{};
 		editor::InspectNode inspect{};
+		std::string name_buf{};
 		Bool unified_scaling{true};
 	} m_data{};
 	struct {

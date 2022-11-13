@@ -2,40 +2,43 @@
 #include <facade/engine/editor/drag_drop_id.hpp>
 #include <facade/engine/editor/inspector.hpp>
 #include <facade/engine/editor/reflector.hpp>
+#include <facade/util/enum_array.hpp>
 #include <facade/util/enumerate.hpp>
 #include <facade/util/fixed_string.hpp>
 #include <facade/util/logger.hpp>
 
 namespace facade::editor {
 namespace {
-void edit_material(SceneResources const& resources, LitMaterial& lit) {
-	ImGui::Text("Albedo: ");
-	ImGui::SameLine();
-	ImGui::ColorButton("Albedo", {lit.albedo.x, lit.albedo.y, lit.albedo.z, 1.0f});
-	ImGui::Text("%s", FixedString{"Metallic: {:.2f}", lit.metallic}.c_str());
-	ImGui::Text("%s", FixedString{"Roughness: {:.2f}", lit.roughness}.c_str());
+enum class Payload { eTexture, eMaterial, eStaticMesh, eMesh, eCOUNT_ };
+constexpr EnumArray<Payload, char const*> type_v{"ID_TEXTURE", "ID_MATERIAL", "ID_STATIC_MESH", "ID_MESH"};
+
+void edit_material(NotClosed<Window> target, SceneResources const& resources, LitMaterial& lit) {
+	auto const reflect = Reflector{target};
+	reflect("Albedo", Reflector::AsRgb{lit.albedo});
+	ImGui::DragFloat("Metallic", &lit.metallic, 0.1f, 0.0f, 1.0f);
+	ImGui::DragFloat("Roughness", &lit.roughness, 0.1f, 0.0f, 1.0f);
 
 	auto name = FixedString<128>{};
 	if (lit.base_colour) { name = FixedString<128>{"{} ({})", resources.textures[*lit.base_colour].name(), *lit.base_colour}; }
-	make_id_slot(lit.base_colour, "Base Colour Texture", name.c_str(), "ID_TEXTURE", {true});
+	make_id_slot(lit.base_colour, "Base Colour Texture", name.c_str(), type_v[Payload::eTexture], {true});
 	name = {};
 	if (lit.roughness_metallic) { name = FixedString<128>{"{} ({})", resources.textures[*lit.roughness_metallic].name(), *lit.roughness_metallic}; }
-	make_id_slot(lit.roughness_metallic, "Roughness Metallic", name.c_str(), "ID_TEXTURE", {true});
+	make_id_slot(lit.roughness_metallic, "Roughness Metallic", name.c_str(), type_v[Payload::eTexture], {true});
 	name = {};
 	if (lit.emissive) { name = FixedString<128>{"{} ({})", resources.textures[*lit.emissive].name(), *lit.emissive}; }
-	make_id_slot(lit.emissive, "Emissive", name.c_str(), "ID_TEXTURE", {true});
+	make_id_slot(lit.emissive, "Emissive", name.c_str(), type_v[Payload::eTexture], {true});
 }
 
 void edit_material(SceneResourcesMut resources, UnlitMaterial& unlit) {
 	char const* name = unlit.texture ? resources.textures[*unlit.texture].name().data() : "";
-	make_id_slot(unlit.texture, "Texture", name, "ID_TEXTURE", {true});
+	make_id_slot(unlit.texture, "Texture", name, type_v[Payload::eTexture], {true});
 }
 } // namespace
 
 void Inspector::view(Texture const& texture, Id<Texture> id) const {
 	auto const name = FixedString<128>{"{} ({})", texture.name(), id};
 	auto tn = TreeNode{name.c_str()};
-	drag_payload(id, "ID_TEXTURE", name.c_str());
+	drag_payload(id, type_v[Payload::eTexture], name.c_str());
 	if (tn) {
 		auto const view = texture.view();
 		TreeNode::leaf(FixedString{"Extent: {}x{}", view.extent.width, view.extent.height}.c_str());
@@ -48,7 +51,7 @@ void Inspector::view(Texture const& texture, Id<Texture> id) const {
 void Inspector::view(StaticMesh const& mesh, Id<StaticMesh> id) const {
 	auto const name = FixedString<128>{"{} ({})", mesh.name(), id};
 	auto tn = TreeNode{name.c_str()};
-	drag_payload(id, "ID_STATIC_MESH", name.c_str());
+	drag_payload(id, type_v[Payload::eStaticMesh], name.c_str());
 	if (tn) {
 		ImGui::Text("%s", FixedString{"Vertices: {}", mesh.view().vertex_count}.c_str());
 		ImGui::Text("%s", FixedString{"Indices: {}", mesh.view().index_count}.c_str());
@@ -58,9 +61,9 @@ void Inspector::view(StaticMesh const& mesh, Id<StaticMesh> id) const {
 void Inspector::edit(Material& out_material, Id<Material> id) const {
 	auto const name = FixedString<128>{"{} ({})", out_material.name, id};
 	auto tn = TreeNode{name.c_str()};
-	drag_payload(id, "ID_MATERIAL", name.c_str());
+	drag_payload(id, type_v[Payload::eMaterial], name.c_str());
 	if (tn) {
-		if (auto* lit = dynamic_cast<LitMaterial*>(&out_material)) { return edit_material(m_resources, *lit); }
+		if (auto* lit = dynamic_cast<LitMaterial*>(&out_material)) { return edit_material(m_target, m_resources, *lit); }
 		if (auto* unlit = dynamic_cast<UnlitMaterial*>(&out_material)) { return edit_material(m_resources, *unlit); }
 	}
 }
@@ -68,7 +71,7 @@ void Inspector::edit(Material& out_material, Id<Material> id) const {
 void Inspector::edit(Mesh& out_mesh, Id<Mesh> id) const {
 	auto name = FixedString<128>{"{} ({})", m_resources.meshes[id].name, id};
 	auto tn = TreeNode{name.c_str()};
-	drag_payload(id, "ID_MESH", name.c_str());
+	drag_payload(id, type_v[Payload::eMesh], name.c_str());
 	if (tn) {
 		for (auto [primitive, index] : enumerate(out_mesh.primitives)) {
 			auto tn = TreeNode{FixedString{"Primitive [{}]", index}.c_str()};
@@ -79,11 +82,11 @@ void Inspector::edit(Mesh& out_mesh, Id<Mesh> id) const {
 			}
 			if (tn) {
 				name = FixedString<128>{"{} ({})", m_resources.static_meshes[primitive.static_mesh].name(), primitive.static_mesh};
-				make_id_slot(primitive.static_mesh, "Static Mesh", name.c_str(), "ID_STATIC_MESH");
+				make_id_slot(primitive.static_mesh, "Static Mesh", name.c_str(), type_v[Payload::eStaticMesh]);
 
 				name = {};
 				if (primitive.material) { name = FixedString<128>{"{} ({})", m_resources.materials[*primitive.material]->name, *primitive.material}; }
-				make_id_slot(primitive.material, "Material", name.c_str(), "ID_MATERIAL", {true});
+				make_id_slot(primitive.material, "Material", name.c_str(), type_v[Payload::eMaterial], {true});
 			}
 		}
 		if (ImGui::SmallButton("+###add_primitive")) {
@@ -96,8 +99,9 @@ void Inspector::edit(Mesh& out_mesh, Id<Mesh> id) const {
 	}
 }
 
-void Inspector::resources() const {
+void Inspector::resources(std::string& out_name_buf) const {
 	static constexpr auto flags_v = ImGuiTreeNodeFlags_Framed;
+	bool add_material{}, add_mesh{};
 	if (auto tn = TreeNode("Textures", flags_v)) {
 		for (auto [texture, id] : enumerate(m_resources.textures)) { view(texture, id); }
 	}
@@ -106,10 +110,34 @@ void Inspector::resources() const {
 	}
 	if (auto tn = TreeNode("Materials", flags_v)) {
 		for (auto [material, id] : enumerate(m_resources.materials)) { edit(*material, id); }
+		if (ImGui::Button("Add...")) { add_material = true; }
 	}
 	if (auto tn = TreeNode{"Meshes", flags_v}) {
 		for (auto [mesh, id] : enumerate(m_resources.meshes)) { edit(mesh, id); }
+		if (ImGui::Button("Add...")) { add_mesh = true; }
 	}
+
+	if (add_material) { Popup::open("Add Material"); }
+	if (add_mesh) { Popup::open("Add Mesh"); }
+	if (out_name_buf.empty()) { out_name_buf.resize(128, '\0'); }
+	auto open_popup = [&out_name_buf](char const* id, auto func) {
+		if (auto popup = Popup{id}) {
+			ImGui::InputText("Name", out_name_buf.data(), out_name_buf.size());
+			if (ImGui::Button(id)) {
+				auto str = out_name_buf.c_str();
+				if (!*str) { return; }
+				func(str);
+				Popup::close_current();
+			}
+		}
+	};
+	auto push_material = [this](std::string name) {
+		auto mat = std::make_unique<LitMaterial>();
+		mat->name = std::move(name);
+		m_scene.add(std::move(mat));
+	};
+	open_popup("Add Material", [&push_material](char const* name) { push_material(name); });
+	open_popup("Add Mesh", [this](char const* name) { m_scene.add(Mesh{.name = name}); });
 }
 
 void Inspector::camera() const {
@@ -196,7 +224,7 @@ void Inspector::mesh(Node& out_node) const {
 	if (auto tn = TreeNode{"Mesh", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed}) {
 		auto name = FixedString<128>{};
 		if (mesh_id) { name = FixedString<128>{"{} ({})", m_scene.find(*mesh_id)->name, *mesh_id}; }
-		make_id_slot<Mesh>(out_node, "Mesh", name.c_str(), "ID_MESH");
+		make_id_slot<Mesh>(out_node, "Mesh", name.c_str(), type_v[Payload::eMesh]);
 	}
 }
 

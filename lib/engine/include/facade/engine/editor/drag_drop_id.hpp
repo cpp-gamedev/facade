@@ -2,7 +2,6 @@
 #include <imgui.h>
 #include <facade/engine/editor/common.hpp>
 #include <facade/scene/node.hpp>
-#include <facade/util/bool.hpp>
 #include <facade/util/fixed_string.hpp>
 #include <optional>
 

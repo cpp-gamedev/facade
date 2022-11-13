@@ -13,7 +13,7 @@ class Inspector {
 	void edit(Material& out_material, Id<Material> id) const;
 	void edit(Mesh& out_mesh, Id<Mesh> id) const;
 
-	void resources() const;
+	void resources(std::string& out_name_buf) const;
 	void camera() const;
 	void lights() const;
 	void transform(Node& out_node, Bool& out_unified_scaling) const;

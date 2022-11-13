@@ -8,7 +8,7 @@ struct Geometry;
 
 class StaticMesh {
   public:
-	StaticMesh(Gfx const& gfx, Geometry const& geometry, std::string name = "(unnamed)");
+	StaticMesh(Gfx const& gfx, Geometry const& geometry, std::string name = "(Unnamed)");
 
 	std::string_view name() const { return m_name; }
 	MeshView view() const;

@@ -7,7 +7,7 @@
 
 namespace facade {
 struct SamplerCreateInfo {
-	std::string name{"(unnamed)"};
+	std::string name{"(Unnamed)"};
 	vk::SamplerAddressMode mode_s{vk::SamplerAddressMode::eRepeat};
 	vk::SamplerAddressMode mode_t{vk::SamplerAddressMode::eRepeat};
 	vk::Filter min{vk::Filter::eLinear};
@@ -15,7 +15,7 @@ struct SamplerCreateInfo {
 };
 
 struct TextureCreateInfo {
-	std::string name{"(unnamed)"};
+	std::string name{"(Unnamed)"};
 	bool mip_mapped{true};
 	ColourSpace colour_space{ColourSpace::eSrgb};
 };

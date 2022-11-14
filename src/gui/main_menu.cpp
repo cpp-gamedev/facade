@@ -118,7 +118,7 @@ bool WindowMenu::display_log() {
 bool WindowMenu::display_resources(Scene& scene) {
 	bool show{true};
 	ImGui::SetNextWindowSize({400.0f, 300.0f}, ImGuiCond_FirstUseEver);
-	if (auto window = editor::Window{"Resources", &show}) { editor::SceneInspector{window, scene}.resources(m_data.inspect_data); }
+	if (auto window = editor::Window{"Resources", &show}) { m_data.browser.display(window, scene); }
 	return show;
 }
 

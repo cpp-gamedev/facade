@@ -149,4 +149,21 @@ class StyleVar : public Pinned {
 
 	explicit operator bool() const { return true; }
 };
+
+///
+/// \brief RAII Dear ImGui TabBar
+///
+class TabBar : public Openable {
+  public:
+	class Item;
+
+	explicit TabBar(char const* label, int flags = {});
+	~TabBar();
+};
+
+class TabBar::Item : public Openable {
+  public:
+	explicit Item(NotClosed<TabBar>, char const* label, bool* open = {}, int flags = {});
+	~Item();
+};
 } // namespace facade::editor

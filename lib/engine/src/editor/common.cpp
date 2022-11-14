@@ -91,4 +91,16 @@ Menu::~Menu() {
 StyleVar::StyleVar(int index, glm::vec2 value) { ImGui::PushStyleVar(index, {value.x, value.y}); }
 StyleVar::StyleVar(int index, float value) { ImGui::PushStyleVar(index, value); }
 StyleVar::~StyleVar() { ImGui::PopStyleVar(); }
+
+TabBar::TabBar(char const* label, int flags) : Openable(ImGui::BeginTabBar(label, flags)) {}
+
+TabBar::~TabBar() {
+	if (m_open) { ImGui::EndTabBar(); }
+}
+
+TabBar::Item::Item(NotClosed<TabBar>, char const* label, bool* open, int flags) : Openable(ImGui::BeginTabItem(label, open, flags)) {}
+
+TabBar::Item::~Item() {
+	if (m_open) { ImGui::EndTabItem(); }
+}
 } // namespace facade::editor

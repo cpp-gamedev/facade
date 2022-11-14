@@ -96,56 +96,6 @@ void ResourceInspector::edit(Mesh& out_mesh, Id<Mesh> id) const {
 	}
 }
 
-void SceneInspector::resources(Data& out_data) const {
-	auto const ri = ResourceInspector{m_target, m_scene};
-	static constexpr auto flags_v = ImGuiTreeNodeFlags_Framed;
-	bool add_material{}, add_mesh{};
-	if (auto tn = TreeNode("Textures", flags_v)) {
-		for (auto [texture, id] : enumerate(m_resources.textures.view())) { ri.view(texture, id); }
-	}
-	if (auto tn = TreeNode("Static Meshes", flags_v)) {
-		for (auto [static_mesh, id] : enumerate(m_resources.static_meshes.view())) { ri.view(static_mesh, id); }
-	}
-	if (auto tn = TreeNode("Materials", flags_v)) {
-		for (auto [material, id] : enumerate(m_resources.materials.view())) { ri.edit(material, id); }
-		if (ImGui::Button("Add...")) { add_material = true; }
-	}
-	if (auto tn = TreeNode{"Meshes", flags_v}) {
-		for (auto [mesh, id] : enumerate(m_resources.meshes.view())) { ri.edit(mesh, id); }
-		if (ImGui::Button("Add...")) { add_mesh = true; }
-	}
-
-	if (add_material) { Popup::open("Add Material"); }
-	if (out_data.input_buffer.empty()) { out_data.input_buffer.resize(128, '\0'); }
-
-	if (auto popup = Popup{"Add Mesh"}) {
-		ImGui::InputText("Name", out_data.input_buffer.data(), out_data.input_buffer.size());
-		if (ImGui::Button("Add") && *out_data.input_buffer.c_str()) {
-			m_scene.add(Mesh{.name = out_data.input_buffer.c_str()});
-			Popup::close_current();
-		}
-	}
-
-	if (add_mesh) { Popup::open("Add Mesh"); }
-	if (auto popup = Popup{"Add Material"}) {
-		ImGui::InputText("Name", out_data.input_buffer.data(), out_data.input_buffer.size());
-		static constexpr char const* mat_types_v[] = {"Lit", "Unlit"};
-		static constexpr auto mat_types_size_v{static_cast<int>(std::size(mat_types_v))};
-		char const* mat_type = out_data.material_type >= 0 && out_data.material_type < mat_types_size_v ? mat_types_v[out_data.material_type] : "Invalid";
-		ImGui::SliderInt("Type", &out_data.material_type, 0, mat_types_size_v - 1, mat_type);
-		if (ImGui::Button("Add") && *out_data.input_buffer.c_str()) {
-			auto mat = std::unique_ptr<MaterialBase>{};
-			switch (out_data.material_type) {
-			case 0: mat = std::make_unique<LitMaterial>(); break;
-			case 1: mat = std::make_unique<UnlitMaterial>(); break;
-			}
-			mat->name = out_data.input_buffer.c_str();
-			m_scene.add(Material{std::move(mat)});
-			Popup::close_current();
-		}
-	}
-}
-
 void SceneInspector::camera() const {
 	auto& node = m_scene.camera();
 	auto* id = node.find<Id<Camera>>();

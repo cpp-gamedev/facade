@@ -53,7 +53,7 @@ bool WindowMenu::display_scene(Scene& scene) {
 }
 
 bool WindowMenu::display_camera(Scene& scene) {
-	ImGui::SetNextWindowSize({400.0f, 250.0f}, ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSize({400.0f, 300.0f}, ImGuiCond_FirstUseEver);
 	bool show{true};
 	if (auto window = editor::Window{"Camera", &show}) { editor::SceneInspector{window, scene}.camera(); }
 	return show;

@@ -40,6 +40,7 @@ void ResourceBrowser::add_mesh(bool trigger) {
 	if (trigger) { Popup::open("Add Mesh"); }
 	if (auto popup = Popup{"Add Mesh"}) {
 		if (m_data.mesh.buffer.empty()) { m_data.mesh.buffer.resize(128, '\0'); }
+		if (trigger) { ImGui::SetKeyboardFocusHere(); }
 		ImGui::InputText("Name", m_data.mesh.buffer.data(), m_data.mesh.buffer.size());
 		if (ImGui::Button("Add") && *m_data.mesh.buffer.c_str()) {
 			m_scene->add(Mesh{.name = m_data.mesh.buffer.c_str()});
@@ -52,6 +53,7 @@ void ResourceBrowser::add_material(bool trigger) {
 	if (trigger) { Popup::open("Add Material"); }
 	if (auto popup = Popup{"Add Material"}) {
 		if (m_data.mat.buffer.empty()) { m_data.mat.buffer.resize(128, '\0'); }
+		if (trigger) { ImGui::SetKeyboardFocusHere(); }
 		ImGui::InputText("Name", m_data.mat.buffer.data(), m_data.mat.buffer.size());
 		static constexpr char const* mat_types_v[] = {"Lit", "Unlit"};
 		static constexpr auto mat_types_size_v{static_cast<int>(std::size(mat_types_v))};
@@ -76,6 +78,7 @@ void ResourceBrowser::add_static_mesh(bool trigger) {
 		if (m_data.static_mesh.buffer.empty()) { m_data.static_mesh.buffer.resize(128, '\0'); }
 		auto& sm = m_data.static_mesh;
 		auto const reflect = Reflector{*m_target};
+		if (trigger) { ImGui::SetKeyboardFocusHere(); }
 		ImGui::InputText("Name", sm.buffer.data(), sm.buffer.size());
 		ImGui::Separator();
 		if (auto tab = TabBar{"Static Mesh"}) {
@@ -90,16 +93,37 @@ void ResourceBrowser::add_static_mesh(bool trigger) {
 				ImGui::SliderInt("Quads per side", &sm.sphere.quads_per_side, 1, 128);
 				sm.type = SmType::eSphere;
 			}
+			auto cylinder = TabBar::Item{tab, "Cylinder"};
+			auto cone = TabBar::Item{tab, "Cone"};
+			if (cylinder || cone) {
+				ImGui::DragFloat("Diameter (xz)", &sm.conic.xz_diam, 0.05f, 0.01f, Reflector::max_v);
+				ImGui::DragFloat("Height (y)", &sm.conic.y_height, 0.05f, 0.01f, Reflector::max_v);
+				reflect("Vertex Colour", Reflector::AsRgb{sm.conic.vertex_rgb});
+				ImGui::SliderInt("Points", &sm.conic.xz_points, 6, 1024);
+				sm.type = cylinder ? SmType::eCylinder : SmType::eCone;
+			}
+			if (auto item = TabBar::Item{tab, "Arrow"}) {
+				ImGui::DragFloat("Diameter (xz)", &sm.arrow.stalk_diam, 0.05f, 0.01f, Reflector::max_v);
+				ImGui::DragFloat("Height (y)", &sm.arrow.stalk_height, 0.05f, 0.01f, Reflector::max_v);
+				reflect("Vertex Colour", Reflector::AsRgb{sm.arrow.vertex_rgb});
+				ImGui::SliderInt("Points", &sm.arrow.xz_points, 6, 1024);
+				sm.type = SmType::eArrow;
+			}
 		}
 		if (ImGui::Button("Add") && *sm.buffer.c_str()) {
 			auto const qps = static_cast<std::uint32_t>(sm.sphere.quads_per_side);
+			auto const conic_pts = static_cast<std::uint32_t>(sm.conic.xz_points);
+			auto const arrow_pts = static_cast<std::uint32_t>(sm.arrow.xz_points);
 			auto geometry = Geometry{};
 			switch (sm.type) {
 			case SmType::eCube: geometry = make_cube(sm.cube.size, sm.cube.vertex_rgb); break;
 			case SmType::eSphere: geometry = make_cubed_sphere(sm.sphere.diameter, qps, sm.sphere.vertex_rgb); break;
+			case SmType::eCone: geometry = make_cone(sm.conic.xz_diam, sm.conic.y_height, conic_pts); break;
+			case SmType::eCylinder: geometry = make_cylinder(sm.conic.xz_diam, sm.conic.y_height, conic_pts); break;
+			case SmType::eArrow: geometry = make_arrow(sm.arrow.stalk_diam, sm.arrow.stalk_height, arrow_pts, sm.arrow.vertex_rgb); break;
 			default: logger::warn("Unknown static mesh type"); break;
 			}
-			m_scene->add(std::move(geometry), sm.buffer.c_str());
+			if (!geometry.vertices.empty()) { m_scene->add(std::move(geometry), sm.buffer.c_str()); }
 			Popup::close_current();
 		}
 	}

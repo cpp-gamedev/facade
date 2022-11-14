@@ -27,7 +27,7 @@ class ResourceBrowser {
 	void add_material(bool trigger);
 	void add_static_mesh(bool trigger);
 
-	enum class SmType { eCube, eSphere, eCone, eCylinder };
+	enum class SmType { eCube, eSphere, eCone, eCylinder, eArrow };
 
 	struct {
 		struct {
@@ -51,9 +51,16 @@ class ResourceBrowser {
 			} sphere{};
 			struct {
 				glm::vec3 vertex_rgb{1.0f};
-				float xy_diam{1.0f};
+				float xz_diam{1.0f};
+				int xz_points{128};
 				float y_height{1.0f};
 			} conic{};
+			struct {
+				glm::vec3 vertex_rgb{1.0f};
+				float stalk_diam{0.5f};
+				float stalk_height{1.0f};
+				int xz_points{128};
+			} arrow{};
 		} static_mesh{};
 	} m_data{};
 

@@ -1,5 +1,6 @@
 #pragma once
 #include <facade/scene/id.hpp>
+#include <facade/scene/resource_array.hpp>
 #include <facade/util/colour_space.hpp>
 #include <facade/vk/texture.hpp>
 #include <glm/vec3.hpp>
@@ -16,9 +17,9 @@ class Pipeline;
 ///
 struct TextureStore {
 	///
-	/// \brief Textures identified by Id as index into this span.
+	/// \brief Textures resource array.
 	///
-	std::span<Texture const> textures;
+	ResourceArray<Texture> const& textures;
 	///
 	/// \brief White texture.
 	///
@@ -31,11 +32,11 @@ struct TextureStore {
 	///
 	/// \brief Obtain a texture corresponding to index if present, else fallback.
 	///
-	Texture const& get(std::optional<std::size_t> index, Texture const& fallback) const;
+	Texture const& get(std::optional<Id<Texture>> index, Texture const& fallback) const;
 	///
 	/// \brief Obtain a texture corresponding to index if present, else white.
 	///
-	Texture const& get(std::optional<std::size_t> index) const { return get(index, white); }
+	Texture const& get(std::optional<Id<Texture>> index) const { return get(index, white); }
 };
 
 ///

@@ -99,8 +99,24 @@ void ResourceInspector::edit(Mesh& out_mesh, Id<Mesh> id) const {
 void SceneInspector::camera() const {
 	auto& node = m_scene.camera();
 	auto* id = node.find<Id<Camera>>();
-	assert(id && id->value() < m_resources.cameras.size());
-	auto& camera = m_resources.cameras[id->value()];
+	assert(id);
+
+	if (ImGui::BeginCombo("Select", FixedString{"{} ({})", node.name, *id}.c_str())) {
+		for (auto const& cid : m_scene.cameras()) {
+			auto const* node = m_scene.find(cid);
+			assert(node);
+			auto const* cam = node->find<Id<Camera>>();
+			assert(cam);
+			if (ImGui::Selectable(FixedString{"{} ({})", node->name, *cam}.c_str(), cid == *id)) {
+				if (!m_scene.select_camera(cid)) { logger::warn("[Inspector] Failed to select camera: [{}]", cid); }
+			}
+		}
+		ImGui::EndCombo();
+	}
+	ImGui::Separator();
+
+	auto& camera = m_resources.cameras[*id];
+	ImGui::Text("%s", camera.name.c_str());
 	static constexpr auto flags_v = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed;
 	auto const reflect = Reflector{m_target};
 	if (auto tn = TreeNode{"Transform", flags_v}) {

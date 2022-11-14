@@ -100,7 +100,7 @@ void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Node const&
 			pipeline.set_line_width(m_scene->pipeline_state.line_width);
 
 			update_view(pipeline);
-			auto const store = TextureStore{resources.textures.view(), m_white, m_black};
+			auto const store = TextureStore{resources.textures, m_white, m_black};
 			material.write_sets(pipeline, store);
 
 			auto const& static_mesh = resources.static_meshes[primitive.static_mesh];

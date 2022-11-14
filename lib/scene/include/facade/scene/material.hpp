@@ -39,12 +39,12 @@ struct TextureStore {
 };
 
 ///
-/// \brief Base Material: stores render parameters for a mesh.
+/// \brief Base class for concrete materials.
 ///
 class MaterialBase {
   public:
 	///
-	/// \brief The alpha blend mode.
+	/// \brief Alpha blend mode.
 	///
 	enum class AlphaMode : std::uint32_t { eOpaque = 0, eBlend, eMask };
 
@@ -64,9 +64,15 @@ class MaterialBase {
 	///
 	virtual void write_sets(Pipeline& pipeline, TextureStore const& store) const = 0;
 
+	///
+	/// \brief Name of this instance.
+	///
 	std::string name{"(Unnamed)"};
 };
 
+///
+/// \brief Value-semantic strategy wrapper for concrete materials.
+///
 class Material {
   public:
 	using AlphaMode = MaterialBase::AlphaMode;

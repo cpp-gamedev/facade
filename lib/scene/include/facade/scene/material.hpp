@@ -39,27 +39,18 @@ struct TextureStore {
 };
 
 ///
-/// \brief Base Material: stores render parameters for a mesh.
+/// \brief Base class for concrete materials.
 ///
-class Material {
+class MaterialBase {
   public:
 	///
-	/// \brief The alpha blend mode.
+	/// \brief Alpha blend mode.
 	///
 	enum class AlphaMode : std::uint32_t { eOpaque = 0, eBlend, eMask };
 
-	///
-	/// \brief Convert sRGB encoded colour to linear.
-	///
-	static glm::vec4 to_linear(glm::vec4 const& srgb);
-	///
-	/// \brief Convert linear encoded colour to sRGB.
-	///
-	static glm::vec4 to_srgb(glm::vec4 const& linear);
-
 	inline static std::string const default_shader_id{"default"};
 
-	virtual ~Material() = default;
+	virtual ~MaterialBase() = default;
 
 	///
 	/// \brief Obtain the ID for the shader used by this material.
@@ -73,13 +64,46 @@ class Material {
 	///
 	virtual void write_sets(Pipeline& pipeline, TextureStore const& store) const = 0;
 
+	///
+	/// \brief Name of this instance.
+	///
 	std::string name{"(Unnamed)"};
+};
+
+///
+/// \brief Value-semantic strategy wrapper for concrete materials.
+///
+class Material {
+  public:
+	using AlphaMode = MaterialBase::AlphaMode;
+
+	Material(std::unique_ptr<MaterialBase>&& base) : m_base(std::move(base)) {}
+
+	std::string const& shader_id() const {
+		assert(m_base);
+		return m_base->shader_id();
+	}
+
+	void write_sets(Pipeline& pipeline, TextureStore const& store) const {
+		assert(m_base);
+		m_base->write_sets(pipeline, store);
+	}
+
+	std::string_view name() const { return m_base->name; }
+
+	MaterialBase& base() const {
+		assert(m_base);
+		return *m_base;
+	}
+
+  private:
+	std::unique_ptr<MaterialBase> m_base;
 };
 
 ///
 /// \brief Unlit Material.
 ///
-class UnlitMaterial : public Material {
+class UnlitMaterial : public MaterialBase {
   public:
 	inline static std::string const shader_id_v{"unlit"};
 
@@ -99,7 +123,7 @@ class UnlitMaterial : public Material {
 ///
 /// \brief PBR lit material.
 ///
-class LitMaterial : public Material {
+class LitMaterial : public MaterialBase {
   public:
 	///
 	/// \brief Base colour factor.

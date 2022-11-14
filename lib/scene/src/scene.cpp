@@ -69,7 +69,7 @@ struct Scene::TreeBuilder {
 			ret.camera = *camera;
 		} else {
 			// add node with default camera
-			assert(!out_scene.m_storage.cameras.empty());
+			assert(!out_scene.m_storage.resources.cameras.empty());
 			auto node = Node{};
 			node.name = "camera";
 			// TODO
@@ -84,39 +84,39 @@ struct Scene::TreeBuilder {
 Scene::Scene(Gfx const& gfx) : m_gfx(gfx), m_sampler(gfx) { add_default_camera(); }
 
 Id<Camera> Scene::add(Camera camera) {
-	auto const id = m_storage.cameras.size();
-	m_storage.cameras.push_back(std::move(camera));
+	auto const id = m_storage.resources.cameras.size();
+	m_storage.resources.cameras.m_array.push_back(std::move(camera));
 	return id;
 }
 
 Id<Sampler> Scene::add(Sampler::CreateInfo const& create_info) {
-	auto const id = m_storage.samplers.size();
-	m_storage.samplers.emplace_back(m_gfx, create_info);
+	auto const id = m_storage.resources.samplers.size();
+	m_storage.resources.samplers.m_array.emplace_back(m_gfx, create_info);
 	return id;
 }
 
-Id<Material> Scene::add(std::unique_ptr<Material> material) {
-	auto const id = m_storage.materials.size();
-	m_storage.materials.push_back(std::move(material));
+Id<Material> Scene::add(Material material) {
+	auto const id = m_storage.resources.materials.size();
+	m_storage.resources.materials.m_array.push_back(std::move(material));
 	return id;
 }
 
 Id<StaticMesh> Scene::add(Geometry const& geometry, std::string name) {
-	auto const id = m_storage.static_meshes.size();
-	m_storage.static_meshes.emplace_back(m_gfx, geometry, std::move(name));
+	auto const id = m_storage.resources.static_meshes.size();
+	m_storage.resources.static_meshes.m_array.emplace_back(m_gfx, geometry, std::move(name));
 	return id;
 }
 
 Id<Texture> Scene::add(Image::View image, Id<Sampler> sampler_id, ColourSpace colour_space) {
 	auto sampler = [&] {
-		if (sampler_id >= m_storage.samplers.size()) {
+		if (sampler_id >= m_storage.resources.samplers.size()) {
 			logger::warn("[Scene] Invalid sampler id: [{}], using default", sampler_id.value());
 			return default_sampler();
 		}
-		return m_storage.samplers[sampler_id].sampler();
+		return m_storage.resources.samplers[sampler_id].sampler();
 	}();
-	auto const ret = m_storage.textures.size();
-	m_storage.textures.emplace_back(m_gfx, sampler, image, Texture::CreateInfo{.colour_space = colour_space});
+	auto const ret = m_storage.resources.textures.size();
+	m_storage.resources.textures.m_array.emplace_back(m_gfx, sampler, image, Texture::CreateInfo{.colour_space = colour_space});
 	return ret;
 }
 
@@ -132,6 +132,12 @@ Id<Node> Scene::add(Node node, Id<Node> parent) {
 	throw Error{fmt::format("Scene {}: Invalid parent Node Id: {}", m_name, parent)};
 }
 
+std::vector<Texture> Scene::replace(std::vector<Texture>&& textures) { return std::exchange(m_storage.resources.textures.m_array, std::move(textures)); }
+
+std::vector<StaticMesh> Scene::replace(std::vector<StaticMesh>&& static_meshes) {
+	return std::exchange(m_storage.resources.static_meshes.m_array, std::move(static_meshes));
+}
+
 bool Scene::load(Id<Tree> id) {
 	if (id >= tree_count()) { return false; }
 	return load_tree(id);
@@ -139,12 +145,6 @@ bool Scene::load(Id<Tree> id) {
 
 Ptr<Node> Scene::find(Id<Node> id) { return const_cast<Node*>(std::as_const(*this).find_node(m_tree.roots, id)); }
 Ptr<Node const> Scene::find(Id<Node> id) const { return find_node(m_tree.roots, id); }
-
-Ptr<Material> Scene::find(Id<Material> id) const { return id >= m_storage.materials.size() ? nullptr : m_storage.materials[id].get(); }
-Ptr<StaticMesh const> Scene::find(Id<StaticMesh> id) const { return id >= m_storage.static_meshes.size() ? nullptr : &m_storage.static_meshes[id]; }
-Ptr<Texture const> Scene::find(Id<Texture> id) const { return id >= m_storage.textures.size() ? nullptr : &m_storage.textures[id]; }
-Ptr<Mesh> Scene::find(Id<Mesh> id) { return id >= m_storage.meshes.size() ? nullptr : &m_storage.meshes[id]; }
-Ptr<Camera> Scene::find(Id<Camera> id) { return id >= m_storage.cameras.size() ? nullptr : &m_storage.cameras[id]; }
 
 bool Scene::select(Id<Camera> id) {
 	if (id >= camera_count()) { return false; }
@@ -163,7 +163,7 @@ Node const& Scene::camera() const {
 Texture Scene::make_texture(Image::View image) const { return Texture{m_gfx, default_sampler(), image}; }
 
 void Scene::add_default_camera() {
-	m_storage.cameras.push_back(Camera{.name = "default"});
+	m_storage.resources.cameras.m_array.push_back(Camera{.name = "default"});
 	auto node = Node{};
 	node.name = "camera";
 	node.attach<Id<Camera>>(0);
@@ -177,8 +177,8 @@ bool Scene::load_tree(Id<Tree> id) {
 }
 
 Id<Mesh> Scene::add_unchecked(Mesh mesh) {
-	auto const id = m_storage.meshes.size();
-	m_storage.meshes.push_back(std::move(mesh));
+	auto const id = m_storage.resources.meshes.size();
+	m_storage.resources.meshes.m_array.push_back(std::move(mesh));
 	return id;
 }
 
@@ -200,20 +200,20 @@ Node const* Scene::find_node(std::span<Node const> nodes, Id<Node> id) {
 
 void Scene::check(Mesh const& mesh) const noexcept(false) {
 	for (auto const& primitive : mesh.primitives) {
-		if (primitive.static_mesh >= m_storage.static_meshes.size()) {
+		if (primitive.static_mesh >= m_storage.resources.static_meshes.size()) {
 			throw Error{fmt::format("Scene {}: Invalid Static Mesh Id: {}", m_name, primitive.static_mesh)};
 		}
-		if (primitive.material && primitive.material->value() >= m_storage.materials.size()) {
+		if (primitive.material && primitive.material->value() >= m_storage.resources.materials.size()) {
 			throw Error{fmt::format("Scene {}: Invalid Material Id: {}", m_name, *primitive.material)};
 		}
 	}
 }
 
 void Scene::check(Node const& node) const noexcept(false) {
-	if (auto const* mesh_id = node.find<Id<Mesh>>(); mesh_id && *mesh_id >= m_storage.meshes.size()) {
+	if (auto const* mesh_id = node.find<Id<Mesh>>(); mesh_id && *mesh_id >= m_storage.resources.meshes.size()) {
 		throw Error{fmt::format("Scene {}: Invalid mesh [{}] in node", m_name, *mesh_id)};
 	}
-	if (auto const* camera_id = node.find<Id<Camera>>(); camera_id && *camera_id >= m_storage.cameras.size()) {
+	if (auto const* camera_id = node.find<Id<Camera>>(); camera_id && *camera_id >= m_storage.resources.cameras.size()) {
 		throw Error{fmt::format("Scene {}: Invalid camera [{}] in node", m_name, *camera_id)};
 	}
 	for (auto const& child : node.m_children) { check(child); }

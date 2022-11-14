@@ -26,7 +26,7 @@ void edit_material(NotClosed<Window> target, SceneResources const& resources, Li
 	make_id_slot(lit.emissive, "Emissive", name.c_str(), {true});
 }
 
-void edit_material(SceneResourcesMut resources, UnlitMaterial& unlit) {
+void edit_material(SceneResources const& resources, UnlitMaterial& unlit) {
 	auto name = FixedString<128>{};
 	if (unlit.texture) { name = FixedString<128>{"{} ({})", resources.textures[*unlit.texture].name(), *unlit.texture}; }
 	make_id_slot(unlit.texture, "Texture", name.c_str(), {true});
@@ -57,12 +57,13 @@ void ResourceInspector::view(StaticMesh const& mesh, Id<StaticMesh> id) const {
 }
 
 void ResourceInspector::edit(Material& out_material, Id<Material> id) const {
-	auto const name = FixedString<128>{"{} ({})", out_material.name, id};
+	auto const name = FixedString<128>{"{} ({})", out_material.name(), id};
 	auto tn = TreeNode{name.c_str()};
 	drag_payload(id, name.c_str());
 	if (tn) {
-		if (auto* lit = dynamic_cast<LitMaterial*>(&out_material)) { return edit_material(m_target, m_resources, *lit); }
-		if (auto* unlit = dynamic_cast<UnlitMaterial*>(&out_material)) { return edit_material(m_resources, *unlit); }
+		auto& mat = out_material.base();
+		if (auto* lit = dynamic_cast<LitMaterial*>(&mat)) { return edit_material(m_target, m_resources, *lit); }
+		if (auto* unlit = dynamic_cast<UnlitMaterial*>(&mat)) { return edit_material(m_resources, *unlit); }
 	}
 }
 
@@ -78,7 +79,7 @@ void ResourceInspector::edit(Mesh& out_mesh, Id<Mesh> id) const {
 				make_id_slot(primitive.static_mesh, "Static Mesh", name.c_str());
 
 				name = {};
-				if (primitive.material) { name = FixedString<128>{"{} ({})", m_resources.materials[*primitive.material]->name, *primitive.material}; }
+				if (primitive.material) { name = FixedString<128>{"{} ({})", m_resources.materials[*primitive.material].name(), *primitive.material}; }
 				make_id_slot(primitive.material, "Material", name.c_str(), {true});
 
 				if (small_button_red("x###remove_primitive")) { to_erase = index; }
@@ -95,46 +96,54 @@ void ResourceInspector::edit(Mesh& out_mesh, Id<Mesh> id) const {
 	}
 }
 
-void SceneInspector::resources(std::string& out_name_buf) const {
+void SceneInspector::resources(Data& out_data) const {
 	auto const ri = ResourceInspector{m_target, m_scene};
 	static constexpr auto flags_v = ImGuiTreeNodeFlags_Framed;
 	bool add_material{}, add_mesh{};
 	if (auto tn = TreeNode("Textures", flags_v)) {
-		for (auto [texture, id] : enumerate(m_resources.textures)) { ri.view(texture, id); }
+		for (auto [texture, id] : enumerate(m_resources.textures.view())) { ri.view(texture, id); }
 	}
 	if (auto tn = TreeNode("Static Meshes", flags_v)) {
-		for (auto [static_mesh, id] : enumerate(m_resources.static_meshes)) { ri.view(static_mesh, id); }
+		for (auto [static_mesh, id] : enumerate(m_resources.static_meshes.view())) { ri.view(static_mesh, id); }
 	}
 	if (auto tn = TreeNode("Materials", flags_v)) {
-		for (auto [material, id] : enumerate(m_resources.materials)) { ri.edit(*material, id); }
+		for (auto [material, id] : enumerate(m_resources.materials.view())) { ri.edit(material, id); }
 		if (ImGui::Button("Add...")) { add_material = true; }
 	}
 	if (auto tn = TreeNode{"Meshes", flags_v}) {
-		for (auto [mesh, id] : enumerate(m_resources.meshes)) { ri.edit(mesh, id); }
+		for (auto [mesh, id] : enumerate(m_resources.meshes.view())) { ri.edit(mesh, id); }
 		if (ImGui::Button("Add...")) { add_mesh = true; }
 	}
 
 	if (add_material) { Popup::open("Add Material"); }
-	if (add_mesh) { Popup::open("Add Mesh"); }
-	if (out_name_buf.empty()) { out_name_buf.resize(128, '\0'); }
-	auto open_popup = [&out_name_buf](char const* id, auto func) {
-		if (auto popup = Popup{id}) {
-			ImGui::InputText("Name", out_name_buf.data(), out_name_buf.size());
-			if (ImGui::Button(id)) {
-				auto str = out_name_buf.c_str();
-				if (!*str) { return; }
-				func(str);
-				Popup::close_current();
-			}
+	if (out_data.input_buffer.empty()) { out_data.input_buffer.resize(128, '\0'); }
+
+	if (auto popup = Popup{"Add Mesh"}) {
+		ImGui::InputText("Name", out_data.input_buffer.data(), out_data.input_buffer.size());
+		if (ImGui::Button("Add") && *out_data.input_buffer.c_str()) {
+			m_scene.add(Mesh{.name = out_data.input_buffer.c_str()});
+			Popup::close_current();
 		}
-	};
-	auto push_material = [this](std::string name) {
-		auto mat = std::make_unique<LitMaterial>();
-		mat->name = std::move(name);
-		m_scene.add(std::move(mat));
-	};
-	open_popup("Add Material", [&push_material](char const* name) { push_material(name); });
-	open_popup("Add Mesh", [this](char const* name) { m_scene.add(Mesh{.name = name}); });
+	}
+
+	if (add_mesh) { Popup::open("Add Mesh"); }
+	if (auto popup = Popup{"Add Material"}) {
+		ImGui::InputText("Name", out_data.input_buffer.data(), out_data.input_buffer.size());
+		static constexpr char const* mat_types_v[] = {"Lit", "Unlit"};
+		static constexpr auto mat_types_size_v{static_cast<int>(std::size(mat_types_v))};
+		char const* mat_type = out_data.material_type >= 0 && out_data.material_type < mat_types_size_v ? mat_types_v[out_data.material_type] : "Invalid";
+		ImGui::SliderInt("Type", &out_data.material_type, 0, mat_types_size_v - 1, mat_type);
+		if (ImGui::Button("Add") && *out_data.input_buffer.c_str()) {
+			auto mat = std::unique_ptr<MaterialBase>{};
+			switch (out_data.material_type) {
+			case 0: mat = std::make_unique<LitMaterial>(); break;
+			case 1: mat = std::make_unique<UnlitMaterial>(); break;
+			}
+			mat->name = out_data.input_buffer.c_str();
+			m_scene.add(Material{std::move(mat)});
+			Popup::close_current();
+		}
+	}
 }
 
 void SceneInspector::camera() const {
@@ -218,7 +227,7 @@ void SceneInspector::mesh(Node& out_node) const {
 	auto* mesh_id = out_node.find<Id<Mesh>>();
 	if (auto tn = TreeNode{"Mesh", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed}) {
 		auto name = FixedString<128>{};
-		if (mesh_id) { name = FixedString<128>{"{} ({})", m_scene.find(*mesh_id)->name, *mesh_id}; }
+		if (mesh_id) { name = FixedString<128>{"{} ({})", m_resources.meshes.find(*mesh_id)->name, *mesh_id}; }
 		make_id_slot<Mesh>(out_node, "Mesh", name.c_str());
 	}
 }

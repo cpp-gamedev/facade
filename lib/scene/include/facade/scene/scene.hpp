@@ -24,7 +24,6 @@ struct DataProvider;
 class Scene {
   public:
 	using Resources = SceneResources;
-	using ResourcesMut = SceneResourcesMut;
 
 	// defined in loader.hpp
 	class GltfLoader;
@@ -66,7 +65,7 @@ class Scene {
 	/// \param material Concrete Material instance to add
 	/// \returns Id to stored Material
 	///
-	Id<Material> add(std::unique_ptr<Material> material);
+	Id<Material> add(Material material);
 	///
 	/// \brief Add a StaticMesh.
 	/// \param geometry Geometry to initialize StaticMesh with
@@ -93,6 +92,23 @@ class Scene {
 	/// \returns Id to stored Node
 	///
 	Id<Node> add(Node node, Id<Node> parent);
+
+	///
+	/// \brief Replace all textures in resources.
+	/// \param textures Texture instances to swap in
+	/// \returns Previously stored textures
+	///
+	/// Intended for loaders.
+	///
+	std::vector<Texture> replace(std::vector<Texture>&& textures);
+	///
+	/// \brief Replace all static meshes in resources.
+	/// \param static_meshes StaticMesh instances to swap in
+	/// \returns Previously stored static meshes
+	///
+	/// Intended for loaders.
+	///
+	std::vector<StaticMesh> replace(std::vector<StaticMesh>&& static_meshes);
 
 	///
 	/// \brief Obtain the current Tree Id.
@@ -124,37 +140,6 @@ class Scene {
 	///
 	Ptr<Node> find(Id<Node> id);
 	///
-	/// \brief Obtain a mutable pointer to the Material corresponding to its Id.
-	/// \param id Id of the Material
-	/// \returns nullptr if id is invalid (out of bounds)
-	///
-	Ptr<Material> find(Id<Material> id) const;
-	///
-	/// \brief Obtain an immutable pointer to the StaticMesh corresponding to its Id.
-	/// \param id Id of the StaticMesh
-	/// \returns nullptr if id is invalid (out of bounds)
-	///
-	Ptr<StaticMesh const> find(Id<StaticMesh> id) const;
-	///
-	/// \brief Obtain an immutable pointer to the Texture corresponding to its Id.
-	/// \param id Id of the Texture
-	/// \returns nullptr if id is invalid (out of bounds)
-	///
-	Ptr<Texture const> find(Id<Texture> id) const;
-	///
-	/// \brief Obtain a mutable pointer to the Mesh corresponding to its Id.
-	/// \param id Id of the Mesh
-	/// \returns nullptr if id is invalid (out of bounds)
-	///
-	Ptr<Mesh> find(Id<Mesh> id);
-	///
-	/// \brief Obtain a mutable pointer to the Camera corresponding to its Id.
-	/// \param id Id of the Camera
-	/// \returns nullptr if id is invalid (out of bounds)
-	///
-	Ptr<Camera> find(Id<Camera> id);
-
-	///
 	/// \brief Obtain a mutable view into all the root nodes attached to the active Tree.
 	/// \returns Mutable view into the root nodes attached to the active Tree
 	///
@@ -169,7 +154,7 @@ class Scene {
 	/// \brief Obtain the total count of stored cameras.
 	/// \returns Count of stored cameras (at least 1)
 	///
-	std::size_t camera_count() const { return m_storage.cameras.size(); }
+	std::size_t camera_count() const { return m_storage.resources.cameras.size(); }
 	///
 	/// \brief Select a Camera by its Id.
 	/// \param id Id of Camera to select
@@ -198,11 +183,15 @@ class Scene {
 	Texture make_texture(Image::View image) const;
 
 	///
-	/// \brief Obtain a view into the stored resources.
-	/// \returns A Resources object
+	/// \brief Obtain a mutable reference to the scene's resources.
+	/// \returns Mutable reference to SceneResources
 	///
-	ResourcesMut resources() { return m_storage.resources(); }
-	Resources resources() const { return m_storage.resources(); }
+	Resources& resources() { return m_storage.resources; }
+	///
+	/// \brief Obtain an immutable reference to the scene's resources.
+	/// \returns Immutable reference to SceneResources
+	///
+	Resources const& resources() const { return m_storage.resources; }
 
 	///
 	/// \brief All the lights in the scene.
@@ -233,17 +222,8 @@ class Scene {
 	};
 
 	struct Storage {
-		std::vector<Camera> cameras{};
-		std::vector<Sampler> samplers{};
-		std::vector<std::unique_ptr<Material>> materials{};
-		std::vector<StaticMesh> static_meshes{};
-		std::vector<Texture> textures{};
-		std::vector<Mesh> meshes{};
-
+		Resources resources{};
 		Data data{};
-
-		ResourcesMut resources() { return {cameras, samplers, materials, static_meshes, textures, meshes}; }
-		Resources resources() const { return {cameras, samplers, materials, static_meshes, textures, meshes}; }
 	};
 
 	void add_default_camera();

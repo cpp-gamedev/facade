@@ -61,7 +61,7 @@ void run(AppOpts const& opts) {
 
 		auto material = std::make_unique<LitMaterial>();
 		material->albedo = {1.0f, 0.0f, 0.0f};
-		auto material_id = scene.add(std::move(material));
+		auto material_id = scene.add(Material{std::move(material)});
 		auto static_mesh_id = scene.add(make_cubed_sphere(1.0f, 32));
 		// auto static_mesh_id = scene.add(make_manipulator(0.125f, 1.0f, 16));
 		auto mesh_id = scene.add(Mesh{.primitives = {Mesh::Primitive{static_mesh_id, material_id}}});

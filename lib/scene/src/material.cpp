@@ -16,15 +16,14 @@ float bit_cast_f(Material::AlphaMode const mode) {
 	std::memcpy(&ret, &mode, sizeof(mode));
 	return ret;
 }
+
+glm::vec4 to_linear(glm::vec4 const& srgb) { return glm::convertSRGBToLinear(srgb); }
 } // namespace
 
 Texture const& TextureStore::get(std::optional<std::size_t> const index, Texture const& fallback) const {
 	if (!index || *index >= textures.size()) { return fallback; }
 	return textures[*index];
 }
-
-glm::vec4 Material::to_linear(glm::vec4 const& srgb) { return glm::convertSRGBToLinear(srgb); }
-glm::vec4 Material::to_srgb(glm::vec4 const& linear) { return glm::convertLinearToSRGB(linear); }
 
 void UnlitMaterial::write_sets(Pipeline& pipeline, TextureStore const& store) const {
 	auto& set1 = pipeline.next_set(1);

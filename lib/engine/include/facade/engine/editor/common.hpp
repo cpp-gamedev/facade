@@ -26,6 +26,16 @@ glm::vec2 max_size(std::span<char const* const> strings);
 bool small_button_red(char const* label);
 
 ///
+/// \brief Create a selectable item.
+/// \param label Label on the selectable
+/// \param selected whether this selectable should be selected
+/// \param flags ImGuiSelectableFlags (passthrough)
+/// \param size Size (passthrough)
+/// \returns true if clicked
+///
+bool selectable(char const* label, Bool selected, int flags = {}, glm::vec2 size = {});
+
+///
 /// \brief Base class for RAII Dear ImGui wrappers whose widgets return a boolean on Begin()
 ///
 class Openable : public Pinned {
@@ -165,5 +175,16 @@ class TabBar::Item : public Openable {
   public:
 	explicit Item(NotClosed<TabBar>, char const* label, bool* open = {}, int flags = {});
 	~Item();
+};
+
+///
+/// \brief RAII Dear ImGui Combo
+///
+class Combo : public Openable {
+  public:
+	explicit Combo(char const* label, char const* preview);
+	~Combo();
+
+	bool item(char const* label, Bool selected, int flags = {}, glm::vec2 size = {}) const { return selectable(label, selected, flags, size); }
 };
 } // namespace facade::editor

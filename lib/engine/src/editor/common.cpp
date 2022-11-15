@@ -23,6 +23,8 @@ bool small_button_red(char const* label) {
 	return ret;
 }
 
+bool selectable(char const* label, Bool selected, int flags, glm::vec2 size) { return ImGui::Selectable(label, selected.value, flags, {size.x, size.y}); }
+
 Openable::Openable(bool is_open) : m_open(is_open) {}
 
 Window::Window(char const* label, bool* open_if, int flags) : Canvas(ImGui::Begin(label, open_if, flags)) {}
@@ -102,5 +104,11 @@ TabBar::Item::Item(NotClosed<TabBar>, char const* label, bool* open, int flags) 
 
 TabBar::Item::~Item() {
 	if (m_open) { ImGui::EndTabItem(); }
+}
+
+Combo::Combo(char const* label, char const* preview) : Openable(ImGui::BeginCombo(label, preview)) {}
+
+Combo::~Combo() {
+	if (m_open) { ImGui::EndCombo(); }
 }
 } // namespace facade::editor

@@ -101,17 +101,16 @@ void SceneInspector::camera() const {
 	auto* id = node.find<Id<Camera>>();
 	assert(id);
 
-	if (ImGui::BeginCombo("Select", FixedString{"{} ({})", node.name, *id}.c_str())) {
+	if (auto combo = Combo{"Select", FixedString{"{} ({})", node.name, *id}.c_str()}) {
 		for (auto const& cid : m_scene.cameras()) {
 			auto const* node = m_scene.find(cid);
 			assert(node);
 			auto const* cam = node->find<Id<Camera>>();
 			assert(cam);
-			if (ImGui::Selectable(FixedString{"{} ({})", node->name, *cam}.c_str(), cid == *id)) {
+			if (combo.item(FixedString{"{} ({})", node->name, *cam}.c_str(), {cid == *id})) {
 				if (!m_scene.select_camera(cid)) { logger::warn("[Inspector] Failed to select camera: [{}]", cid); }
 			}
 		}
-		ImGui::EndCombo();
 	}
 	ImGui::Separator();
 

@@ -25,46 +25,30 @@ bool small_button_red(char const* label) {
 
 bool selectable(char const* label, Bool selected, int flags, glm::vec2 size) { return ImGui::Selectable(label, selected.value, flags, {size.x, size.y}); }
 
-Openable::Openable(bool is_open) : m_open(is_open) {}
-
-Window::Window(char const* label, bool* open_if, int flags) : Canvas(ImGui::Begin(label, open_if, flags)) {}
-
-Window::Window(NotClosed<Canvas>, char const* label, glm::vec2 size, Bool border, int flags)
-	: Canvas(ImGui::BeginChild(label, {size.x, size.y}, border.value, flags)), m_child(true) {}
-
-// ImGui windows requires End() even if Begin() returned false
-Window::~Window() {
-	if (m_child) {
-		ImGui::EndChild();
-	} else {
-		ImGui::End();
+Openable::~Openable() noexcept {
+	if (m_open || m_force_close) {
+		assert(m_close);
+		(*m_close)();
 	}
 }
 
-TreeNode::TreeNode(char const* label, int flags) : Openable(ImGui::TreeNodeEx(label, flags)) {}
+Window::Window(char const* label, bool* open_if, int flags) : Canvas(ImGui::Begin(label, open_if, flags), &ImGui::End, {true}) {}
 
-TreeNode::~TreeNode() {
-	if (m_open) { ImGui::TreePop(); }
-}
+Window::Window(NotClosed<Canvas>, char const* label, glm::vec2 size, Bool border, int flags)
+	: Canvas(ImGui::BeginChild(label, {size.x, size.y}, border.value, flags), &ImGui::EndChild, {true}) {}
+
+TreeNode::TreeNode(char const* label, int flags) : Openable(ImGui::TreeNodeEx(label, flags), &ImGui::TreePop) {}
 
 bool TreeNode::leaf(char const* label, int flags) {
 	auto tn = TreeNode{label, flags | ImGuiTreeNodeFlags_Leaf};
 	return ImGui::IsItemClicked();
 }
 
-Window::Menu::Menu(NotClosed<Canvas>) : MenuBar(ImGui::BeginMenuBar()) {}
+Window::Menu::Menu(NotClosed<Canvas>) : MenuBar(ImGui::BeginMenuBar(), &ImGui::EndMenuBar) {}
 
-Window::Menu::~Menu() {
-	if (m_open) { ImGui::EndMenuBar(); }
-}
+MainMenu::MainMenu() : MenuBar(ImGui::BeginMainMenuBar(), &ImGui::EndMainMenuBar) {}
 
-MainMenu::MainMenu() : MenuBar(ImGui::BeginMainMenuBar()) {}
-
-MainMenu::~MainMenu() {
-	if (m_open) { ImGui::EndMainMenuBar(); }
-}
-
-Popup::Popup(char const* id, Bool modal, Bool closeable, Bool centered, int flags) {
+Popup::Popup(char const* id, Bool modal, Bool closeable, Bool centered, int flags) : Canvas(false, &ImGui::EndPopup) {
 	if (centered) {
 		auto const center = ImGui::GetMainViewport()->GetCenter();
 		ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2{0.5f, 0.5f});
@@ -76,39 +60,27 @@ Popup::Popup(char const* id, Bool modal, Bool closeable, Bool centered, int flag
 	}
 }
 
-Popup::~Popup() {
-	if (m_open) { ImGui::EndPopup(); }
-}
-
 void Popup::open(char const* id) { ImGui::OpenPopup(id); }
 
 void Popup::close_current() { ImGui::CloseCurrentPopup(); }
 
-Menu::Menu(NotClosed<MenuBar>, char const* label, Bool enabled) : Openable(ImGui::BeginMenu(label, enabled.value)) {}
+Menu::Menu(NotClosed<MenuBar>, char const* label, Bool enabled) : Openable(ImGui::BeginMenu(label, enabled.value), &ImGui::EndMenu) {}
 
-Menu::~Menu() {
-	if (m_open) { ImGui::EndMenu(); }
+void StyleVar::push(int index, glm::vec2 value) {
+	ImGui::PushStyleVar(index, {value.x, value.y});
+	++m_count;
 }
 
-StyleVar::StyleVar(int index, glm::vec2 value) { ImGui::PushStyleVar(index, {value.x, value.y}); }
-StyleVar::StyleVar(int index, float value) { ImGui::PushStyleVar(index, value); }
-StyleVar::~StyleVar() { ImGui::PopStyleVar(); }
-
-TabBar::TabBar(char const* label, int flags) : Openable(ImGui::BeginTabBar(label, flags)) {}
-
-TabBar::~TabBar() {
-	if (m_open) { ImGui::EndTabBar(); }
+void StyleVar::push(int index, float value) {
+	ImGui::PushStyleVar(index, value);
+	++m_count;
 }
 
-TabBar::Item::Item(NotClosed<TabBar>, char const* label, bool* open, int flags) : Openable(ImGui::BeginTabItem(label, open, flags)) {}
+StyleVar::~StyleVar() { ImGui::PopStyleVar(m_count); }
 
-TabBar::Item::~Item() {
-	if (m_open) { ImGui::EndTabItem(); }
-}
+TabBar::TabBar(char const* label, int flags) : Openable(ImGui::BeginTabBar(label, flags), &ImGui::EndTabBar) {}
 
-Combo::Combo(char const* label, char const* preview) : Openable(ImGui::BeginCombo(label, preview)) {}
+TabBar::Item::Item(NotClosed<TabBar>, char const* label, bool* open, int flags) : Openable(ImGui::BeginTabItem(label, open, flags), &ImGui::EndTabItem) {}
 
-Combo::~Combo() {
-	if (m_open) { ImGui::EndCombo(); }
-}
+Combo::Combo(char const* label, char const* preview) : Openable(ImGui::BeginCombo(label, preview), &ImGui::EndCombo) {}
 } // namespace facade::editor

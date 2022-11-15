@@ -34,9 +34,7 @@ struct Scene::TreeBuilder {
 	Scene& out_scene;
 	std::span<NodeData const> in_gnodes;
 
-	std::optional<Id<Node>> camera{};
-
-	void add(NodeData const& child, std::vector<Node>& out_children) {
+	void add(TreeImpl& out, NodeData const& child, std::vector<Node>& out_children) {
 		auto node = Node{};
 		node.name = child.name;
 		node.transform = child.transform;
@@ -52,31 +50,24 @@ struct Scene::TreeBuilder {
 		}
 		for (auto const index : child.children) {
 			auto& child = in_gnodes[index];
-			add(child, node.m_children);
+			add(out, child, node.m_children);
 		}
 		out_scene.check(node);
 		auto const node_id = out_scene.add_unchecked(out_children, std::move(node));
-		if (set_cam) { camera = node_id; }
+		if (set_cam) { out.cameras.push_back(node_id); }
 	}
 
 	TreeImpl operator()(TreeImpl::Data const& tree, Id<Tree> id) {
 		auto ret = TreeImpl{.id = id};
 		for (auto const index : tree.roots) {
 			assert(index < in_gnodes.size());
-			add(in_gnodes[index], ret.roots);
+			add(ret, in_gnodes[index], ret.roots);
 		}
-		if (camera) {
-			ret.camera = *camera;
-		} else {
+		if (ret.cameras.empty()) {
 			// add node with default camera
-			assert(!out_scene.m_storage.resources.cameras.empty());
-			auto node = Node{};
-			node.name = "camera";
-			// TODO
-			node.transform.set_position({0.0f, 0.0f, 5.0f});
-			node.attach(Id<Camera>{0});
-			ret.camera = out_scene.add_unchecked(ret.roots, std::move(node));
+			ret.cameras.push_back(out_scene.add_unchecked(ret.roots, out_scene.make_camera_node(0)));
 		}
+		ret.camera = ret.cameras.front();
 		return ret;
 	}
 };
@@ -146,12 +137,6 @@ bool Scene::load(Id<Tree> id) {
 Ptr<Node> Scene::find(Id<Node> id) { return const_cast<Node*>(std::as_const(*this).find_node(m_tree.roots, id)); }
 Ptr<Node const> Scene::find(Id<Node> id) const { return find_node(m_tree.roots, id); }
 
-bool Scene::select(Id<Camera> id) {
-	if (id >= camera_count()) { return false; }
-	*camera().find<Id<Camera>>() = id;
-	return true;
-}
-
 Node& Scene::camera() { return const_cast<Node&>(std::as_const(*this).camera()); }
 
 Node const& Scene::camera() const {
@@ -160,14 +145,30 @@ Node const& Scene::camera() const {
 	return *ret;
 }
 
+bool Scene::select_camera(Id<Node> target) {
+	for (auto const& id : m_tree.cameras) {
+		if (id == target) {
+			m_tree.camera = id;
+			return true;
+		}
+	}
+	return false;
+}
+
 Texture Scene::make_texture(Image::View image) const { return Texture{m_gfx, default_sampler(), image}; }
 
-void Scene::add_default_camera() {
-	m_storage.resources.cameras.m_array.push_back(Camera{.name = "default"});
+Node Scene::make_camera_node(Id<Camera> id) const {
+	assert(id < m_storage.resources.cameras.size());
 	auto node = Node{};
 	node.name = "camera";
-	node.attach<Id<Camera>>(0);
-	m_tree.camera = add_unchecked(m_tree.roots, std::move(node));
+	node.transform.set_position({0.0f, 0.0f, 5.0f});
+	node.attach<Id<Camera>>(id);
+	return node;
+}
+
+void Scene::add_default_camera() {
+	m_tree.cameras.push_back(add_unchecked(m_tree.roots, make_camera_node(add(Camera{.name = "default"}))));
+	m_tree.camera = m_tree.cameras.front();
 }
 
 bool Scene::load_tree(Id<Tree> id) {

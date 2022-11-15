@@ -156,12 +156,6 @@ class Scene {
 	///
 	std::size_t camera_count() const { return m_storage.resources.cameras.size(); }
 	///
-	/// \brief Select a Camera by its Id.
-	/// \param id Id of Camera to select
-	/// \returns false If id is invalid (out of bounds)
-	///
-	bool select(Id<Camera> id);
-	///
 	/// \brief Obtain a mutable reference to the Node containing the active Camera.
 	///
 	Node& camera();
@@ -169,6 +163,14 @@ class Scene {
 	/// \brief Obtain an immutable reference to the Node containing the active Camera.
 	///
 	Node const& camera() const;
+	///
+	/// \brief Obtain all the Ids of all nodes that have cameras attached.
+	///
+	std::span<Id<Node> const> cameras() const { return m_tree.cameras; }
+	///
+	/// \brief Select the target node as the camera.
+	///
+	bool select_camera(Id<Node> target);
 
 	///
 	/// \brief Obtain the default Sampler.
@@ -212,6 +214,7 @@ class Scene {
 		};
 
 		std::vector<Node> roots{};
+		std::vector<Id<Node>> cameras{};
 		Id<Node> camera{};
 		Id<Tree> id{};
 	};
@@ -226,6 +229,7 @@ class Scene {
 		Data data{};
 	};
 
+	Node make_camera_node(Id<Camera> id) const;
 	void add_default_camera();
 	bool load_tree(Id<Tree> id);
 	Id<Mesh> add_unchecked(Mesh mesh);

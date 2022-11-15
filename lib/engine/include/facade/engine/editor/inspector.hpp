@@ -1,6 +1,5 @@
 #pragma once
 #include <facade/engine/editor/common.hpp>
-#include <facade/engine/editor/inspect_data.hpp>
 #include <facade/scene/scene.hpp>
 
 namespace facade::editor {
@@ -10,7 +9,7 @@ namespace facade::editor {
 /// Inspectors are stateless ImGui helpers to view / edit various components, with drag-and-drop support.
 ///
 class Inspector {
-  protected:
+  public:
 	///
 	/// \brief Construct an Inspector instance.
 	///
@@ -19,6 +18,7 @@ class Inspector {
 	///
 	Inspector(NotClosed<Window> target, Scene& out_scene) : m_target(target), m_scene(out_scene), m_resources(out_scene.resources()) {}
 
+  protected:
 	NotClosed<Window> m_target;
 	Scene& m_scene;
 	SceneResources& m_resources;
@@ -68,17 +68,8 @@ class ResourceInspector : public Inspector {
 ///
 class SceneInspector : public Inspector {
   public:
-	using Data = InspectData;
+	using Inspector::Inspector;
 
-	SceneInspector(NotClosed<Window> target, Scene& out_scene) : Inspector(target, out_scene) {}
-
-	///
-	/// \brief View/edit all resources.
-	/// \param out_data Persistent data for popups
-	///
-	/// Uses ResourceInspector.
-	///
-	void resources(Data& out_data) const;
 	///
 	/// \brief Inspect the Scene's camera.
 	///

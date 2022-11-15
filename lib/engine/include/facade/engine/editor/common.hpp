@@ -26,16 +26,52 @@ glm::vec2 max_size(std::span<char const* const> strings);
 bool small_button_red(char const* label);
 
 ///
+/// \brief Create a selectable item.
+/// \param label Label on the selectable
+/// \param selected whether this selectable should be selected
+/// \param flags ImGuiSelectableFlags (passthrough)
+/// \param size Size (passthrough)
+/// \returns true if clicked
+///
+bool selectable(char const* label, Bool selected, int flags = {}, glm::vec2 size = {});
+
+///
+/// \brief RAII Dear ImGui StyleVar stack
+///
+class StyleVar : public Pinned {
+  public:
+	explicit StyleVar(int index, glm::vec2 value) { push(index, value); }
+	explicit StyleVar(int index, float value) { push(index, value); }
+	~StyleVar();
+
+	void push(int index, glm::vec2 value);
+	void push(int index, float value);
+
+	explicit operator bool() const { return true; }
+
+  private:
+	int m_count{};
+};
+
+///
 /// \brief Base class for RAII Dear ImGui wrappers whose widgets return a boolean on Begin()
 ///
 class Openable : public Pinned {
   public:
+	~Openable() noexcept;
+
 	bool is_open() const { return m_open; }
 	explicit operator bool() const { return is_open(); }
 
   protected:
-	Openable(bool is_open = false);
-	bool m_open;
+	using Close = void (*)();
+
+	Openable() = default;
+	Openable(bool is_open, Close close, Bool force_close = {}) : m_close(close), m_open(is_open), m_force_close(force_close) {}
+
+	Close m_close{};
+	bool m_open{};
+	bool m_force_close{};
 };
 
 ///
@@ -63,10 +99,6 @@ class Window : public Canvas {
 
 	explicit Window(char const* label, bool* open_if = {}, int flags = {});
 	Window(NotClosed<Canvas> parent, char const* label, glm::vec2 size = {}, Bool border = {}, int flags = {});
-	~Window();
-
-  private:
-	bool m_child{};
 };
 
 ///
@@ -75,7 +107,6 @@ class Window : public Canvas {
 class TreeNode : public Openable {
   public:
 	explicit TreeNode(char const* label, int flags = {});
-	~TreeNode();
 
 	static bool leaf(char const* label, int flags = {});
 };
@@ -94,7 +125,6 @@ class MenuBar : public Openable {
 class Menu : public Openable {
   public:
 	explicit Menu(NotClosed<MenuBar>, char const* label, Bool enabled = {true});
-	~Menu();
 };
 
 ///
@@ -103,7 +133,6 @@ class Menu : public Openable {
 class Window::Menu : public MenuBar {
   public:
 	explicit Menu(NotClosed<Canvas>);
-	~Menu();
 };
 
 ///
@@ -112,7 +141,6 @@ class Window::Menu : public MenuBar {
 class MainMenu : public MenuBar {
   public:
 	explicit MainMenu();
-	~MainMenu();
 };
 
 ///
@@ -121,7 +149,6 @@ class MainMenu : public MenuBar {
 class Popup : public Canvas {
   public:
 	explicit Popup(char const* id, Bool centered = {}, int flags = {}) : Popup(id, {}, {}, centered, flags) {}
-	~Popup();
 
 	static void open(char const* id);
 	static void close_current();
@@ -139,14 +166,27 @@ class Modal : public Popup {
 };
 
 ///
-/// \brief RAII Dear ImGui StyleVar stack
+/// \brief RAII Dear ImGui TabBar
 ///
-class StyleVar : public Pinned {
+class TabBar : public Openable {
   public:
-	explicit StyleVar(int index, glm::vec2 value);
-	explicit StyleVar(int index, float value);
-	~StyleVar();
+	class Item;
 
-	explicit operator bool() const { return true; }
+	explicit TabBar(char const* label, int flags = {});
+};
+
+class TabBar::Item : public Openable {
+  public:
+	explicit Item(NotClosed<TabBar>, char const* label, bool* open = {}, int flags = {});
+};
+
+///
+/// \brief RAII Dear ImGui Combo
+///
+class Combo : public Openable {
+  public:
+	explicit Combo(char const* label, char const* preview);
+
+	bool item(char const* label, Bool selected, int flags = {}, glm::vec2 size = {}) const { return selectable(label, selected, flags, size); }
 };
 } // namespace facade::editor

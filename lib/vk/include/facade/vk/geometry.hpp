@@ -22,8 +22,8 @@ struct Geometry {
 
 Geometry make_cube(glm::vec3 size, glm::vec3 rgb = glm::vec3{1.0f}, glm::vec3 origin = {});
 Geometry make_cubed_sphere(float diam, std::uint32_t quads_per_side, glm::vec3 rgb = glm::vec3{1.0f});
-Geometry make_cone(float xy_diam, float y_height, std::uint32_t xy_points, glm::vec3 rgb = glm::vec3{1.0f});
-Geometry make_cylinder(float xy_diam, float y_height, std::uint32_t xy_points, glm::vec3 rgb = glm::vec3{1.0f});
-Geometry make_arrow(float stalk_diam, float stalk_length, std::uint32_t xy_points, glm::vec3 rgb = glm::vec3{1.0f});
-Geometry make_manipulator(float stalk_diam, float stalk_length, std::uint32_t xy_points, glm::vec3 rgb = glm::vec3{1.0f});
+Geometry make_cone(float xz_diam, float y_height, std::uint32_t xz_points, glm::vec3 rgb = glm::vec3{1.0f});
+Geometry make_cylinder(float xz_diam, float y_height, std::uint32_t xz_points, glm::vec3 rgb = glm::vec3{1.0f});
+Geometry make_arrow(float stalk_diam, float stalk_height, std::uint32_t xz_points, glm::vec3 rgb = glm::vec3{1.0f});
+Geometry make_manipulator(float stalk_diam, float stalk_height, std::uint32_t xz_points, glm::vec3 rgb = glm::vec3{1.0f});
 } // namespace facade

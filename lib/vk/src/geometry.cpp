@@ -123,10 +123,10 @@ auto facade::make_cubed_sphere(float diam, std::uint32_t quads_per_side, glm::ve
 	return ret;
 }
 
-auto facade::make_cone(float xy_diam, float y_height, std::uint32_t xy_points, glm::vec3 rgb) -> Geometry {
+auto facade::make_cone(float xz_diam, float y_height, std::uint32_t xz_points, glm::vec3 rgb) -> Geometry {
 	auto ret = Geometry{};
-	auto const r = 0.5f * xy_diam;
-	auto const step = 360.0f / static_cast<float>(xy_points);
+	auto const r = 0.5f * xz_diam;
+	auto const step = 360.0f / static_cast<float>(xz_points);
 	auto add_tris = [&](glm::vec2 xz_a, glm::vec2 xz_b) {
 		auto normal = glm::vec3{0.0f, 1.0f, 0.0f};
 		auto const dy = 0.5f * y_height;
@@ -159,10 +159,10 @@ auto facade::make_cone(float xy_diam, float y_height, std::uint32_t xy_points, g
 	return ret;
 }
 
-auto facade::make_cylinder(float xy_diam, float y_height, std::uint32_t xy_points, glm::vec3 rgb) -> Geometry {
+auto facade::make_cylinder(float xz_diam, float y_height, std::uint32_t xz_points, glm::vec3 rgb) -> Geometry {
 	auto ret = Geometry{};
-	auto const r = 0.5f * xy_diam;
-	auto const step = 360.0f / static_cast<float>(xy_points);
+	auto const r = 0.5f * xz_diam;
+	auto const step = 360.0f / static_cast<float>(xz_points);
 	auto add_tris = [&](glm::vec2 xz_a, glm::vec2 xz_b) {
 		auto normal = glm::vec3{0.0f, 1.0f, 0.0f};
 		auto const dy = 0.5f * y_height;
@@ -205,19 +205,19 @@ auto facade::make_cylinder(float xy_diam, float y_height, std::uint32_t xy_point
 	return ret;
 }
 
-auto facade::make_arrow(float stalk_diam, float stalk_length, std::uint32_t xy_points, glm::vec3 rgb) -> Geometry {
+auto facade::make_arrow(float stalk_diam, float stalk_height, std::uint32_t xz_points, glm::vec3 rgb) -> Geometry {
 	auto const head_size = 2.0f * stalk_diam;
-	auto ret = make_cone(head_size, head_size, xy_points, rgb);
-	for (auto& v : ret.vertices) { v.position.y += stalk_length + 0.5f * head_size; }
-	auto stalk = make_cylinder(stalk_diam, stalk_length, xy_points, rgb);
-	for (auto& v : stalk.vertices) { v.position.y += 0.5f * stalk_length; }
+	auto ret = make_cone(head_size, head_size, xz_points, rgb);
+	for (auto& v : ret.vertices) { v.position.y += stalk_height + 0.5f * head_size; }
+	auto stalk = make_cylinder(stalk_diam, stalk_height, xz_points, rgb);
+	for (auto& v : stalk.vertices) { v.position.y += 0.5f * stalk_height; }
 	ret.append(stalk.vertices, stalk.indices);
 	return ret;
 }
 
-auto facade::make_manipulator(float stalk_diam, float stalk_length, std::uint32_t xy_points, glm::vec3 rgb) -> Geometry {
+auto facade::make_manipulator(float stalk_diam, float stalk_height, std::uint32_t xy_points, glm::vec3 rgb) -> Geometry {
 	auto arrow = [&](std::optional<glm::vec3> const rotation) {
-		auto ret = make_arrow(stalk_diam, stalk_length, xy_points, rgb);
+		auto ret = make_arrow(stalk_diam, stalk_height, xy_points, rgb);
 		if (rotation) {
 			for (auto& v : ret.vertices) {
 				v.position = glm::rotate(v.position, glm::radians(90.0f), *rotation);

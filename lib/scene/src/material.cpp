@@ -20,7 +20,7 @@ float bit_cast_f(Material::AlphaMode const mode) {
 glm::vec4 to_linear(glm::vec4 const& srgb) { return glm::convertSRGBToLinear(srgb); }
 } // namespace
 
-Texture const& TextureStore::get(std::optional<std::size_t> const index, Texture const& fallback) const {
+Texture const& TextureStore::get(std::optional<Id<Texture>> const index, Texture const& fallback) const {
 	if (!index || *index >= textures.size()) { return fallback; }
 	return textures[*index];
 }

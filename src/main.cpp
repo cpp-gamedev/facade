@@ -141,7 +141,7 @@ void run(AppOpts const& opts) {
 		}
 
 		auto& camera = engine->scene().camera();
-		if (auto fly_cam = FlyCam{camera.transform}) {
+		if (auto fly_cam = FlyCam{camera.transform}; !ImGui::GetIO().WantTextInput) {
 			if (input.keyboard.held(GLFW_KEY_A) || input.keyboard.held(GLFW_KEY_LEFT)) { fly_cam.move_right(-dt); }
 			if (input.keyboard.held(GLFW_KEY_D) || input.keyboard.held(GLFW_KEY_RIGHT)) { fly_cam.move_right(dt); }
 			if (input.keyboard.held(GLFW_KEY_W) || input.keyboard.held(GLFW_KEY_UP)) { fly_cam.move_front(-dt); }
@@ -162,7 +162,7 @@ void run(AppOpts const& opts) {
 		config.update(*engine);
 
 		// TEMP CODE
-		if (input.keyboard.pressed(GLFW_KEY_R)) {
+		if (!ImGui::GetIO().WantTextInput && input.keyboard.pressed(GLFW_KEY_R)) {
 			logger::info("Reloading...");
 			engine.reset();
 			init();

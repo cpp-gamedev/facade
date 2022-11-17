@@ -59,6 +59,7 @@ vk::UniqueDebugUtilsMessengerEXT make_debug_messenger(vk::Instance instance) {
 		auto const msg = fmt::format("[vk] {}", pCallbackData && pCallbackData->pMessage ? pCallbackData->pMessage : "UNKNOWN");
 		switch (messageSeverity) {
 		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT: {
+			logger::error("{}", msg);
 			throw ValidationError{msg};
 		}
 		case VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT: logger::warn("{}", msg); break;

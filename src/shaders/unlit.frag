@@ -13,8 +13,8 @@ layout (location = 2) in vec3 in_normal;
 layout (location = 0) out vec4 out_rgba;
 
 // unused
-layout (location = 3) in vec3 in_pos_frag;
-layout (location = 4) in vec3 in_pos_view;
+layout (location = 3) in vec3 in_fpos;
+layout (location = 4) in vec4 in_vpos_exposure;
 
 void main() {
 	out_rgba = texture(tex, in_uv) * vec4(in_rgb, 1.0) * tint;

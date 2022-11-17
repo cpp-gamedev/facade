@@ -2,6 +2,7 @@
 #include <facade/vk/cmd.hpp>
 #include <facade/vk/texture.hpp>
 #include <cmath>
+#include <numeric>
 
 namespace facade {
 namespace {
@@ -86,6 +87,38 @@ bool can_mip(vk::PhysicalDevice const gpu, vk::Format const format) {
 	auto const fsrc = gpu.getFormatProperties(format);
 	return (fsrc.optimalTilingFeatures & flags_v) != vk::FormatFeatureFlags{};
 }
+
+Defer<UniqueImage> make_image(Gfx const& gfx, std::span<Image::View const> images, ImageCreateInfo const& info, vk::ImageViewType type) {
+	auto const extent = vk::Extent2D{images[0].extent.x, images[0].extent.y};
+	auto ret = Defer<UniqueImage>{gfx.vma.make_image(info, extent, type), gfx.shared->defer_queue};
+
+	auto const accumulate_size = [](std::size_t total, Image::View const& i) { return total + i.bytes.size(); };
+	auto const size = std::accumulate(images.begin(), images.end(), std::size_t{}, accumulate_size);
+	auto staging = gfx.vma.make_buffer(vk::BufferUsageFlagBits::eTransferSrc | vk::BufferUsageFlagBits::eTransferDst, size, true);
+	if (!staging.get().buffer) {
+		// TODO error
+		return {};
+	}
+
+	auto* ptr = static_cast<std::byte*>(staging.get().ptr);
+	for (auto const& image : images) {
+		std::memcpy(ptr, image.bytes.data(), image.bytes.size());
+		ptr += image.bytes.size();
+	}
+
+	auto isrl = vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, info.array_layers);
+	auto icr = vk::ImageCopy(isrl, {}, isrl, {}, vk::Extent3D{extent, 1});
+	auto bic = vk::BufferImageCopy({}, {}, {}, isrl, {}, icr.extent);
+	auto cmd = Cmd{gfx};
+	full_barrier(ret.get().get().image_view(), info.mip_levels, info.array_layers, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal)
+		.transition(cmd.cb);
+	cmd.cb.copyBufferToImage(staging.get().buffer, ret.get().get().image, vk::ImageLayout::eTransferDstOptimal, bic);
+	full_barrier(ret.get().get().image_view(), info.mip_levels, info.array_layers, vk::ImageLayout::eTransferDstOptimal,
+				 vk::ImageLayout::eShaderReadOnlyOptimal)
+		.transition(cmd.cb);
+	if (info.mip_levels > 1) { MipMapWriter{ret.get().get().image, ret.get().get().extent, cmd.cb, info.mip_levels}(); }
+	return ret;
+}
 } // namespace
 
 Sampler::Sampler(Gfx const& gfx, CreateInfo info) {
@@ -106,7 +139,7 @@ Sampler::Sampler(Gfx const& gfx, CreateInfo info) {
 
 std::uint32_t Texture::mip_levels(vk::Extent2D extent) { return static_cast<std::uint32_t>(std::floor(std::log2(std::max(extent.width, extent.height)))) + 1U; }
 
-Texture::Texture(Gfx const& gfx, vk::Sampler sampler, Image::View image, CreateInfo info) : sampler{sampler}, m_gfx{gfx}, m_name(std::move(info.name)) {
+Texture::Texture(Gfx const& gfx, vk::Sampler sampler, Image::View image, CreateInfo info) : Texture(gfx, sampler, std::move(info.name)) {
 	static constexpr std::uint8_t magenta_v[] = {0xff, 0x0, 0xff, 0xff};
 	m_info.format = info.colour_space == ColourSpace::eLinear ? vk::Format::eR8G8B8A8Unorm : vk::Format::eR8G8B8A8Srgb;
 	bool mip_mapped = info.mip_mapped;
@@ -116,25 +149,18 @@ Texture::Texture(Gfx const& gfx, vk::Sampler sampler, Image::View image, CreateI
 		image.bytes = {reinterpret_cast<std::byte const*>(magenta_v), std::size(magenta_v)};
 		mip_mapped = false;
 	}
-	auto const extent = vk::Extent2D{image.extent.x, image.extent.y};
-	if (mip_mapped && can_mip(m_gfx.gpu, m_info.format)) { m_info.mip_levels = mip_levels(extent); }
-	m_image = {m_gfx.vma.make_image(m_info, extent), m_gfx.shared->defer_queue};
-
-	auto staging = m_gfx.vma.make_buffer(vk::BufferUsageFlagBits::eTransferSrc | vk::BufferUsageFlagBits::eTransferDst, image.bytes.size(), true);
-	if (!staging.get().buffer) {
-		// TODO error
-		return;
-	}
-
-	std::memcpy(staging.get().ptr, image.bytes.data(), image.bytes.size());
-	auto isrl = vk::ImageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 1);
-	auto icr = vk::ImageCopy(isrl, {}, isrl, {}, vk::Extent3D{extent, 1});
-	auto bic = vk::BufferImageCopy({}, {}, {}, isrl, {}, icr.extent);
-	auto cmd = Cmd{m_gfx};
-	full_barrier(m_image.get().get().image_view(), m_info.mip_levels, 1, m_layout, vk::ImageLayout::eTransferDstOptimal).transition(cmd.cb);
-	cmd.cb.copyBufferToImage(staging.get().buffer, m_image.get().get().image, vk::ImageLayout::eTransferDstOptimal, bic);
+	if (mip_mapped && can_mip(m_gfx.gpu, m_info.format)) { m_info.mip_levels = mip_levels({image.extent.x, image.extent.y}); }
+	m_image = make_image(m_gfx, {&image, 1}, m_info, vk::ImageViewType::e2D);
 	m_layout = vk::ImageLayout::eShaderReadOnlyOptimal;
-	full_barrier(m_image.get().get().image_view(), m_info.mip_levels, 1, vk::ImageLayout::eTransferDstOptimal, m_layout).transition(cmd.cb);
-	if (m_info.mip_levels > 1) { MipMapWriter{m_image.get().get().image, m_image.get().get().extent, cmd.cb, m_info.mip_levels}(); }
+}
+
+Texture::Texture(Gfx const& gfx, vk::Sampler sampler, std::string name) : sampler(sampler), m_gfx(gfx), m_name(std::move(name)) {}
+
+Cubemap::Cubemap(Gfx const& gfx, vk::Sampler sampler, std::span<Image::View const> images, std::string name) : Texture(gfx, sampler, std::move(name)) {
+	assert(!images.empty());
+	m_info.format = vk::Format::eR8G8B8A8Srgb;
+	m_info.array_layers = 6;
+	m_image = make_image(m_gfx, images, m_info, vk::ImageViewType::eCube);
+	m_layout = vk::ImageLayout::eShaderReadOnlyOptimal;
 }
 } // namespace facade

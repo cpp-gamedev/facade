@@ -2,6 +2,7 @@
 #include <facade/render/renderer.hpp>
 #include <facade/scene/scene.hpp>
 #include <facade/vk/buffer.hpp>
+#include <facade/vk/skybox.hpp>
 
 namespace facade {
 class SceneRenderer {
@@ -13,9 +14,10 @@ class SceneRenderer {
   private:
 	void write_view(glm::vec2 const extent);
 	void update_view(Pipeline& out_pipeline) const;
-	std::span<glm::mat4x4 const> make_instances(Node const& node, glm::mat4x4 const& parent);
+	std::span<glm::mat4x4 const> make_instances(Node const& node, glm::mat4x4 const& parent) const;
 
-	void render(Renderer& renderer, vk::CommandBuffer cb, Node const& node, glm::mat4 const& parent = matrix_identity_v);
+	void render(Renderer& renderer, vk::CommandBuffer cb, Skybox const& skybox) const;
+	void render(Renderer& renderer, vk::CommandBuffer cb, Node const& node, glm::mat4 const& parent = matrix_identity_v) const;
 
 	Gfx m_gfx;
 	Sampler m_sampler;
@@ -24,7 +26,7 @@ class SceneRenderer {
 	Texture m_white;
 	Texture m_black;
 
-	std::vector<glm::mat4x4> m_instance_mats{};
+	mutable std::vector<glm::mat4x4> m_instance_mats{};
 	Scene const* m_scene{};
 };
 } // namespace facade

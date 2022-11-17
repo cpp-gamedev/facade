@@ -77,7 +77,7 @@ void SceneRenderer::update_view(Pipeline& out_pipeline) const {
 	out_pipeline.bind(set0);
 }
 
-std::span<glm::mat4x4 const> SceneRenderer::make_instances(Node const& node, glm::mat4x4 const& parent) {
+std::span<glm::mat4x4 const> SceneRenderer::make_instances(Node const& node, glm::mat4x4 const& parent) const {
 	m_instance_mats.clear();
 	if (node.instances.empty()) {
 		m_instance_mats.reserve(1);
@@ -89,7 +89,20 @@ std::span<glm::mat4x4 const> SceneRenderer::make_instances(Node const& node, glm
 	return m_instance_mats;
 }
 
-void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Node const& node, glm::mat4 const& parent) {
+void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Skybox const& skybox) const {
+	auto state = m_scene->pipeline_state;
+	state.depth_test = false;
+	auto pipeline = renderer.bind_pipeline(cb, state, "skybox");
+	pipeline.set_line_width(1.0f);
+	update_view(pipeline);
+	auto& set1 = pipeline.next_set(1);
+	set1.update(0, skybox.cubemap().descriptor_image());
+	pipeline.bind(set1);
+	auto const instance = glm::translate(matrix_identity_v, m_scene->camera().transform.position());
+	renderer.draw(pipeline, skybox.static_mesh(), {&instance, 1});
+}
+
+void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Node const& node, glm::mat4 const& parent) const {
 	auto const& resources = m_scene->resources();
 	if (auto const* mesh_id = node.find<Id<Mesh>>()) {
 		static auto const s_default_material = Material{std::make_unique<LitMaterial>()};

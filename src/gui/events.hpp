@@ -1,16 +1,16 @@
 #pragma once
-#include <string>
+#include <string_view>
 
 namespace facade::event {
 struct Shutdown {};
 struct OpenRecent {
-	std::string path{};
+	std::string_view path{};
 };
 struct OpenFile {};
 struct BrowseCd {
-	std::string path{};
+	std::string_view path{};
 };
 struct FileDrop {
-	std::string path{};
+	std::string_view path{};
 };
 } // namespace facade::event

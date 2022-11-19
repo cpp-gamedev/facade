@@ -32,7 +32,7 @@ std::vector<SetLayout> make_set_layouts(SpirV::View vert, SpirV::View frag) {
 				dslb.stageFlags |= stage;
 				auto const& type = compiler.get_type(resource.type_id);
 				if (type.array.size() == 0) {
-					dslb.descriptorCount = std::max(dslb.descriptorCount, 1U);
+					dslb.descriptorCount = std::max(dslb.descriptorCount, 1u);
 				} else {
 					dslb.descriptorCount = type.array[0];
 				}
@@ -163,7 +163,7 @@ vk::UniquePipeline create_pipeline(vk::Device dv, PipeInfo const& info) {
 	gpci.pMultisampleState = &pmssci;
 
 	auto ret = vk::Pipeline{};
-	if (dv.createGraphicsPipelines({}, 1U, &gpci, {}, &ret) != vk::Result::eSuccess) { throw Error{"Failed to create graphics pipeline"}; }
+	if (dv.createGraphicsPipelines({}, 1u, &gpci, {}, &ret) != vk::Result::eSuccess) { throw Error{"Failed to create graphics pipeline"}; }
 
 	return vk::UniquePipeline{ret, dv};
 }

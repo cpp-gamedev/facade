@@ -12,13 +12,13 @@ void Drawer::draw(vk::CommandBuffer const cb, MeshView mesh, std::span<glm::mat4
 	std::memcpy(instance_buffer.get().ptr, instances.data(), instances.size_bytes());
 	vk::Buffer const buffers[] = {mesh.vertices.buffer, instance_buffer.get().buffer};
 	vk::DeviceSize const offsets[] = {0, 0};
-	cb.bindVertexBuffers(0U, buffers, offsets);
+	cb.bindVertexBuffers(0u, buffers, offsets);
 	auto const count = static_cast<std::uint32_t>(instances.size());
 	if (mesh.index_count > 0) {
 		cb.bindIndexBuffer(mesh.indices.buffer, mesh.indices.offset, vk::IndexType::eUint32);
-		cb.drawIndexed(mesh.index_count, count, 0U, 0U, 0U);
+		cb.drawIndexed(mesh.index_count, count, 0u, 0u, 0u);
 	} else {
-		cb.draw(mesh.vertex_count, count, 0U, 0U);
+		cb.draw(mesh.vertex_count, count, 0u, 0u);
 	}
 }
 

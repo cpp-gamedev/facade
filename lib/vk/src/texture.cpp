@@ -66,7 +66,7 @@ struct MipMapWriter {
 
 		auto src_extent = vk::Extent3D{extent, 1};
 		for (std::uint32_t mip = 0; mip + 1 < mip_levels; ++mip) {
-			vk::Extent3D dst_extent = vk::Extent3D(std::max(src_extent.width / 2, 1U), std::max(src_extent.height / 2, 1U), 1U);
+			vk::Extent3D dst_extent = vk::Extent3D(std::max(src_extent.width / 2, 1u), std::max(src_extent.height / 2, 1u), 1u);
 			auto const src_offset = vk::Offset3D{static_cast<int>(src_extent.width), static_cast<int>(src_extent.height), 1};
 			auto const dst_offset = vk::Offset3D{static_cast<int>(dst_extent.width), static_cast<int>(dst_extent.height), 1};
 			blit_next_mip(mip, src_offset, dst_offset);
@@ -137,16 +137,15 @@ Sampler::Sampler(Gfx const& gfx, CreateInfo info) {
 	m_name = std::move(info.name);
 }
 
-std::uint32_t Texture::mip_levels(vk::Extent2D extent) { return static_cast<std::uint32_t>(std::floor(std::log2(std::max(extent.width, extent.height)))) + 1U; }
+std::uint32_t Texture::mip_levels(vk::Extent2D extent) { return static_cast<std::uint32_t>(std::floor(std::log2(std::max(extent.width, extent.height)))) + 1u; }
 
 Texture::Texture(Gfx const& gfx, vk::Sampler sampler, Image::View image, CreateInfo info) : Texture(gfx, sampler, std::move(info.name)) {
-	static constexpr std::uint8_t magenta_v[] = {0xff, 0x0, 0xff, 0xff};
+	static constexpr auto magenta_v = FixedBitmap<1, 1>{0xff_B, 0x0_B, 0xff_B, 0xff_B};
 	m_info.format = info.colour_space == ColourSpace::eLinear ? vk::Format::eR8G8B8A8Unorm : vk::Format::eR8G8B8A8Srgb;
 	bool mip_mapped = info.mip_mapped;
 	if (image.extent.x == 0 || image.extent.y == 0) {
 		logger::warn("[Texture] invalid image extent: [0x0]");
-		image.extent = {1, 1};
-		image.bytes = {reinterpret_cast<std::byte const*>(magenta_v), std::size(magenta_v)};
+		image = magenta_v;
 		mip_mapped = false;
 	}
 	if (mip_mapped && can_mip(m_gfx.gpu, m_info.format)) { m_info.mip_levels = mip_levels({image.extent.x, image.extent.y}); }

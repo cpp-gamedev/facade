@@ -2,14 +2,15 @@
 #include <facade/render/renderer.hpp>
 #include <facade/scene/scene.hpp>
 #include <facade/vk/buffer.hpp>
-#include <facade/vk/skybox.hpp>
 
 namespace facade {
+class Skybox;
+
 class SceneRenderer {
   public:
 	explicit SceneRenderer(Gfx const& gfx);
 
-	void render(Scene const& scene, Renderer& renderer, vk::CommandBuffer cb);
+	void render(Scene const& scene, Ptr<Skybox const> skybox, Renderer& renderer, vk::CommandBuffer cb);
 
   private:
 	void write_view(glm::vec2 const extent);

@@ -1,29 +1,9 @@
 #include <facade/engine/scene_renderer.hpp>
+#include <facade/vk/skybox.hpp>
 
 namespace facade {
 namespace {
-struct Img1x1 {
-	std::byte bytes[4]{};
-
-	Image::View view() const {
-		return Image::View{
-			.bytes = {reinterpret_cast<std::byte const*>(bytes), std::size(bytes)},
-			.extent = {1, 1},
-		};
-	}
-
-	static Img1x1 make(std::array<std::uint8_t, 4> const& rgba) {
-		return {
-			.bytes =
-				{
-					static_cast<std::byte>(rgba[0]),
-					static_cast<std::byte>(rgba[1]),
-					static_cast<std::byte>(rgba[2]),
-					static_cast<std::byte>(rgba[3]),
-				},
-		};
-	}
-};
+using Bmp1x1 = FixedBitmap<1, 1>;
 
 struct DirLightSSBO {
 	alignas(16) glm::vec3 direction{front_v};
@@ -41,12 +21,13 @@ struct DirLightSSBO {
 
 SceneRenderer::SceneRenderer(Gfx const& gfx)
 	: m_gfx(gfx), m_sampler(gfx), m_view_proj(gfx, Buffer::Type::eUniform), m_dir_lights(gfx, Buffer::Type::eStorage),
-	  m_white(gfx, m_sampler.sampler(), Img1x1::make({0xff, 0xff, 0xff, 0xff}).view(), Texture::CreateInfo{.mip_mapped = false}),
-	  m_black(gfx, m_sampler.sampler(), Img1x1::make({0x0, 0x0, 0x0, 0xff}).view(), Texture::CreateInfo{.mip_mapped = false}) {}
+	  m_white(gfx, m_sampler.sampler(), Bmp1x1{0xff_B, 0xff_B, 0xff_B, 0xff_B}.view(), Texture::CreateInfo{.mip_mapped = false}),
+	  m_black(gfx, m_sampler.sampler(), Bmp1x1{0x0_B, 0x0_B, 0x0_B, 0xff_B}.view(), Texture::CreateInfo{.mip_mapped = false}) {}
 
-void SceneRenderer::render(Scene const& scene, Renderer& renderer, vk::CommandBuffer cb) {
+void SceneRenderer::render(Scene const& scene, Ptr<Skybox const> skybox, Renderer& renderer, vk::CommandBuffer cb) {
 	m_scene = &scene;
 	write_view(renderer.framebuffer_extent());
+	if (skybox) { render(renderer, cb, *skybox); }
 	for (auto const& node : m_scene->roots()) { render(renderer, cb, node); }
 }
 

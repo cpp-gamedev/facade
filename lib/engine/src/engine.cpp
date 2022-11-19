@@ -256,7 +256,7 @@ auto Engine::poll() -> State const& {
 void Engine::render() {
 	auto cb = vk::CommandBuffer{};
 	// we skip rendering the scene if acquiring a swapchain image fails (unlikely)
-	if (m_impl->window.renderer.next_frame({&cb, 1})) { m_impl->renderer.render(scene(), renderer(), cb); }
+	if (m_impl->window.renderer.next_frame({&cb, 1})) { m_impl->renderer.render(scene(), {}, renderer(), cb); }
 	m_impl->window.gui->end_frame();
 	m_impl->window.renderer.render();
 }

@@ -26,8 +26,8 @@ vk::SurfaceFormatKHR surface_format(SurfaceFormats const& formats, ColourSpace c
 }
 
 constexpr std::uint32_t image_count(vk::SurfaceCapabilitiesKHR const& caps) noexcept {
-	if (caps.maxImageCount < caps.minImageCount) { return std::max(3U, caps.minImageCount); }
-	return std::clamp(3U, caps.minImageCount, caps.maxImageCount);
+	if (caps.maxImageCount < caps.minImageCount) { return std::max(3u, caps.minImageCount); }
+	return std::clamp(3u, caps.minImageCount, caps.maxImageCount);
 }
 
 constexpr vk::Extent2D image_extent(vk::SurfaceCapabilitiesKHR const& caps, vk::Extent2D const fb) noexcept {
@@ -44,10 +44,10 @@ vk::SwapchainCreateInfoKHR make_swci(Gfx const& gfx, vk::SurfaceKHR surface, Sur
 	ret.surface = surface;
 	ret.presentMode = mode;
 	ret.imageUsage = vk::ImageUsageFlagBits::eColorAttachment | vk::ImageUsageFlagBits::eTransferDst;
-	ret.queueFamilyIndexCount = 1U;
+	ret.queueFamilyIndexCount = 1u;
 	ret.pQueueFamilyIndices = &gfx.queue_family;
 	ret.imageColorSpace = format.colorSpace;
-	ret.imageArrayLayers = 1U;
+	ret.imageArrayLayers = 1u;
 	ret.imageFormat = format.format;
 	return ret;
 }
@@ -109,9 +109,9 @@ vk::Result Swapchain::acquire(Lock const&, glm::uvec2 extent, ImageView& out, vk
 vk::Result Swapchain::present(Lock const&, glm::uvec2 extent, vk::Semaphore wait) {
 	if (!m_storage.acquired || is_zero(extent)) { return vk::Result::eNotReady; }
 	auto pi = vk::PresentInfoKHR{};
-	pi.swapchainCount = 1U;
+	pi.swapchainCount = 1u;
 	pi.pSwapchains = &*m_storage.swapchain;
-	pi.waitSemaphoreCount = 1U;
+	pi.waitSemaphoreCount = 1u;
 	pi.pWaitSemaphores = &wait;
 	pi.pImageIndices = &*m_storage.acquired;
 	auto const ret = m_gfx.queue.presentKHR(&pi);

@@ -346,7 +346,7 @@ struct Data {
 			// TODO
 			assert(json.contains("buffer") && json.contains("byteLength"));
 			bv.buffer = json["buffer"].as<std::size_t>();
-			bv.span = {.length = json["byteLength"].as<std::size_t>(), .offset = json["byteOffset"].as<std::size_t>(0U)};
+			bv.span = {.length = json["byteLength"].as<std::size_t>(), .offset = json["byteOffset"].as<std::size_t>(0)};
 			bv.target = static_cast<Target>(json["target"].as<int>());
 		}
 
@@ -359,7 +359,7 @@ struct Data {
 			a.type = Accessor::get_type(json["type"].as_string());
 
 			if (auto const& bv = json["bufferView"]) { a.buffer_view = bv.as<std::size_t>(); }
-			a.byte_offset = json["byteOffset"].as<std::size_t>(0U);
+			a.byte_offset = json["byteOffset"].as<std::size_t>(0);
 			a.normalized = json["normalized"].as_bool(dj::Boolean{false}).value;
 			a.name = json["name"].as_string("(Unnamed)");
 			for (auto const& min : json["min"].array_view()) { a.clamp.min.insert(min.as_double()); }

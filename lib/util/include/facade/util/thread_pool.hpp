@@ -61,4 +61,28 @@ class ThreadPool {
 	AsyncQueue<UniqueTask<void()>> m_queue{};
 	std::vector<std::jthread> m_threads{};
 };
+
+template <typename T>
+struct MaybeFuture {
+	std::future<T> future{};
+	std::optional<T> t{};
+
+	MaybeFuture() = default;
+
+	template <typename F>
+		requires(std::same_as<std::invoke_result_t<F>, T>)
+	MaybeFuture(ThreadPool& pool, F func) : future(pool.enqueue([f = std::move(func)] { return f(); })) {}
+
+	template <typename F>
+		requires(std::same_as<std::invoke_result_t<F>, T>)
+	explicit MaybeFuture(F func) : t(func()) {}
+
+	bool active() const { return future.valid() || t.has_value(); }
+
+	T get() {
+		assert(active());
+		if (future.valid()) { return future.get(); }
+		return std::move(*t);
+	}
+};
 } // namespace facade

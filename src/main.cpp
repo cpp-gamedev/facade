@@ -83,6 +83,7 @@ void run(AppOpts const& opts) {
 		lit.id = "default";
 		engine->add_shader(lit);
 		engine->add_shader(shaders::unlit());
+		engine->add_shader(shaders::skybox());
 
 		post_scene_load();
 		engine->show(true);
@@ -156,16 +157,8 @@ void run(AppOpts const& opts) {
 			file_menu.display(*events, menu, {engine->load_status().stage > LoadStage::eNone});
 			window_menu.display_menu(menu);
 			window_menu.display_windows(*engine);
-
-			if (auto path = path_sources.update(); !path.empty()) {
-				auto const ext = fs::path{path}.extension().string();
-				if (ext == ".gltf") {
-					load_async(std::move(path));
-				} else {
-					logger::warn("Unrecognized path: {}", path);
-				}
-			}
 		}
+		if (auto path = path_sources.update(); !path.empty()) { load_async(std::move(path)); }
 
 		config.update(*engine);
 

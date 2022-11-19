@@ -73,35 +73,8 @@ Mesh to_mesh(gltf::Mesh mesh) {
 	return ret;
 }
 
-template <typename T>
-struct MaybeFuture {
-	std::future<T> future{};
-	std::optional<T> t{};
-
-	template <typename F>
-		requires(std::same_as<std::invoke_result_t<F>, T>)
-	MaybeFuture(ThreadPool& pool, std::atomic<std::size_t>& done, F func)
-		: future(pool.enqueue([&done, f = std::move(func)] {
-			  auto ret = f();
-			  ++done;
-			  return ret;
-		  })) {}
-
-	template <typename F>
-		requires(std::same_as<std::invoke_result_t<F>, T>)
-	MaybeFuture(std::atomic<std::size_t>& done, F func) : t(func()) {
-		++done;
-	}
-
-	T get() {
-		assert(future.valid() || t.has_value());
-		if (future.valid()) { return future.get(); }
-		return std::move(*t);
-	}
-};
-
 template <typename F>
-static auto make_maybe_future(ThreadPool* pool, std::atomic<std::size_t>& out_done, F func) -> MaybeFuture<std::invoke_result_t<F>> {
+auto make_load_future(ThreadPool* pool, std::atomic<std::size_t>& out_done, F func) -> LoadFuture<std::invoke_result_t<F>> {
 	if (pool) { return {*pool, out_done, std::move(func)}; }
 	return {out_done, std::move(func)};
 }
@@ -132,7 +105,7 @@ bool Scene::GltfLoader::operator()(dj::Json const& root, DataProvider const& pro
 	auto images = std::vector<MaybeFuture<Image>>{};
 	images.reserve(asset.images.size());
 	for (auto& image : asset.images) {
-		images.push_back(make_maybe_future(thread_pool, m_status.done, [i = std::move(image)] { return Image{i.bytes.span(), std::move(i.name)}; }));
+		images.push_back(make_load_future(thread_pool, m_status.done, [i = std::move(image)] { return Image{i.bytes.span(), std::move(i.name)}; }));
 	}
 
 	for (auto const& sampler : asset.samplers) { m_scene.add(to_sampler_info(sampler)); }
@@ -144,7 +117,7 @@ bool Scene::GltfLoader::operator()(dj::Json const& root, DataProvider const& pro
 	auto textures = std::vector<MaybeFuture<Texture>>{};
 	textures.reserve(asset.textures.size());
 	for (auto& texture : asset.textures) {
-		textures.push_back(make_maybe_future(thread_pool, m_status.done, [texture = std::move(texture), &images, &get_sampler, this] {
+		textures.push_back(make_load_future(thread_pool, m_status.done, [texture = std::move(texture), &images, &get_sampler, this] {
 			bool const mip_mapped = texture.colour_space == ColourSpace::eSrgb;
 			auto const tci = Texture::CreateInfo{.name = std::move(texture.name), .mip_mapped = mip_mapped, .colour_space = texture.colour_space};
 			return Texture{m_scene.m_gfx, get_sampler(texture.sampler), images[texture.source].get(), tci};
@@ -154,7 +127,7 @@ bool Scene::GltfLoader::operator()(dj::Json const& root, DataProvider const& pro
 	auto static_meshes = std::vector<MaybeFuture<StaticMesh>>{};
 	static_meshes.reserve(asset.geometries.size());
 	for (auto& geometry : asset.geometries) {
-		static_meshes.push_back(make_maybe_future(thread_pool, m_status.done, [g = std::move(geometry), this] { return StaticMesh{m_scene.m_gfx, g}; }));
+		static_meshes.push_back(make_load_future(thread_pool, m_status.done, [g = std::move(geometry), this] { return StaticMesh{m_scene.m_gfx, g}; }));
 	}
 
 	m_scene.replace(from_maybe_futures(std::move(textures)));

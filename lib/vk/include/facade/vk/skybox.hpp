@@ -5,11 +5,13 @@
 namespace facade {
 class Skybox {
   public:
-	struct Images;
+	struct Data;
 
-	Skybox(Gfx const& gfx, Images const& images);
+	Skybox(Gfx const& gfx);
 
-	void set_cubemap(Images const& images);
+	// +x-x+y-y+z-z
+	void set(std::span<Image::View const> images);
+	void reset();
 
 	StaticMesh const& static_mesh() const { return m_cube; }
 	Cubemap const& cubemap() const { return m_cubemap; }
@@ -21,12 +23,14 @@ class Skybox {
 	Gfx m_gfx;
 };
 
-struct Skybox::Images {
-	Image::View right{};
-	Image::View left{};
-	Image::View top{};
-	Image::View bottom{};
-	Image::View front{};
-	Image::View back{};
+struct Skybox::Data {
+	// +x-x+y-y+z-z
+	Image images[6]{};
+	mutable Image::View cache[6]{};
+
+	std::span<Image::View const> views() const {
+		for (std::size_t i = 0; i < std::size(images); ++i) { cache[i] = images[i]; }
+		return cache;
+	}
 };
 } // namespace facade

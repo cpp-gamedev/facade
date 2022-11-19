@@ -1,11 +1,10 @@
 #include <djson/json.hpp>
 #include <facade/scene/load_status.hpp>
 #include <facade/scene/scene.hpp>
+#include <facade/util/thread_pool.hpp>
 #include <atomic>
 
 namespace facade {
-class ThreadPool;
-
 ///
 /// \brief Concurrent status for multi-threaded loading
 ///
@@ -18,6 +17,24 @@ struct AtomicLoadStatus {
 		stage = LoadStage::eNone;
 		total = {};
 		done = {};
+	}
+};
+
+template <typename T>
+struct LoadFuture : MaybeFuture<T> {
+	LoadFuture() = default;
+
+	template <typename F>
+	LoadFuture(ThreadPool& pool, std::atomic<std::size_t>& post_increment, F func)
+		: MaybeFuture<T>(pool, [&post_increment, f = std::move(func)] {
+			  auto ret = f();
+			  ++post_increment;
+			  return ret;
+		  }) {}
+
+	template <typename F>
+	LoadFuture(std::atomic<std::size_t>& post_increment, F func) : MaybeFuture<T>(std::move(func)) {
+		++post_increment;
 	}
 };
 

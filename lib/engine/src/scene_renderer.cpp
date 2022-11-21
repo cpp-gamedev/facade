@@ -1,29 +1,9 @@
 #include <facade/engine/scene_renderer.hpp>
+#include <facade/vk/skybox.hpp>
 
 namespace facade {
 namespace {
-struct Img1x1 {
-	std::byte bytes[4]{};
-
-	Image::View view() const {
-		return Image::View{
-			.bytes = {reinterpret_cast<std::byte const*>(bytes), std::size(bytes)},
-			.extent = {1, 1},
-		};
-	}
-
-	static Img1x1 make(std::array<std::uint8_t, 4> const& rgba) {
-		return {
-			.bytes =
-				{
-					static_cast<std::byte>(rgba[0]),
-					static_cast<std::byte>(rgba[1]),
-					static_cast<std::byte>(rgba[2]),
-					static_cast<std::byte>(rgba[3]),
-				},
-		};
-	}
-};
+using Bmp1x1 = FixedBitmap<1, 1>;
 
 struct DirLightSSBO {
 	alignas(16) glm::vec3 direction{front_v};
@@ -41,12 +21,13 @@ struct DirLightSSBO {
 
 SceneRenderer::SceneRenderer(Gfx const& gfx)
 	: m_gfx(gfx), m_sampler(gfx), m_view_proj(gfx, Buffer::Type::eUniform), m_dir_lights(gfx, Buffer::Type::eStorage),
-	  m_white(gfx, m_sampler.sampler(), Img1x1::make({0xff, 0xff, 0xff, 0xff}).view(), Texture::CreateInfo{.mip_mapped = false}),
-	  m_black(gfx, m_sampler.sampler(), Img1x1::make({0x0, 0x0, 0x0, 0xff}).view(), Texture::CreateInfo{.mip_mapped = false}) {}
+	  m_white(gfx, m_sampler.sampler(), Bmp1x1{0xff_B, 0xff_B, 0xff_B, 0xff_B}.view(), Texture::CreateInfo{.mip_mapped = false}),
+	  m_black(gfx, m_sampler.sampler(), Bmp1x1{0x0_B, 0x0_B, 0x0_B, 0xff_B}.view(), Texture::CreateInfo{.mip_mapped = false}) {}
 
-void SceneRenderer::render(Scene const& scene, Renderer& renderer, vk::CommandBuffer cb) {
+void SceneRenderer::render(Scene const& scene, Ptr<Skybox const> skybox, Renderer& renderer, vk::CommandBuffer cb) {
 	m_scene = &scene;
 	write_view(renderer.framebuffer_extent());
+	if (skybox) { render(renderer, cb, *skybox); }
 	for (auto const& node : m_scene->roots()) { render(renderer, cb, node); }
 }
 
@@ -77,7 +58,7 @@ void SceneRenderer::update_view(Pipeline& out_pipeline) const {
 	out_pipeline.bind(set0);
 }
 
-std::span<glm::mat4x4 const> SceneRenderer::make_instances(Node const& node, glm::mat4x4 const& parent) {
+std::span<glm::mat4x4 const> SceneRenderer::make_instances(Node const& node, glm::mat4x4 const& parent) const {
 	m_instance_mats.clear();
 	if (node.instances.empty()) {
 		m_instance_mats.reserve(1);
@@ -89,7 +70,20 @@ std::span<glm::mat4x4 const> SceneRenderer::make_instances(Node const& node, glm
 	return m_instance_mats;
 }
 
-void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Node const& node, glm::mat4 const& parent) {
+void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Skybox const& skybox) const {
+	auto state = m_scene->pipeline_state;
+	state.depth_test = false;
+	auto pipeline = renderer.bind_pipeline(cb, state, "skybox");
+	pipeline.set_line_width(1.0f);
+	update_view(pipeline);
+	auto& set1 = pipeline.next_set(1);
+	set1.update(0, skybox.cubemap().descriptor_image());
+	pipeline.bind(set1);
+	auto const instance = glm::translate(matrix_identity_v, m_scene->camera().transform.position());
+	renderer.draw(pipeline, skybox.static_mesh(), {&instance, 1});
+}
+
+void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Node const& node, glm::mat4 const& parent) const {
 	auto const& resources = m_scene->resources();
 	if (auto const* mesh_id = node.find<Id<Mesh>>()) {
 		static auto const s_default_material = Material{std::make_unique<LitMaterial>()};

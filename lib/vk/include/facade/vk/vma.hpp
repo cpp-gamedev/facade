@@ -120,8 +120,9 @@ struct Vma {
 	VmaAllocator allocator{};
 
 	Unique<Buffer, Deleter> make_buffer(vk::BufferUsageFlags usage, vk::DeviceSize size, bool host_visible) const;
-	Unique<Image, Deleter> make_image(ImageCreateInfo const& info, vk::Extent2D extent) const;
-	vk::UniqueImageView make_image_view(vk::Image const image, vk::Format const format, vk::ImageSubresourceRange isr = isr_v) const;
+	Unique<Image, Deleter> make_image(ImageCreateInfo const& info, vk::Extent2D extent, vk::ImageViewType type = vk::ImageViewType::e2D) const;
+	vk::UniqueImageView make_image_view(vk::Image const image, vk::Format const format, vk::ImageSubresourceRange isr = isr_v,
+										vk::ImageViewType type = vk::ImageViewType::e2D) const;
 };
 
 struct Vma::Allocation {

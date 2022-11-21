@@ -22,7 +22,7 @@ struct ViewPlane {
 ///
 struct Camera {
 	struct Perspective {
-		ViewPlane view_plane{1.0f, 1000.0f};
+		ViewPlane view_plane{0.1f, 1000.0f};
 		float field_of_view{glm::radians(45.0f)};
 	};
 

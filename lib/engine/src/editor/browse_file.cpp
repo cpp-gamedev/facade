@@ -2,6 +2,7 @@
 #include <imgui.h>
 #include <facade/engine/editor/browse_file.hpp>
 #include <facade/util/env.hpp>
+#include <facade/util/fixed_string.hpp>
 #include <filesystem>
 
 namespace facade::editor {
@@ -74,6 +75,16 @@ auto BrowseFile::operator()(NotClosed<Popup> popup, std::string& out_path) -> Re
 		ImGui::SameLine();
 		if (ImGui::Button("Downloads")) { cd(std::move(downloads)); }
 	}
+
+	ImGui::Separator();
+	auto exts = FixedString{};
+	if (extensions.empty()) {
+		exts = "*.*";
+	} else {
+		exts = FixedString{"*{}", extensions[0]};
+		for (auto it = std::next(extensions.begin()); it != extensions.end(); ++it) { exts += FixedString{", *{}", *it}; }
+	}
+	ImGui::Text("%s", exts.c_str());
 
 	ImGui::Separator();
 	if (auto window = editor::Window{popup, "File Tree"}) {

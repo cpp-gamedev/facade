@@ -9,11 +9,14 @@
 #include <facade/render/renderer.hpp>
 #include <facade/scene/gltf_loader.hpp>
 #include <facade/util/data_provider.hpp>
+#include <facade/util/enumerate.hpp>
 #include <facade/util/env.hpp>
 #include <facade/util/error.hpp>
 #include <facade/util/logger.hpp>
 #include <facade/util/thread_pool.hpp>
+#include <facade/util/zip_ranges.hpp>
 #include <facade/vk/cmd.hpp>
+#include <facade/vk/skybox.hpp>
 #include <facade/vk/vk.hpp>
 #include <glm/gtc/color_space.hpp>
 #include <glm/mat4x4.hpp>
@@ -166,6 +169,40 @@ bool load_gltf(Scene& out_scene, char const* path, AtomicLoadStatus& out_status,
 	return Scene::GltfLoader{out_scene, out_status}(json, provider, thread_pool);
 }
 
+std::optional<Skybox::Data> load_skybox_data(char const* path, AtomicLoadStatus& out_status, ThreadPool* thread_pool) {
+	LoadFuture<Image> images[6]{};
+	static constexpr std::string_view faces_v[] = {"x+", "x-", "y+", "y-", "z+", "z-"};
+	out_status.total = 6;
+	out_status.done = 0;
+	out_status.stage = LoadStage::eUploadingResources;
+
+	auto const provider = FileDataProvider::mount_parent_dir(path);
+	auto load_image = [&provider, &out_status, thread_pool](std::string_view uri) {
+		auto load = [&provider, uri] { return Image{provider.load(uri).span(), std::string{uri}}; };
+		if (thread_pool) {
+			return LoadFuture<Image>{*thread_pool, out_status.done, load};
+		} else {
+			return LoadFuture<Image>{out_status.done, load};
+		}
+	};
+	auto json = dj::Json::from_file(path);
+	if (!json) {
+		// TODO: error
+		return {};
+	}
+
+	for (auto [face, image] : zip_ranges(faces_v, images)) { image = load_image(json[face].as_string()); }
+
+	if (!std::all_of(std::begin(images), std::end(images), [](MaybeFuture<Image> const& i) { return i.active(); })) {
+		// TODO: error
+		return {};
+	}
+
+	auto ret = Skybox::Data{};
+	for (auto [in, out] : zip_ranges(images, ret.images)) { out = in.get(); }
+	return ret;
+}
+
 template <typename T>
 bool ready(std::future<T> const& future) {
 	return future.valid() && future.wait_for(std::chrono::seconds{}) == std::future_status::ready;
@@ -183,7 +220,8 @@ bool busy(std::future<T> const& future) {
 
 struct LoadRequest {
 	std::string path{};
-	std::future<Scene> future{};
+	std::future<Scene> scene{};
+	std::future<std::optional<Skybox::Data>> skybox_data{};
 	AtomicLoadStatus status{};
 	float start_time{};
 };
@@ -193,6 +231,7 @@ struct Engine::Impl {
 	RenderWindow window;
 	SceneRenderer renderer;
 	Scene scene;
+	Skybox skybox;
 
 	std::uint8_t msaa;
 
@@ -202,17 +241,19 @@ struct Engine::Impl {
 	struct {
 		LoadRequest request{};
 		UniqueTask<void()> callback{};
+
+		bool active() const { return request.scene.valid() || request.skybox_data.valid(); }
 	} load{};
 
 	Impl(UniqueWin window, std::uint8_t msaa, bool validation, std::optional<std::uint32_t> thread_count)
-		: window(std::move(window), std::make_unique<DearImGui>(), msaa, validation), renderer(this->window.gfx), scene(this->window.gfx), msaa(msaa),
-		  thread_pool(thread_count) {
+		: window(std::move(window), std::make_unique<DearImGui>(), msaa, validation), renderer(this->window.gfx), scene(this->window.gfx),
+		  skybox(this->window.gfx), msaa(msaa), thread_pool(thread_count) {
 		s_instance = this;
 		load.request.status.reset();
 	}
 
 	~Impl() {
-		load.request.future = {};
+		load.request.scene = {};
 		window.gfx.device.waitIdle();
 		s_instance = {};
 	}
@@ -256,7 +297,7 @@ auto Engine::poll() -> State const& {
 void Engine::render() {
 	auto cb = vk::CommandBuffer{};
 	// we skip rendering the scene if acquiring a swapchain image fails (unlikely)
-	if (m_impl->window.renderer.next_frame({&cb, 1})) { m_impl->renderer.render(scene(), renderer(), cb); }
+	if (m_impl->window.renderer.next_frame({&cb, 1})) { m_impl->renderer.render(scene(), &m_impl->skybox, renderer(), cb); }
 	m_impl->window.gui->end_frame();
 	m_impl->window.renderer.render();
 }
@@ -267,49 +308,60 @@ glm::ivec2 Engine::window_position() const { return m_impl->window.window.get().
 glm::uvec2 Engine::window_extent() const { return m_impl->window.window.get().window_extent(); }
 glm::uvec2 Engine::framebuffer_extent() const { return m_impl->window.window.get().framebuffer_extent(); }
 
-bool Engine::load_async(std::string gltf_json_path, UniqueTask<void()> on_loaded) {
-	if (!fs::is_regular_file(gltf_json_path)) {
+bool Engine::load_async(std::string json_path, UniqueTask<void()> on_loaded) {
+	if (!fs::is_regular_file(json_path)) {
 		// early return if file will fail to load anyway
-		logger::error("[Engine] Invalid GLTF JSON path: [{}]", gltf_json_path);
+		logger::error("[Engine] Invalid GLTF JSON path: [{}]", json_path);
 		return false;
 	}
 
 	// ensure thread pool queue has at least one worker thread, else load on this thread
 	if (m_impl->thread_pool.thread_count() == 0) {
 		auto const start = time::since_start();
-		if (!load_gltf(m_impl->scene, gltf_json_path.c_str(), m_impl->load.request.status, nullptr)) {
-			logger::error("[Engine] Failed to load GLTF: [{}]", gltf_json_path);
-			return false;
+		if (load_gltf(m_impl->scene, json_path.c_str(), m_impl->load.request.status, nullptr)) {
+			logger::info("...GLTF [{}] loaded in [{:.2f}s]", env::to_filename(json_path), time::since_start() - start);
+			return true;
 		}
-		logger::info("...GLTF [{}] loaded in [{:.2f}s]", env::to_filename(gltf_json_path), time::since_start() - start);
-		return true;
+		if (auto sd = load_skybox_data(json_path.c_str(), m_impl->load.request.status, nullptr)) {
+			m_impl->skybox.set(sd->views());
+			logger::info("...Skybox [{}] loaded in [{:.2f}s]", env::to_filename(json_path), time::since_start() - start);
+		}
+		logger::error("[Engine] Failed to load file: [{}]", json_path);
+		return false;
 	}
 
 	// shared state will need to be accessed, lock the mutex
 	auto lock = std::scoped_lock{m_impl->mutex};
-	if (m_impl->load.request.future.valid()) {
+	if (m_impl->load.active()) {
 		// we don't support discarding in-flight requests
 		logger::warn("[Engine] Denied attempt to load_async when a load request is already in flight");
 		return false;
 	}
 
 	// ready to start loading
-	logger::info("[Engine] Loading GLTF [{}]...", env::to_filename(gltf_json_path));
+	std::string_view const type = fs::path{json_path}.extension() == ".skybox" ? "Skybox" : "GLTF";
+	logger::info("[Engine] Loading {} [{}]...", type, env::to_filename(json_path));
 	// populate load request
 	m_impl->load.callback = std::move(on_loaded);
-	m_impl->load.request.path = std::move(gltf_json_path);
+	m_impl->load.request.path = std::move(json_path);
 	m_impl->load.request.status.reset();
 	m_impl->load.request.start_time = time::since_start();
 	// if thread pool queue has only one worker thread, can't dispatch tasks from within a task and then wait for them (deadlock)
 	auto* tp = m_impl->thread_pool.thread_count() > 1 ? &m_impl->thread_pool : nullptr;
-	auto func = [path = m_impl->load.request.path, gfx = m_impl->window.gfx, status = &m_impl->load.request.status, tp] {
-		auto scene = Scene{gfx};
-		if (!load_gltf(scene, path.c_str(), *status, tp)) { logger::error("[Engine] Failed to load GLTF: [{}]", path); }
-		// return the scene even on failure, it will be empty but valid
-		return scene;
-	};
-	// store future
-	m_impl->load.request.future = m_impl->thread_pool.enqueue(func);
+	if (type == "Skybox") {
+		auto func = [path = m_impl->load.request.path, status = &m_impl->load.request.status, tp] { return load_skybox_data(path.c_str(), *status, tp); };
+		// store future
+		m_impl->load.request.skybox_data = m_impl->thread_pool.enqueue(func);
+	} else {
+		auto func = [path = m_impl->load.request.path, gfx = m_impl->window.gfx, status = &m_impl->load.request.status, tp] {
+			auto scene = Scene{gfx};
+			if (!load_gltf(scene, path.c_str(), *status, tp)) { logger::error("[Engine] Failed to load GLTF: [{}]", path); }
+			// return the scene even on failure, it will be empty but valid
+			return scene;
+		};
+		// store future
+		m_impl->load.request.scene = m_impl->thread_pool.enqueue(func);
+	}
 	return true;
 }
 
@@ -330,21 +382,37 @@ Renderer& Engine::renderer() const { return m_impl->window.renderer; }
 void Engine::update_load_request() {
 	auto lock = std::unique_lock{m_impl->mutex};
 	// early return if future isn't valid or is still busy
-	if (!ready(m_impl->load.request.future)) { return; }
+	if (ready(m_impl->load.request.scene)) {
+		// transfer scene (under mutex lock)
+		m_impl->scene = m_impl->load.request.scene.get();
+		// reset load status
+		m_impl->load.request.status.reset();
+		// move out the path
+		auto path = std::move(m_impl->load.request.path);
+		// move out the callback
+		auto callback = std::move(m_impl->load.callback);
+		auto const duration = time::since_start() - m_impl->load.request.start_time;
+		// unlock mutex to prevent possible deadlock (eg callback calls load_gltf again)
+		lock.unlock();
+		logger::info("...GLTF [{}] loaded in [{:.2f}s]", env::to_filename(path), duration);
+		// invoke callback
+		if (callback) { callback(); }
+	}
 
-	// transfer scene (under mutex lock)
-	m_impl->scene = m_impl->load.request.future.get();
-	// reset load status
-	m_impl->load.request.status.reset();
-	// move out the path
-	auto path = std::move(m_impl->load.request.path);
-	// move out the callback
-	auto callback = std::move(m_impl->load.callback);
-	auto const duration = time::since_start() - m_impl->load.request.start_time;
-	// unlock mutex to prevent possible deadlock (eg callback calls load_gltf again)
-	lock.unlock();
-	logger::info("...GLTF [{}] loaded in [{:.2f}s]", env::to_filename(path), duration);
-	// invoke callback
-	if (callback) { callback(); }
+	if (ready(m_impl->load.request.skybox_data)) {
+		auto skybox_data = m_impl->load.request.skybox_data.get();
+		m_impl->load.request.status.reset();
+		auto path = std::move(m_impl->load.request.path);
+		if (skybox_data) {
+			m_impl->skybox.set(skybox_data->views());
+			auto const duration = time::since_start() - m_impl->load.request.start_time;
+			lock.unlock();
+			auto callback = std::move(m_impl->load.callback);
+			logger::info("...Skybox [{}] loaded in [{:.2f}s]", env::to_filename(path), duration);
+			if (callback) { callback(); }
+		} else {
+			logger::warn("...Skybox [{}] failed to load", env::to_filename(path));
+		}
+	}
 }
 } // namespace facade

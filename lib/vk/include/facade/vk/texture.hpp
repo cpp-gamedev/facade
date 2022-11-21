@@ -50,11 +50,18 @@ class Texture {
 
 	vk::Sampler sampler{};
 
-  private:
+  protected:
+	Texture(Gfx const& gfx, vk::Sampler sampler, std::string name);
+
 	Defer<UniqueImage> m_image{};
 	Gfx m_gfx{};
 	ImageCreateInfo m_info{};
 	vk::ImageLayout m_layout{vk::ImageLayout::eUndefined};
 	std::string m_name{};
+};
+
+class Cubemap : public Texture {
+  public:
+	Cubemap(Gfx const& gfx, vk::Sampler sampler, std::span<Image::View const> images, std::string name = {});
 };
 } // namespace facade

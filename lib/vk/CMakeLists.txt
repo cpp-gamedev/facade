@@ -62,6 +62,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/vk/rotator.hpp
   include/${target_prefix}/vk/set_allocator.hpp
   include/${target_prefix}/vk/shader.hpp
+  include/${target_prefix}/vk/skybox.hpp
   include/${target_prefix}/vk/spir_v.hpp
   include/${target_prefix}/vk/static_mesh.hpp
   include/${target_prefix}/vk/swapchain.hpp
@@ -82,6 +83,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   src/render_pass.cpp
   src/set_allocator.cpp
   src/shader.cpp
+  src/skybox.cpp
   src/spir_v.cpp
   src/static_mesh.cpp
   src/swapchain.cpp

@@ -5,6 +5,8 @@
 #include <string>
 
 namespace facade {
+constexpr std::byte operator""_B(unsigned long long l) { return static_cast<std::byte>(l); }
+
 ///
 /// \brief Storage for uncompressed RGBA image data (as bytes)
 ///
@@ -63,5 +65,13 @@ class Image {
 	std::string m_name{};
 	Unique<Storage, Storage::Deleter> m_storage{};
 	glm::uvec2 m_extent{};
+};
+
+template <std::uint32_t Width, std::uint32_t Height, std::uint32_t Channels = 4>
+struct FixedBitmap {
+	std::byte bytes[Width * Height * Channels]{};
+
+	constexpr Image::View view() const { return {.bytes = bytes, .extent = {Width, Height}}; }
+	constexpr operator Image::View() const { return view(); }
 };
 } // namespace facade

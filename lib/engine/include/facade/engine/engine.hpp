@@ -83,11 +83,11 @@ class Engine {
 	void request_stop();
 
 	///
-	/// \brief Load a GLTF scene asynchronously.
+	/// \brief Load a GLTF scene / Skybox asynchronously.
 	///
 	/// Subsequent requests will be rejected if one is in flight
 	///
-	bool load_async(std::string gltf_json_path, UniqueTask<void()> on_loaded = {});
+	bool load_async(std::string json_path, UniqueTask<void()> on_loaded = {});
 	///
 	/// \brief Obtain status of in-flight async load request (if active).
 	///

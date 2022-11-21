@@ -20,6 +20,7 @@
 
 #include <imgui.h>
 
+#include <charconv>
 #include <filesystem>
 #include <iostream>
 
@@ -82,6 +83,7 @@ void run(AppOpts const& opts) {
 		lit.id = "default";
 		engine->add_shader(lit);
 		engine->add_shader(shaders::unlit());
+		engine->add_shader(shaders::skybox());
 
 		post_scene_load();
 		engine->show(true);
@@ -113,7 +115,7 @@ void run(AppOpts const& opts) {
 
 	auto path_sources = PathSource::List{};
 	path_sources.sources.push_back(std::make_unique<DropFile>(events));
-	path_sources.sources.push_back(std::make_unique<BrowseGltf>(events, config.config.file_menu.browse_path));
+	path_sources.sources.push_back(std::make_unique<FileBrowser>(events, config.config.file_menu.browse_path));
 	path_sources.sources.push_back(std::make_unique<OpenRecent>(events));
 
 	auto quit = Observer<event::Shutdown>{events, [&engine](event::Shutdown) { engine->request_stop(); }};
@@ -155,9 +157,8 @@ void run(AppOpts const& opts) {
 			file_menu.display(*events, menu, {engine->load_status().stage > LoadStage::eNone});
 			window_menu.display_menu(menu);
 			window_menu.display_windows(*engine);
-
-			if (auto path = path_sources.update(); !path.empty()) { load_async(std::move(path)); }
 		}
+		if (auto path = path_sources.update(); !path.empty()) { load_async(std::move(path)); }
 
 		config.update(*engine);
 
@@ -179,16 +180,14 @@ void run(AppOpts const& opts) {
 	}
 }
 
-std::optional<std::uint32_t> to_u32(std::string const& s) {
-	try {
-		int i = std::stoi(s);
-		if (i < 0) {
-			logger::error("Invalid value: {}", i);
-			return {};
-		}
-		return static_cast<std::uint32_t>(i);
-	} catch (std::exception const& e) { logger::error("Invalid value: {} ({})", s, e.what()); }
-	return {};
+std::optional<std::uint32_t> to_u32(std::string_view const s) {
+	auto ret = std::uint32_t{};
+	auto [_, ec] = std::from_chars(s.data(), s.data() + s.size(), ret);
+	if (ec != std::errc{}) {
+		logger::error("Invalid value: {}", s);
+		return {};
+	}
+	return ret;
 }
 } // namespace
 

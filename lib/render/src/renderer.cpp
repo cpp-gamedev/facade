@@ -209,8 +209,8 @@ Pipeline Renderer::bind_pipeline(vk::CommandBuffer cb, Pipeline::State const& st
 	glm::vec2 const extent = glm::uvec2{m_impl->render_target->extent.width, m_impl->render_target->extent.height};
 	auto viewport = vk::Viewport{0.0f, extent.y, extent.x, -extent.y, 0.0f, 1.0f};
 	auto scissor = vk::Rect2D{{}, m_impl->render_target->extent};
-	cb.setViewport(0U, viewport);
-	cb.setScissor(0U, scissor);
+	cb.setViewport(0u, viewport);
+	cb.setScissor(0u, scissor);
 	return ret;
 }
 

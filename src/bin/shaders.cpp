@@ -1,6 +1,7 @@
 #include <bin/shaders.hpp>
 #include <bin/default_vert.spv.hpp>
 #include <bin/lit_frag.spv.hpp>
+#include <bin/skybox_frag.spv.hpp>
 #include <bin/unlit_frag.spv.hpp>
 
 namespace facade {
@@ -24,6 +25,14 @@ Shader shaders::lit() {
 		.id = "lit",
 		.vert = SpirV::View::from_bytes(to_bytes(default_vert_v)),
 		.frag = SpirV::View::from_bytes(to_bytes(lit_frag_v)),
+	};
+}
+
+Shader shaders::skybox() {
+	return {
+		.id = "skybox",
+		.vert = SpirV::View::from_bytes(to_bytes(default_vert_v)),
+		.frag = SpirV::View::from_bytes(to_bytes(skybox_frag_v)),
 	};
 }
 } // namespace facade

@@ -1,19 +1,19 @@
 #pragma once
 #include <events/events.hpp>
+#include <facade/engine/editor/file_browser.hpp>
 #include <facade/util/env.hpp>
 #include <gui/events.hpp>
 #include <gui/path_source.hpp>
 
 namespace facade {
-class BrowseGltf : public PathSource {
+class FileBrowser : public PathSource {
   public:
-	BrowseGltf(std::shared_ptr<Events> const& events, std::string browse_path);
+	FileBrowser(std::shared_ptr<Events> const& events, std::string browse_path);
 
   private:
 	std::weak_ptr<Events> m_events;
 	Observer<event::OpenFile> m_observer;
-	env::DirEntries m_dir_entries{};
-	std::string m_browse_path{};
+	editor::FileBrowser m_browser;
 	bool m_trigger{};
 
 	std::string update() final;

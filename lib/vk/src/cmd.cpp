@@ -31,11 +31,11 @@ Cmd::~Cmd() {
 	m_fence = m_gfx.device.createFenceUnique({});
 	auto si = vk::SubmitInfo{};
 	si.pWaitDstStageMask = &m_wait;
-	si.commandBufferCount = 1U;
+	si.commandBufferCount = 1u;
 	si.pCommandBuffers = &cb;
 	{
 		auto lock = std::scoped_lock{m_gfx.shared->mutex};
-		if (m_gfx.queue.submit(1U, &si, *m_fence) != vk::Result::eSuccess) { return; }
+		if (m_gfx.queue.submit(1u, &si, *m_fence) != vk::Result::eSuccess) { return; }
 	}
 	m_gfx.wait(*m_fence);
 }

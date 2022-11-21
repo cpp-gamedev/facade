@@ -1,4 +1,3 @@
-#include <facade/util/enumerate.hpp>
 #include <facade/util/flex_array.hpp>
 #include <facade/util/nvec3.hpp>
 #include <facade/vk/geometry.hpp>

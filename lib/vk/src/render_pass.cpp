@@ -53,14 +53,14 @@ vk::UniqueRenderPass create_render_pass(vk::Device device, vk::SampleCountFlagBi
 	auto rpci = vk::RenderPassCreateInfo{};
 	rpci.attachmentCount = static_cast<std::uint32_t>(attachments.size());
 	rpci.pAttachments = attachments.data();
-	rpci.subpassCount = 1U;
+	rpci.subpassCount = 1u;
 	rpci.pSubpasses = &subpass;
 	auto sd = vk::SubpassDependency{};
 	sd.srcSubpass = VK_SUBPASS_EXTERNAL;
 	sd.srcAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
 	sd.dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite | vk::AccessFlagBits::eDepthStencilAttachmentWrite;
 	sd.srcStageMask = sd.dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput | vk::PipelineStageFlagBits::eEarlyFragmentTests;
-	rpci.dependencyCount = 1U;
+	rpci.dependencyCount = 1u;
 	rpci.pDependencies = &sd;
 	return device.createRenderPassUnique(rpci);
 }
@@ -113,12 +113,12 @@ void RenderPass::bind(vk::CommandBuffer cb, vk::Pipeline pipeline) {
 	glm::vec2 const extent = glm::uvec2{m_extent.width, m_extent.height};
 	auto viewport = vk::Viewport{0.0f, extent.y, extent.x, -extent.y, 0.0f, 1.0f};
 	auto scissor = vk::Rect2D{{}, m_extent};
-	cb.setViewport(0U, viewport);
-	cb.setScissor(0U, scissor);
+	cb.setViewport(0u, viewport);
+	cb.setScissor(0u, scissor);
 }
 
 void RenderPass::execute(Framebuffer const& frame, vk::ClearColorValue const& clear) {
-	vk::ClearValue const clear_values[] = {clear, vk::ClearDepthStencilValue{1.0f, 0U}};
+	vk::ClearValue const clear_values[] = {clear, vk::ClearDepthStencilValue{1.0f, 0u}};
 	auto rpbi = vk::RenderPassBeginInfo{*m_render_pass, frame.framebuffer, vk::Rect2D{{}, m_extent}, clear_values};
 	frame.primary.beginRenderPass(rpbi, vk::SubpassContents::eSecondaryCommandBuffers);
 	frame.primary.executeCommands(static_cast<std::uint32_t>(frame.secondary.size()), frame.secondary.data());

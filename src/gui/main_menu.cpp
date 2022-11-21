@@ -4,14 +4,16 @@
 #include <facade/engine/editor/scene_tree.hpp>
 #include <facade/engine/engine.hpp>
 #include <facade/render/renderer.hpp>
-#include <facade/util/enumerate.hpp>
 #include <facade/util/env.hpp>
 #include <facade/util/error.hpp>
 #include <facade/util/fixed_string.hpp>
 #include <facade/util/logger.hpp>
 #include <gui/main_menu.hpp>
+#include <filesystem>
 
 namespace facade {
+namespace fs = std::filesystem;
+
 void WindowMenu::display_menu(editor::NotClosed<editor::MainMenu> main) {
 	auto menu = editor::Menu{main, "Window"};
 	if (!menu) { return; }
@@ -150,6 +152,7 @@ void WindowMenu::operator()(std::span<logger::Entry const> entries) {
 void FileMenu::add_recent(std::string path) {
 	if (auto it = std::find(m_recents.begin(), m_recents.end(), path); it != m_recents.end()) { m_recents.erase(it); }
 	m_recents.push_back(std::move(path));
+	std::erase_if(m_recents, [](std::string const& path) { return !fs::is_regular_file(path); });
 	max_recents = std::max(max_recents, std::uint8_t{1});
 	auto const trim = static_cast<std::ptrdiff_t>(m_recents.size()) - static_cast<std::ptrdiff_t>(max_recents);
 	if (trim > 0) {

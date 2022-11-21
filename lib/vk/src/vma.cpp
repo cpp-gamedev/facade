@@ -35,13 +35,14 @@ UniqueBuffer Vma::make_buffer(vk::BufferUsageFlags const usage, vk::DeviceSize c
 	return UniqueBuffer{std::move(ret)};
 }
 
-UniqueImage Vma::make_image(ImageCreateInfo const& info, vk::Extent2D const extent) const {
+UniqueImage Vma::make_image(ImageCreateInfo const& info, vk::Extent2D const extent, vk::ImageViewType type) const {
 	if (extent.width == 0 || extent.height == 0) { throw Error{"Attempt to allocate 0-sized image"}; }
 	auto vaci = VmaAllocationCreateInfo{};
 	vaci.usage = VMA_MEMORY_USAGE_AUTO;
 	auto ici = vk::ImageCreateInfo{};
 	ici.usage = info.usage;
 	ici.imageType = vk::ImageType::e2D;
+	if (type == vk::ImageViewType::eCube) { ici.flags |= vk::ImageCreateFlagBits::eCubeCompatible; }
 	ici.tiling = info.tiling;
 	ici.arrayLayers = info.array_layers;
 	ici.mipLevels = info.mip_levels;
@@ -52,16 +53,16 @@ UniqueImage Vma::make_image(ImageCreateInfo const& info, vk::Extent2D const exte
 	auto image = VkImage{};
 	auto ret = Image{};
 	if (vmaCreateImage(allocator, &vici, &vaci, &image, &ret.allocation.allocation, {}) != VK_SUCCESS) { throw Error{"Failed to allocate Vulkan Image"}; }
-	ret.view = make_image_view(image, info.format, {info.aspect, 0, info.mip_levels, 0, info.array_layers});
+	ret.view = make_image_view(image, info.format, {info.aspect, 0, info.mip_levels, 0, info.array_layers}, type);
 	ret.image = image;
 	ret.allocation.vma = *this;
 	ret.extent = extent;
 	return UniqueImage{std::move(ret)};
 }
 
-vk::UniqueImageView Vma::make_image_view(vk::Image const image, vk::Format const format, vk::ImageSubresourceRange isr) const {
+vk::UniqueImageView Vma::make_image_view(vk::Image const image, vk::Format const format, vk::ImageSubresourceRange isr, vk::ImageViewType type) const {
 	vk::ImageViewCreateInfo info;
-	info.viewType = vk::ImageViewType::e2D;
+	info.viewType = type;
 	info.format = format;
 	info.components.r = info.components.g = info.components.b = info.components.a = vk::ComponentSwizzle::eIdentity;
 	info.subresourceRange = isr;

@@ -90,6 +90,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/util/unique.hpp
   include/${target_prefix}/util/version.hpp
   include/${target_prefix}/util/visitor.hpp
+  include/${target_prefix}/util/zip_ranges.hpp
 
   src/cli_opts.cpp
   src/data_provider.cpp

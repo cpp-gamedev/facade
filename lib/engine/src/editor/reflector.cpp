@@ -1,6 +1,5 @@
 #include <imgui.h>
 #include <facade/engine/editor/reflector.hpp>
-#include <facade/util/enumerate.hpp>
 #include <facade/util/fixed_string.hpp>
 #include <optional>
 

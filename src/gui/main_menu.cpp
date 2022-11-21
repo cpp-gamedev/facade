@@ -4,7 +4,6 @@
 #include <facade/engine/editor/scene_tree.hpp>
 #include <facade/engine/engine.hpp>
 #include <facade/render/renderer.hpp>
-#include <facade/util/enumerate.hpp>
 #include <facade/util/env.hpp>
 #include <facade/util/error.hpp>
 #include <facade/util/fixed_string.hpp>

@@ -14,6 +14,7 @@
 #include <facade/util/error.hpp>
 #include <facade/util/logger.hpp>
 #include <facade/util/thread_pool.hpp>
+#include <facade/util/zip_ranges.hpp>
 #include <facade/vk/cmd.hpp>
 #include <facade/vk/skybox.hpp>
 #include <facade/vk/vk.hpp>
@@ -170,17 +171,18 @@ bool load_gltf(Scene& out_scene, char const* path, AtomicLoadStatus& out_status,
 
 std::optional<Skybox::Data> load_skybox_data(char const* path, AtomicLoadStatus& out_status, ThreadPool* thread_pool) {
 	LoadFuture<Image> images[6]{};
+	static constexpr std::string_view faces_v[] = {"x+", "x-", "y+", "y-", "z+", "z-"};
 	out_status.total = 6;
 	out_status.done = 0;
 	out_status.stage = LoadStage::eUploadingResources;
 
 	auto const provider = FileDataProvider::mount_parent_dir(path);
-	auto load_image = [&provider, &out_status, thread_pool](std::string_view uri, LoadFuture<Image>& out_image) {
+	auto load_image = [&provider, &out_status, thread_pool](std::string_view uri) {
 		auto load = [&provider, uri] { return Image{provider.load(uri).span(), std::string{uri}}; };
 		if (thread_pool) {
-			out_image = {*thread_pool, out_status.done, load};
+			return LoadFuture<Image>{*thread_pool, out_status.done, load};
 		} else {
-			out_image = {out_status.done, load};
+			return LoadFuture<Image>{out_status.done, load};
 		}
 	};
 	auto json = dj::Json::from_file(path);
@@ -188,19 +190,16 @@ std::optional<Skybox::Data> load_skybox_data(char const* path, AtomicLoadStatus&
 		// TODO: error
 		return {};
 	}
-	load_image(json["x+"].as_string(), images[0]);
-	load_image(json["x-"].as_string(), images[1]);
-	load_image(json["y+"].as_string(), images[2]);
-	load_image(json["y-"].as_string(), images[3]);
-	load_image(json["z+"].as_string(), images[4]);
-	load_image(json["z-"].as_string(), images[5]);
+
+	for (auto [face, image] : zip_ranges(faces_v, images)) { image = load_image(json[face].as_string()); }
+
 	if (!std::all_of(std::begin(images), std::end(images), [](MaybeFuture<Image> const& i) { return i.active(); })) {
 		// TODO: error
 		return {};
 	}
 
 	auto ret = Skybox::Data{};
-	for (auto [future, index] : enumerate(images)) { ret.images[index] = future.get(); }
+	for (auto [in, out] : zip_ranges(images, ret.images)) { out = in.get(); }
 	return ret;
 }
 

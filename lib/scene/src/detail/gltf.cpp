@@ -645,17 +645,17 @@ Asset Asset::parse(dj::Json const& json, DataProvider const& provider) {
 
 	auto const& nodes = json["nodes"].array_view();
 	ret.nodes.reserve(nodes.size());
+	auto index = std::size_t{};
 	for (auto const& node : nodes) {
-		auto type = Node::Type::eNone;
-		auto index = std::size_t{};
-		auto const& mesh = node["mesh"];
-		auto const& camera = node["camera"];
-		if (mesh || camera) {
-			assert(mesh.is_number() ^ camera.is_number());
-			type = camera ? Node::Type::eCamera : Node::Type::eMesh;
-			index = camera ? camera.as<std::size_t>() : mesh.as<std::size_t>();
-		}
-		ret.nodes.push_back(Node{node["name"].as<std::string>(), transform(node), children(node["children"]), index, type});
+		auto data = NodeData{
+			.name = node["name"].as<std::string>(),
+			.transform = transform(node),
+			.children = children(node["children"]),
+			.index = ++index,
+		};
+		if (auto const& mesh = node["mesh"]) { data.mesh = mesh.as<std::size_t>(); }
+		if (auto const& camera = node["camera"]) { data.camera = camera.as<std::size_t>(); }
+		ret.nodes.push_back(std::move(data));
 	}
 
 	auto const& scenes = json["scenes"].array_view();

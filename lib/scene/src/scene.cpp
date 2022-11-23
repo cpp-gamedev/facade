@@ -39,15 +39,11 @@ struct Scene::TreeBuilder {
 		node.name = child.name;
 		node.transform = child.transform;
 		bool set_cam{};
-		switch (child.type) {
-		case NodeData::Type::eMesh: node.attach(Id<Mesh>{child.index}); break;
-		case NodeData::Type::eCamera: {
-			node.attach(Id<Camera>{child.index});
+		if (child.camera) {
+			node.attach(Id<Camera>{*child.camera});
 			set_cam = true;
-			break;
 		}
-		default: break;
-		}
+		if (child.mesh) { node.attach(Id<Mesh>{*child.mesh}); }
 		for (auto const index : child.children) {
 			auto& child = in_gnodes[index];
 			add(out, child, node.m_children);

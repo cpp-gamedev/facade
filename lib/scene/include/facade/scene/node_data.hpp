@@ -1,5 +1,6 @@
 #pragma once
 #include <facade/util/transform.hpp>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -8,11 +9,6 @@ namespace facade {
 /// \brief Scene Node data: shared between Scene and gltf::* (internal)
 ///
 struct NodeData {
-	///
-	/// \brief Node type.
-	///
-	enum class Type { eNone, eMesh, eCamera };
-
 	///
 	/// \brief Name of the node.
 	///
@@ -30,8 +26,12 @@ struct NodeData {
 	///
 	std::size_t index{};
 	///
-	/// \brief Type of the node.
+	/// \brief Camera index.
 	///
-	Type type{};
+	std::optional<std::size_t> camera{};
+	///
+	/// \brief Mesh index.
+	///
+	std::optional<std::size_t> mesh{};
 };
 } // namespace facade

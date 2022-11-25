@@ -20,7 +20,7 @@ target_include_directories(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
   PUBLIC
   ${target_prefix}::vk
-  djson::djson
+  gltf2cpp::gltf2cpp
 
   PRIVATE
   ${target_prefix}::compile-options
@@ -46,9 +46,6 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/scene/resource_array.hpp
   include/${target_prefix}/scene/scene_resources.hpp
   include/${target_prefix}/scene/scene.hpp
-
-  src/detail/gltf.cpp
-  src/detail/gltf.hpp
 
   src/camera.cpp
   src/gltf_loader.cpp

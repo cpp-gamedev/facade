@@ -50,3 +50,6 @@ add_library(${target_prefix}::stb-image ALIAS stb-image)
 add_subdirectory(src/djson)
 
 add_subdirectory(src/fmt)
+
+set(GLTF2CPP_DYNARRAY_DEBUG_VIEW ON)
+add_subdirectory(src/gltf2cpp)

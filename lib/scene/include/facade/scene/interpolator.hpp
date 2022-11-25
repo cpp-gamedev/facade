@@ -10,6 +10,12 @@ constexpr glm::vec3 lerp(glm::vec3 const& a, glm::vec3 const& b, float const t) 
 
 inline glm::quat lerp(glm::quat const& a, glm::quat const& b, float const t) { return glm::slerp(a, b, t); }
 
+enum class Interpolation {
+	eLinear,
+	eStep,
+	eCubic,
+};
+
 template <typename T>
 struct Interpolator {
 	struct Keyframe {
@@ -18,6 +24,7 @@ struct Interpolator {
 	};
 
 	std::vector<Keyframe> keyframes{};
+	Interpolation interpolation{};
 
 	float duration() const { return keyframes.empty() ? 0.0f : keyframes.back().timestamp; }
 
@@ -42,6 +49,8 @@ struct Interpolator {
 
 		auto const& prev = keyframes[*i_next - 1];
 		assert(prev.timestamp < elapsed);
+		if (interpolation == Interpolation::eStep) { return prev.value; }
+
 		auto const t = (elapsed - prev.timestamp) / (next.timestamp - prev.timestamp);
 		using facade::lerp;
 		using std::lerp;

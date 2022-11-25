@@ -1,5 +1,6 @@
 #pragma once
 #include <facade/scene/animator.hpp>
+#include <facade/scene/id.hpp>
 
 namespace facade {
 struct Animation {

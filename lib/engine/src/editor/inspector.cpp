@@ -98,14 +98,14 @@ void ResourceInspector::edit(Mesh& out_mesh, Id<Mesh> id) const {
 
 void SceneInspector::camera() const {
 	auto& node = m_scene.camera();
-	auto* id = node.find<Id<Camera>>();
+	auto id = node.find<Camera>();
 	assert(id);
 
 	if (auto combo = Combo{"Select", FixedString{"{} ({})", node.name, *id}.c_str()}) {
-		for (auto const& cid : m_scene.cameras()) {
-			auto const* node = m_scene.find(cid);
+		for (auto cid : m_scene.cameras()) {
+			auto const* node = m_resources.nodes.find(cid);
 			assert(node);
-			auto const* cam = node->find<Id<Camera>>();
+			auto cam = node->find<Camera>();
 			assert(cam);
 			if (combo.item(FixedString{"{} ({})", node->name, *cam}.c_str(), {cid == *id})) {
 				if (!m_scene.select_camera(cid)) { logger::warn("[Inspector] Failed to select camera: [{}]", cid); }
@@ -189,7 +189,7 @@ void SceneInspector::instances(Node& out_node, Bool unified_scaling) const {
 }
 
 void SceneInspector::mesh(Node& out_node) const {
-	auto* mesh_id = out_node.find<Id<Mesh>>();
+	auto mesh_id = out_node.find<Mesh>();
 	if (auto tn = TreeNode{"Mesh", ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_Framed}) {
 		auto name = FixedString<128>{};
 		if (mesh_id) { name = FixedString<128>{"{} ({})", m_resources.meshes.find(*mesh_id)->name, *mesh_id}; }
@@ -198,7 +198,7 @@ void SceneInspector::mesh(Node& out_node) const {
 }
 
 void SceneInspector::node(Id<Node> node_id, Bool& out_unified_scaling) const {
-	auto* node = m_scene.find(node_id);
+	auto* node = m_resources.nodes.find(node_id);
 	if (!node) { return; }
 	transform(*node, out_unified_scaling);
 	instances(*node, out_unified_scaling);

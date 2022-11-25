@@ -33,10 +33,12 @@ if(${${target_prefix_upper}_PCH})
 endif()
 
 target_sources(${PROJECT_NAME} PRIVATE
+  include/${target_prefix}/scene/animation.hpp
   include/${target_prefix}/scene/camera.hpp
   include/${target_prefix}/scene/fly_cam.hpp
   include/${target_prefix}/scene/gltf_loader.hpp
   include/${target_prefix}/scene/id.hpp
+  include/${target_prefix}/scene/interpolator.hpp
   include/${target_prefix}/scene/lights.hpp
   include/${target_prefix}/scene/load_status.hpp
   include/${target_prefix}/scene/material.hpp

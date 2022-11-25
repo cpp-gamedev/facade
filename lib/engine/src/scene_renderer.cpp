@@ -28,12 +28,13 @@ void SceneRenderer::render(Scene const& scene, Ptr<Skybox const> skybox, Rendere
 	m_scene = &scene;
 	write_view(renderer.framebuffer_extent());
 	if (skybox) { render(renderer, cb, *skybox); }
-	for (auto const& node : m_scene->roots()) { render(renderer, cb, node); }
+	// for (auto const& node : m_scene->roots()) { render(renderer, cb, node); }
+	for (auto const& node : m_scene->roots()) { render(renderer, cb, m_scene->resources().nodes[node]); }
 }
 
 void SceneRenderer::write_view(glm::vec2 const extent) {
 	auto const& cam_node = m_scene->camera();
-	auto const* cam_id = cam_node.find<Id<Camera>>();
+	auto const cam_id = cam_node.find<Camera>();
 	assert(cam_id);
 	auto const& cam = m_scene->resources().cameras[*cam_id];
 	struct {
@@ -83,9 +84,9 @@ void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Skybox cons
 	renderer.draw(pipeline, skybox.static_mesh(), {&instance, 1});
 }
 
-void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Node const& node, glm::mat4 const& parent) const {
+void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Node const& node, glm::mat4 parent) const {
 	auto const& resources = m_scene->resources();
-	if (auto const* mesh_id = node.find<Id<Mesh>>()) {
+	if (auto mesh_id = node.find<Mesh>()) {
 		static auto const s_default_material = Material{std::make_unique<LitMaterial>()};
 		auto const& mesh = resources.meshes[*mesh_id];
 		for (auto const& primitive : mesh.primitives) {
@@ -103,6 +104,7 @@ void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Node const&
 		}
 	}
 
-	for (auto const& child : node.m_children) { render(renderer, cb, child, parent * node.transform.matrix()); }
+	parent = parent * node.transform.matrix();
+	for (auto const& id : node.children) { render(renderer, cb, m_scene->resources().nodes[id], parent); }
 }
 } // namespace facade

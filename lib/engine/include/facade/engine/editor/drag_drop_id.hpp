@@ -95,14 +95,14 @@ void make_id_slot(Id<T>& out_id, char const* label, char const* payload_name) {
 template <typename T>
 void make_id_slot(Node& out_node, char const* label, char const* payload_name) {
 	auto oid = std::optional<Id<T>>{};
-	auto* id = out_node.find<Id<T>>();
+	auto id = out_node.find<T>();
 	if (id) { oid = *id; }
 	make_id_slot(oid, label, payload_name, {true});
 	if (id) {
 		if (!oid) {
-			out_node.detach<Id<T>>();
+			out_node.detach<T>();
 		} else {
-			*id = *oid;
+			out_node.attach<T>(*oid);
 		}
 	} else {
 		if (oid) { out_node.attach(*oid); }

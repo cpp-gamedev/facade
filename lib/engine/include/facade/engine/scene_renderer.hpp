@@ -18,7 +18,7 @@ class SceneRenderer {
 	std::span<glm::mat4x4 const> make_instances(Node const& node, glm::mat4x4 const& parent) const;
 
 	void render(Renderer& renderer, vk::CommandBuffer cb, Skybox const& skybox) const;
-	void render(Renderer& renderer, vk::CommandBuffer cb, Node const& node, glm::mat4 const& parent = matrix_identity_v) const;
+	void render(Renderer& renderer, vk::CommandBuffer cb, Node const& node, glm::mat4 parent = matrix_identity_v) const;
 
 	Gfx m_gfx;
 	Sampler m_sampler;

@@ -291,7 +291,9 @@ auto Engine::poll() -> State const& {
 	// ImGui wants all widget calls within BeginFrame() / EndFrame(), so begin here
 	m_impl->window.gui->new_frame();
 	m_impl->window.window.get().glfw->poll_events();
-	return m_impl.get()->window.window.get().state();
+	auto const& ret = m_impl.get()->window.window.get().state();
+	m_impl->scene.tick(ret.dt);
+	return ret;
 }
 
 void Engine::render() {

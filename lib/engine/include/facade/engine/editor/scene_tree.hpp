@@ -2,6 +2,7 @@
 #include <facade/engine/editor/common.hpp>
 #include <facade/scene/id.hpp>
 #include <facade/util/fixed_string.hpp>
+#include <optional>
 
 namespace facade {
 class Scene;
@@ -13,9 +14,9 @@ namespace editor {
 ///
 struct InspectNode {
 	FixedString<128> name{"[Node]###Node"};
-	Id<Node> id{};
+	std::optional<Id<Node>> id{};
 
-	explicit operator bool() const { return id > Id<Node>{}; }
+	explicit operator bool() const { return id.has_value(); }
 };
 
 ///

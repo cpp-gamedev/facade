@@ -1,7 +1,6 @@
 #pragma once
 #include <facade/scene/id.hpp>
 #include <facade/scene/lights.hpp>
-#include <facade/scene/node.hpp>
 #include <facade/scene/node_data.hpp>
 #include <facade/scene/scene_resources.hpp>
 #include <facade/util/image.hpp>
@@ -32,13 +31,6 @@ class Scene {
 	/// \brief Represents a single GTLF scene.
 	///
 	struct Tree {};
-
-	///
-	/// \brief "Null" Id for a Node: refers to no Node.
-	///
-	/// Used as the parent Id for root nodes.
-	///
-	static constexpr auto null_id_v = Id<Node>{0};
 
 	///
 	/// \brief Construct a Scene.
@@ -89,9 +81,10 @@ class Scene {
 	///
 	/// \brief Add a Node.
 	/// \param node Node instance to add
+	/// \param parent Node to parent to (if any)
 	/// \returns Id to stored Node
 	///
-	Id<Node> add(Node node, Id<Node> parent);
+	Id<Node> add(Node node, std::optional<Id<Node>> parent = std::nullopt);
 
 	///
 	/// \brief Replace all textures in resources.
@@ -114,7 +107,7 @@ class Scene {
 	/// \brief Obtain the current Tree Id.
 	/// \returns Current Tree Id
 	///
-	Id<Tree> tree_id() const { return m_tree.id; }
+	Id<Tree> tree_id() const { return m_tree.self; }
 	///
 	/// \brief Obtain the number of stored Trees.
 	/// \returns Number of stored trees
@@ -128,27 +121,10 @@ class Scene {
 	bool load(Id<Tree> id);
 
 	///
-	/// \brief Obtain an immutable pointer to the Node corresponding to its Id.
-	/// \param id Id of the Node to search for
-	/// \returns nullptr if Node with id wasn't found
-	///
-	Ptr<Node const> find(Id<Node> id) const;
-	///
-	/// \brief Obtain a mutable pointer to the Node corresponding to its Id.
-	/// \param id Id of the Node to search for
-	/// \returns nullptr if Node with id wasn't found
-	///
-	Ptr<Node> find(Id<Node> id);
-	///
-	/// \brief Obtain a mutable view into all the root nodes attached to the active Tree.
+	/// \brief Obtain the Ids of all the root nodes attached to the active Tree.
 	/// \returns Mutable view into the root nodes attached to the active Tree
 	///
-	std::span<Node> roots() { return m_tree.roots; }
-	///
-	/// \brief Obtain an immutable view into all the root nodes attached to the active Tree.
-	/// \returns Immutable view into the root nodes attached to the active Tree
-	///
-	std::span<Node const> roots() const { return m_tree.roots; }
+	std::span<Id<Node> const> roots() const { return m_tree.roots; }
 
 	///
 	/// \brief Obtain the total count of stored cameras.
@@ -205,23 +181,27 @@ class Scene {
 	///
 	Pipeline::State pipeline_state{};
 
+	///
+	/// \brief Update animations and corresponding nodes.
+	/// \param dt Duration to advance simulation by (time since last call to tick)
+	///
+	void tick(float dt);
+
   private:
 	struct TreeBuilder;
 
 	struct TreeImpl {
-		struct Data {
-			std::vector<std::size_t> roots{};
-		};
-
-		std::vector<Node> roots{};
+		std::vector<Id<Node>> roots{};
 		std::vector<Id<Node>> cameras{};
 		Id<Node> camera{};
-		Id<Tree> id{};
+		Id<Tree> self{};
 	};
 
 	struct Data {
+		using Roots = std::vector<Id<Node>>;
+
 		std::vector<NodeData> nodes{};
-		std::vector<TreeImpl::Data> trees{};
+		std::vector<Roots> trees{};
 	};
 
 	struct Storage {
@@ -233,8 +213,6 @@ class Scene {
 	void add_default_camera();
 	bool load_tree(Id<Tree> id);
 	Id<Mesh> add_unchecked(Mesh mesh);
-	Id<Node> add_unchecked(std::vector<Node>& out, Node&& node);
-	static Node const* find_node(std::span<Node const> nodes, Id<Node> id);
 
 	void check(Mesh const& mesh) const noexcept(false);
 	void check(Node const& node) const noexcept(false);

@@ -173,7 +173,74 @@ NodeData to_node_data(gltf2cpp::Node&& node) {
 std::vector<NodeData> to_node_data(std::span<gltf2cpp::Node> nodes) {
 	auto ret = std::vector<NodeData>{};
 	ret.reserve(nodes.size());
-	for (auto& in : nodes) { ret.emplace_back(to_node_data(std::move(in))).index = ret.size() - 1; }
+	for (auto& in : nodes) {
+		auto& node = ret.emplace_back(to_node_data(std::move(in)));
+		node.index = ret.size() - 1;
+	}
+	return ret;
+}
+
+std::vector<Node> to_nodes(std::span<gltf2cpp::Node> nodes) {
+	auto ret = std::vector<Node>{};
+	ret.reserve(nodes.size());
+	for (auto& in : nodes) {
+		auto node = Node{.transform = to_transform(in.transform), .self = ret.size(), .name = std::move(in.name)};
+		node.children.reserve(in.children.size());
+		for (auto const& child : in.children) { node.children.push_back(child); }
+		if (in.camera) { node.attach<Camera>(*in.camera); }
+		if (in.mesh) { node.attach<Mesh>(*in.mesh); }
+		ret.push_back(std::move(node));
+	}
+	return ret;
+}
+
+template <typename T>
+Interpolator<T> make_interpolator(std::span<float const> times, std::span<T const> values) {
+	assert(times.size() == values.size());
+	auto ret = Interpolator<T>{};
+	for (auto [t, v] : zip_ranges(times, values)) { ret.keyframes.push_back({v, t}); }
+	return ret;
+}
+
+Animation to_animation(gltf2cpp::Animation const& animation, std::span<gltf2cpp::Accessor const> accessors) {
+	using Path = gltf2cpp::Animation::Path;
+	auto ret = Animation{};
+	for (auto const& channel : animation.channels) {
+		auto const& sampler = animation.samplers[channel.sampler];
+		auto const& input = accessors[sampler.input];
+		assert(input.type == gltf2cpp::Accessor::Type::eScalar && input.component_type == gltf2cpp::ComponentType::eFloat);
+		auto times = std::get<gltf2cpp::Accessor::Float>(input.data).span();
+		auto const& output = accessors[sampler.output];
+		assert(output.component_type == gltf2cpp::ComponentType::eFloat);
+		auto const values = std::get<gltf2cpp::Accessor::Float>(output.data).span();
+		switch (channel.target.path) {
+		case Path::eTranslation:
+		case Path::eScale: {
+			assert(output.type == gltf2cpp::Accessor::Type::eVec3);
+			auto vec = std::vector<glm::vec3>{};
+			vec.resize(values.size() / 3);
+			std::memcpy(vec.data(), values.data(), values.size_bytes());
+			if (channel.target.path == Path::eScale) {
+				ret.animator.scale = make_interpolator<glm::vec3>(times, vec);
+			} else {
+				ret.animator.translation = make_interpolator<glm::vec3>(times, vec);
+			}
+			break;
+		}
+		case Path::eRotation: {
+			assert(output.type == gltf2cpp::Accessor::Type::eVec4);
+			auto vec = std::vector<glm::quat>{};
+			vec.resize(values.size() / 4);
+			std::memcpy(vec.data(), values.data(), values.size_bytes());
+			ret.animator.rotation = make_interpolator<glm::quat>(times, vec);
+			break;
+		}
+		case Path::eWeights: {
+			// TODO not implemented
+			break;
+		}
+		}
+	}
 	return ret;
 }
 
@@ -242,6 +309,10 @@ bool Scene::GltfLoader::operator()(dj::Json const& json, DataProvider const& pro
 		static_meshes.push_back(make_load_future(thread_pool, m_status.done, [g = std::move(geometry), this] { return StaticMesh{m_scene.m_gfx, g}; }));
 	}
 
+	for (auto const& animation : root.animations) { m_scene.m_storage.resources.animations.m_array.push_back(to_animation(animation, root.accessors)); }
+
+	m_scene.m_storage.resources.nodes.m_array = to_nodes(root.nodes);
+
 	m_scene.replace(from_maybe_futures(std::move(textures)));
 	m_scene.replace(from_maybe_futures(std::move(static_meshes)));
 
@@ -255,7 +326,10 @@ bool Scene::GltfLoader::operator()(dj::Json const& json, DataProvider const& pro
 	for (auto& data : mesh_layout.data) { m_scene.add(Mesh{.name = std::move(data.name), .primitives = std::move(data.primitives)}); }
 
 	m_scene.m_storage.data.nodes = to_node_data(root.nodes);
-	for (auto& scene : root.scenes) { m_scene.m_storage.data.trees.push_back(TreeImpl::Data{.roots = std::move(scene.root_nodes)}); }
+	for (auto& scene : root.scenes) {
+		auto& roots = m_scene.m_storage.data.trees.emplace_back();
+		for (auto id : scene.root_nodes) { roots.push_back(id); }
+	}
 
 	auto const ret = m_scene.load(root.start_scene.value_or(0));
 	m_status.reset();

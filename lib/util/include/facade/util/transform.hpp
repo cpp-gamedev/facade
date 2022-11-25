@@ -117,7 +117,7 @@ inline Transform& Transform::set_position(glm::vec3 position) {
 }
 
 inline Transform& Transform::set_orientation(glm::quat orientation) {
-	m_data.orientation = orientation;
+	m_data.orientation = glm::normalize(orientation);
 	return set_dirty();
 }
 

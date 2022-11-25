@@ -7,24 +7,24 @@ namespace {
 FixedString<128> node_name(Node const& node) {
 	auto ret = FixedString<128>{node.name};
 	if (ret.empty()) { ret = "(Unnamed)"; }
-	ret += FixedString{" ({})", node.id()};
+	ret += FixedString{" ({})", node.self};
 	return ret;
 }
 
 InspectNode inspect(Node const& node) {
 	auto ret = InspectNode{};
-	ret.id = node.id();
+	ret.id = node.self;
 	ret.name = node_name(node);
 	ret.name += FixedString{"###Node"};
 	return ret;
 }
 
-void walk(Node const& camera, Node& node, InspectNode& inout) {
+void walk(Scene& out_scene, Node& node, InspectNode& inout) {
 	auto flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
-	if (node.id() == inout.id) { flags |= ImGuiTreeNodeFlags_Selected; }
-	if (node.children().empty()) {
+	if (node.self == inout.id) { flags |= ImGuiTreeNodeFlags_Selected; }
+	if (node.children.empty()) {
 		flags |= ImGuiTreeNodeFlags_Leaf;
-		if (&node == &camera && node.attachment_count() == 1) { return; }
+		if (&node == &out_scene.camera() && node.attachments.size() == 1) { return; }
 	}
 	auto tn = editor::TreeNode{node_name(node).c_str(), flags};
 	if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
@@ -33,15 +33,17 @@ void walk(Node const& camera, Node& node, InspectNode& inout) {
 		inout = {};
 	}
 	if (tn) {
-		for (auto& child : node.children()) { walk(camera, child, inout); }
+		for (auto child : node.children) { walk(out_scene, *out_scene.resources().nodes.find(child), inout); }
 	}
 }
 } // namespace
 
 bool SceneTree::render(NotClosed<Window>, InspectNode& inout) const {
 	auto const in = inout.id;
-	if (!m_scene.find(in)) { inout = {}; }
-	for (auto& root : m_scene.roots()) { walk(m_scene.camera(), root, inout); }
+	auto& nodes = m_scene.resources().nodes;
+	auto* node = in ? nodes.find(*inout.id) : nullptr;
+	if (!node) { inout = {}; }
+	for (auto id : m_scene.roots()) { walk(m_scene, *nodes.find(id), inout); }
 	return inout.id != in;
 }
 } // namespace facade::editor

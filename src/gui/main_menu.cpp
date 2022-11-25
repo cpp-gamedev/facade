@@ -72,7 +72,8 @@ bool WindowMenu::display_inspector(Scene& scene) {
 	bool show = true;
 	ImGui::SetNextWindowSize({500.0f, 250.0f}, ImGuiCond_FirstUseEver);
 	if (auto window = editor::Window{m_data.inspect.name.c_str(), &show}) {
-		editor::SceneInspector{window, scene}.node(m_data.inspect.id, m_data.unified_scaling);
+		assert(m_data.inspect.id);
+		editor::SceneInspector{window, scene}.node(*m_data.inspect.id, m_data.unified_scaling);
 	}
 	return m_data.inspect && show;
 }

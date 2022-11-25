@@ -6,7 +6,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: init
-        run: sudo apt install -yqq ninja-build xorg-dev g++-11
+        run: sudo apt update -yqq && sudo apt install -yqq ninja-build xorg-dev g++-11
       - name: configure gcc
         run: cmake -S . --preset=default -B build -DCMAKE_CXX_COMPILER=g++-11 -DFACADE_BUILD_SHADERS=OFF
       - name: configure clang

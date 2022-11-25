@@ -198,10 +198,7 @@ template <typename T>
 Interpolator<T> make_interpolator(std::span<float const> times, std::span<T const> values) {
 	assert(times.size() == values.size());
 	auto ret = Interpolator<T>{};
-	for (auto [t, v] : zip_ranges(times, values)) {
-		ret.timeline.keyframes.push_back({v, t});
-		ret.timeline.duration = t;
-	}
+	for (auto [t, v] : zip_ranges(times, values)) { ret.keyframes.push_back({v, t}); }
 	return ret;
 }
 
@@ -224,9 +221,9 @@ Animation to_animation(gltf2cpp::Animation const& animation, std::span<gltf2cpp:
 			vec.resize(values.size() / 3);
 			std::memcpy(vec.data(), values.data(), values.size_bytes());
 			if (channel.target.path == Path::eScale) {
-				ret.transform.scale = make_interpolator<glm::vec3>(times, vec);
+				ret.animator.scale = make_interpolator<glm::vec3>(times, vec);
 			} else {
-				ret.transform.translation = make_interpolator<glm::vec3>(times, vec);
+				ret.animator.translation = make_interpolator<glm::vec3>(times, vec);
 			}
 			break;
 		}
@@ -235,7 +232,7 @@ Animation to_animation(gltf2cpp::Animation const& animation, std::span<gltf2cpp:
 			auto vec = std::vector<glm::quat>{};
 			vec.resize(values.size() / 4);
 			std::memcpy(vec.data(), values.data(), values.size_bytes());
-			ret.transform.rotation = make_interpolator<glm::quat>(times, vec);
+			ret.animator.rotation = make_interpolator<glm::quat>(times, vec);
 			break;
 		}
 		case Path::eWeights: {

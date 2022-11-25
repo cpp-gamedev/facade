@@ -34,6 +34,7 @@ endif()
 
 target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/scene/animation.hpp
+  include/${target_prefix}/scene/animator.hpp
   include/${target_prefix}/scene/camera.hpp
   include/${target_prefix}/scene/fly_cam.hpp
   include/${target_prefix}/scene/gltf_loader.hpp
@@ -49,6 +50,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/scene/scene_resources.hpp
   include/${target_prefix}/scene/scene.hpp
 
+  src/animator.cpp
   src/camera.cpp
   src/gltf_loader.cpp
   src/material.cpp

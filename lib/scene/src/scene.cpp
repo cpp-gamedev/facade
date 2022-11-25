@@ -40,8 +40,8 @@ struct Scene::TreeBuilder {
 			out_tree.camera = id;
 			return true;
 		}
-		for (auto const [child, index] : enumerate(node.children)) {
-			if (set_camera(out_tree, index, nodes)) { return true; }
+		for (auto const child : node.children) {
+			if (set_camera(out_tree, child, nodes)) { return true; }
 		}
 		return false;
 	}
@@ -160,7 +160,7 @@ Texture Scene::make_texture(Image::View image) const { return Texture{m_gfx, def
 void Scene::tick(float dt) {
 	for (auto& animation : m_storage.resources.animations.view()) {
 		assert(animation.target < m_storage.resources.nodes.size());
-		animation.transform.update(dt, m_storage.resources.nodes[animation.target].transform);
+		animation.animator.update(m_storage.resources.nodes[animation.target], dt);
 	}
 }
 

@@ -4,8 +4,6 @@
 #include <optional>
 
 namespace facade {
-class Node;
-
 template <typename T>
 struct Timeline {
 	struct Keyframe {

@@ -3,7 +3,7 @@
 #include <facade/scene/interpolator.hpp>
 
 namespace facade {
-class Node;
+struct Node;
 
 struct Animation {
 	Interpolator<Transform> transform{};

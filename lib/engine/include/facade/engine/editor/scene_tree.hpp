@@ -6,7 +6,7 @@
 
 namespace facade {
 class Scene;
-class Node;
+struct Node;
 
 namespace editor {
 ///

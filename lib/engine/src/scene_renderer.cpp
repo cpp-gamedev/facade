@@ -28,7 +28,6 @@ void SceneRenderer::render(Scene const& scene, Ptr<Skybox const> skybox, Rendere
 	m_scene = &scene;
 	write_view(renderer.framebuffer_extent());
 	if (skybox) { render(renderer, cb, *skybox); }
-	// for (auto const& node : m_scene->roots()) { render(renderer, cb, node); }
 	for (auto const& node : m_scene->roots()) { render(renderer, cb, m_scene->resources().nodes[node]); }
 }
 

@@ -170,10 +170,10 @@ void run(AppOpts const& opts) {
 			continue;
 		}
 
-		// if (auto* node = engine->scene().find(node_id)) {
-		// 	node->instances[0].rotate(glm::radians(drot_z[0]) * dt, {0.0f, 1.0f, 0.0f});
-		// 	node->instances[1].rotate(glm::radians(drot_z[1]) * dt, {1.0f, 0.0f, 0.0f});
-		// }
+		if (auto* node = engine->scene().resources().nodes.find(node_id)) {
+			node->instances[0].rotate(glm::radians(drot_z[0]) * dt, {0.0f, 1.0f, 0.0f});
+			node->instances[1].rotate(glm::radians(drot_z[1]) * dt, {1.0f, 0.0f, 0.0f});
+		}
 		// TEMP CODE
 
 		engine->render();

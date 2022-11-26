@@ -1,10 +1,9 @@
-#include <facade/scene/animator.hpp>
+#include <facade/scene/animation.hpp>
 #include <facade/scene/node.hpp>
 #include <facade/util/bool.hpp>
-#include <algorithm>
 
 namespace facade {
-void Animator::update(Node& out_node, float dt) {
+void TransformAnimator::update(Node& out_node, float dt) {
 	elapsed += dt;
 	auto const duration = std::max({translation.duration(), rotation.duration(), scale.duration()});
 	if (auto const p = translation(elapsed)) { out_node.transform.set_position(*p); }

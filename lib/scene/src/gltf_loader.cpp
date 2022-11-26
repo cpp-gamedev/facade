@@ -207,12 +207,14 @@ Animation to_animation(gltf2cpp::Animation const& animation, std::span<gltf2cpp:
 	auto ret = Animation{};
 	for (auto const& channel : animation.channels) {
 		auto const& sampler = animation.samplers[channel.sampler];
+		if (sampler.interpolation == gltf2cpp::Interpolation::eCubicSpline) { continue; } // facade constraint
 		auto const& input = accessors[sampler.input];
 		assert(input.type == gltf2cpp::Accessor::Type::eScalar && input.component_type == gltf2cpp::ComponentType::eFloat);
 		auto times = std::get<gltf2cpp::Accessor::Float>(input.data).span();
 		auto const& output = accessors[sampler.output];
 		assert(output.component_type == gltf2cpp::ComponentType::eFloat);
 		auto const values = std::get<gltf2cpp::Accessor::Float>(output.data).span();
+		ret.transform.target = channel.target.node;
 		switch (channel.target.path) {
 		case Path::eTranslation:
 		case Path::eScale: {
@@ -221,9 +223,11 @@ Animation to_animation(gltf2cpp::Animation const& animation, std::span<gltf2cpp:
 			vec.resize(values.size() / 3);
 			std::memcpy(vec.data(), values.data(), values.size_bytes());
 			if (channel.target.path == Path::eScale) {
-				ret.animator.scale = make_interpolator<glm::vec3>(times, vec);
+				ret.transform.scale = make_interpolator<glm::vec3>(times, vec);
+				ret.transform.scale.interpolation = static_cast<Interpolation>(sampler.interpolation);
 			} else {
-				ret.animator.translation = make_interpolator<glm::vec3>(times, vec);
+				ret.transform.translation = make_interpolator<glm::vec3>(times, vec);
+				ret.transform.translation.interpolation = static_cast<Interpolation>(sampler.interpolation);
 			}
 			break;
 		}
@@ -232,7 +236,8 @@ Animation to_animation(gltf2cpp::Animation const& animation, std::span<gltf2cpp:
 			auto vec = std::vector<glm::quat>{};
 			vec.resize(values.size() / 4);
 			std::memcpy(vec.data(), values.data(), values.size_bytes());
-			ret.animator.rotation = make_interpolator<glm::quat>(times, vec);
+			ret.transform.rotation = make_interpolator<glm::quat>(times, vec);
+			ret.transform.rotation.interpolation = static_cast<Interpolation>(sampler.interpolation);
 			break;
 		}
 		case Path::eWeights: {

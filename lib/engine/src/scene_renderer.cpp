@@ -78,9 +78,7 @@ std::span<glm::mat4x4 const> SceneRenderer::make_instance_mats(Node const& node,
 }
 
 void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Skybox const& skybox) {
-	auto state = m_scene->pipeline_state;
-	state.depth_test = false;
-	auto pipeline = renderer.bind_pipeline(cb, state, "skybox");
+	auto pipeline = renderer.bind_pipeline(cb, {.depth_test = false}, "skybox");
 	pipeline.set_line_width(1.0f);
 	update_view(pipeline);
 	auto& set1 = pipeline.next_set(1);
@@ -99,10 +97,9 @@ void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Node const&
 			auto const& material = primitive.material ? resources.materials[primitive.material->value()] : static_cast<Material const&>(s_default_material);
 			auto const& static_mesh = resources.static_meshes[primitive.static_mesh];
 
-			auto state = m_scene->pipeline_state;
-			state.topology = static_mesh.topology();
-			auto pipeline = renderer.bind_pipeline(cb, state, material.shader_id());
-			pipeline.set_line_width(m_scene->pipeline_state.line_width);
+			auto const mode = m_scene->render_mode.type == RenderMode::Type::eWireframe ? vk::PolygonMode::eLine : vk::PolygonMode::eFill;
+			auto pipeline = renderer.bind_pipeline(cb, {.mode = mode, .topology = static_mesh.topology()}, material.shader_id());
+			pipeline.set_line_width(m_scene->render_mode.line_width);
 
 			update_view(pipeline);
 			auto const store = TextureStore{resources.textures, m_white, m_black};

@@ -6,13 +6,24 @@
 #include <facade/util/image.hpp>
 #include <facade/util/ptr.hpp>
 #include <facade/util/transform.hpp>
-#include <facade/vk/pipeline.hpp>
 #include <memory>
 #include <span>
 #include <vector>
 
 namespace facade {
 struct DataProvider;
+
+///
+/// \brief Polygon rendering mode: applied scene-wide.
+///
+struct RenderMode {
+	enum class Type { eFill, eWireframe };
+
+	Type type{Type::eFill};
+	float line_width{1.0f};
+
+	bool operator==(RenderMode const&) const = default;
+};
 
 ///
 /// \brief Models a 3D scene.
@@ -177,9 +188,9 @@ class Scene {
 	Lights lights{};
 
 	///
-	/// \brief Global pipeline state.
+	/// \brief Render mode.
 	///
-	Pipeline::State pipeline_state{};
+	RenderMode render_mode{};
 
 	///
 	/// \brief Update animations and corresponding nodes.

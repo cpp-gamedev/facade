@@ -8,8 +8,14 @@ class Skybox;
 
 class SceneRenderer {
   public:
+	struct Info {
+		std::uint32_t triangles_drawn{};
+		std::uint32_t draw_calls{};
+	};
+
 	explicit SceneRenderer(Gfx const& gfx);
 
+	Info const& info() const { return m_info; }
 	void render(Scene const& scene, Ptr<Skybox const> skybox, Renderer& renderer, vk::CommandBuffer cb);
 
   private:
@@ -36,6 +42,7 @@ class SceneRenderer {
 	Buffer m_dir_lights;
 	Texture m_white;
 	Texture m_black;
+	Info m_info{};
 
 	std::vector<glm::mat4x4> m_instance_mats{};
 	Scene const* m_scene{};

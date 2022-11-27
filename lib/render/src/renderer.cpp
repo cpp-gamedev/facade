@@ -26,24 +26,6 @@ constexpr auto get_samples(vk::SampleCountFlags supported, std::uint8_t desired)
 	if (desired >= 2 && (supported & vk::SampleCountFlagBits::e2)) { return vk::SampleCountFlagBits::e2; }
 	return vk::SampleCountFlagBits::e1;
 }
-
-///
-/// \brief Tracks frames per second
-///
-struct Fps {
-	std::uint32_t frames{};
-	std::uint32_t fps{};
-	float start{time::since_start()};
-
-	std::uint32_t next_frame() {
-		++frames;
-		if (auto const now = time::since_start(); now - start >= 1.0f) {
-			start = now;
-			fps = std::exchange(frames, 0);
-		}
-		return fps;
-	}
-};
 } // namespace
 
 struct Renderer::Impl {
@@ -74,36 +56,19 @@ struct Renderer::Impl {
 		}
 	} requests{};
 
-	Fps fps{};
-
-	struct {
-		FrameStats stats{};
-		std::string gpu_name{};
-		std::uint64_t triangles{};	// reset every frame
-		std::uint32_t draw_calls{}; // reset every frame
-	} stats{};
+	std::string gpu_name{};
 
 	Impl(Gfx gfx, Glfw::Window window, Gui* gui, Renderer::CreateInfo const& info)
 		: gfx{gfx}, supported_msaa(gfx.gpu.getProperties().limits.framebufferColorSampleCounts),
 		  msaa(get_samples(supported_msaa, info.desired_msaa)), window{window}, swapchain{gfx, GlfwWsi{window}.make_surface(gfx.instance)}, pipes(gfx, msaa),
 		  render_pass(gfx, msaa, this->swapchain.info.imageFormat, depth_format(gfx.gpu)), render_frames(make_render_frames(gfx, info.command_buffers)),
 		  gui(gui) {}
-
-	void next_frame() {
-		stats.stats.mode = swapchain.info.presentMode;
-		stats.stats.fps = fps.next_frame();
-		++stats.stats.frame_counter;
-		stats.stats.triangles = std::exchange(stats.triangles, 0);
-		stats.stats.draw_calls = std::exchange(stats.draw_calls, 0);
-	}
 };
 
 Renderer::Renderer(Gfx const& gfx, Glfw::Window window, Gui* gui, CreateInfo const& create_info)
 	: m_impl{std::make_unique<Impl>(std::move(gfx), window, gui, create_info)} {
 	m_impl->swapchain.refresh(Swapchain::Spec{window.framebuffer_extent()});
-	m_impl->stats.gpu_name = m_impl->gfx.gpu.getProperties().deviceName.data();
-	m_impl->stats.stats.gpu_name = m_impl->stats.gpu_name;
-	m_impl->stats.stats.msaa = m_impl->msaa;
+	m_impl->gpu_name = m_impl->gfx.gpu.getProperties().deviceName.data();
 	if (m_impl->gui) {
 		m_impl->gui->init(Gui::InitInfo{
 			.gfx = gfx,
@@ -122,15 +87,17 @@ Renderer::~Renderer() noexcept = default;
 
 auto Renderer::info() const -> Info {
 	return {
+		.present_mode = m_impl->swapchain.info.presentMode,
 		.supported_msaa = m_impl->supported_msaa,
+		.current_msaa = m_impl->msaa,
 		.colour_space = m_impl->swapchain.colour_space(),
 		.cbs_per_frame = m_impl->render_frames.get().secondary.size(),
 	};
 }
 
-glm::uvec2 Renderer::framebuffer_extent() const { return m_impl->window.framebuffer_extent(); }
+std::string_view Renderer::gpu_name() const { return m_impl->gpu_name; }
 
-FrameStats const& Renderer::frame_stats() const { return m_impl->stats.stats; }
+glm::uvec2 Renderer::framebuffer_extent() const { return m_impl->window.framebuffer_extent(); }
 
 bool Renderer::is_supported(vk::PresentModeKHR const mode) const { return m_impl->swapchain.supported_present_modes().contains(mode); }
 
@@ -152,7 +119,6 @@ void Renderer::request_colour_space(ColourSpace desired) {
 
 bool Renderer::next_frame(std::span<vk::CommandBuffer> out) {
 	assert(out.size() <= m_impl->render_frames.get().secondary.size());
-	m_impl->next_frame();
 
 	auto& frame = m_impl->render_frames.get();
 
@@ -256,16 +222,7 @@ bool Renderer::render() {
 	// clear render target
 	m_impl->render_target.reset();
 
-	// update stats
-	++m_impl->stats.stats.frame_counter;
-
 	return true;
-}
-
-void Renderer::draw_indexed(vk::CommandBuffer cb, StaticMesh const& mesh, BufferView instances) const {
-	++m_impl->stats.draw_calls;
-	m_impl->stats.triangles += instances.count * mesh.view().vertex_count / 3;
-	mesh.draw(cb, instances);
 }
 
 Shader Renderer::add_shader(std::string id, SpirV vert, SpirV frag) { return m_impl->shader_db.add(std::move(id), std::move(vert), std::move(frag)); }

@@ -1,5 +1,6 @@
 #pragma once
 #include <facade/build_version.hpp>
+#include <facade/engine/stats.hpp>
 #include <facade/glfw/glfw.hpp>
 #include <facade/scene/load_status.hpp>
 #include <facade/scene/scene.hpp>
@@ -100,6 +101,9 @@ class Engine {
 	glm::ivec2 window_position() const;
 	glm::uvec2 window_extent() const;
 	glm::uvec2 framebuffer_extent() const;
+
+	Stats const& stats() const;
+	std::string_view gpu_name() const;
 
 	Scene& scene() const;
 	State const& state() const;

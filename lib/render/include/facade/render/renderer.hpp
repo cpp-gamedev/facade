@@ -9,54 +9,12 @@
 
 namespace facade {
 ///
-/// \brief Stores various frame statistics.
-///
-struct FrameStats {
-	///
-	/// \brief Name of the GPU
-	///
-	std::string_view gpu_name{};
-
-	///
-	/// \brief Total frames so far
-	///
-	std::uint64_t frame_counter{};
-
-	///
-	/// \brief Triangles drawn in previous frame
-	///
-	std::uint64_t triangles{};
-
-	///
-	/// \brief Draw calls in previous frame
-	///
-	std::uint32_t draw_calls{};
-
-	///
-	/// \brief Framerate (until previous frame)
-	///
-	std::uint32_t fps{};
-
-	///
-	/// \brief Current present mode
-	///
-	vk::PresentModeKHR mode{};
-
-	///
-	/// \brief Multi-sampled anti-aliasing level
-	///
-	vk::SampleCountFlagBits msaa{};
-};
-
-///
 /// \brief Initialization data for constructing a Renderer.
 ///
 struct RendererCreateInfo {
 	std::size_t command_buffers{1};
 	std::uint8_t desired_msaa{1};
 };
-
-class StaticMesh;
 
 ///
 /// \brief Owns a Vulkan Swapchain and RenderPass, a Shader::Db and Pipes instance each, and renders to the Window passed in constructor.
@@ -69,7 +27,9 @@ class Renderer {
 	/// \brief Information about the Renderer state.
 	///
 	struct Info {
+		vk::PresentModeKHR present_mode{};
 		vk::SampleCountFlags supported_msaa{};
+		vk::SampleCountFlagBits current_msaa{};
 		ColourSpace colour_space{};
 		std::size_t cbs_per_frame{};
 	};
@@ -91,15 +51,15 @@ class Renderer {
 	///
 	Info info() const;
 	///
+	/// \brief Obtain the name of the GPU in use.
+	/// \returns GPU name
+	///
+	std::string_view gpu_name() const;
+	///
 	/// \brief Obtain the current framebuffer extent (size).
 	/// \returns Current framebuffer extent
 	///
 	glm::uvec2 framebuffer_extent() const;
-	///
-	/// \brief Obtain the last saved FrameStats.
-	/// \returns Last saved FrameStats
-	///
-	FrameStats const& frame_stats() const;
 
 	///
 	/// \brief Check if a present mode is supported on the Swapchain in use.
@@ -140,17 +100,6 @@ class Renderer {
 	/// \returns false If Swapchain Image has not been acquired
 	///
 	bool render();
-
-	///
-	/// \brief Draw a mesh using the bound Pipeline, and update FrameStats.
-	/// \param cb Command buffer to record draw to
-	/// \param mesh StaticMesh to draw
-	/// \param instances Per-instance model matrix vertex buffer
-	/// \param count Instance count in instances
-	///
-	/// All descriptor sets referenced by shaders must have been written before calling this!
-	///
-	void draw_indexed(vk::CommandBuffer cb, StaticMesh const& mesh, BufferView instances) const;
 
 	///
 	/// \brief Add a Shader to the Db.

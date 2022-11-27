@@ -39,6 +39,7 @@ endif()
 target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/engine/engine.hpp
   include/${target_prefix}/engine/scene_renderer.hpp
+  include/${target_prefix}/engine/stats.hpp
 
   include/${target_prefix}/engine/editor/browse_file.hpp
   include/${target_prefix}/engine/editor/common.hpp

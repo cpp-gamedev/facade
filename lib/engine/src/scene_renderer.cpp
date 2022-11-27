@@ -31,6 +31,7 @@ SceneRenderer::SceneRenderer(Gfx const& gfx)
 
 void SceneRenderer::render(Scene const& scene, Ptr<Skybox const> skybox, Renderer& renderer, vk::CommandBuffer cb) {
 	m_scene = &scene;
+	m_info = {};
 	write_view(renderer.framebuffer_extent());
 	if (skybox) { render(renderer, cb, *skybox); }
 	for (auto const& node : m_scene->roots()) { render(renderer, cb, m_scene->resources().nodes[node]); }
@@ -86,7 +87,7 @@ void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Skybox cons
 	set1.update(0, skybox.cubemap().descriptor_image());
 	pipeline.bind(set1);
 	auto const mat = glm::translate(matrix_identity_v, m_scene->camera().transform.position());
-	renderer.draw_indexed(cb, skybox.static_mesh(), next_instances({&mat, 1u}));
+	skybox.static_mesh().draw(cb, next_instances({&mat, 1u}));
 }
 
 void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Node const& node, glm::mat4 parent) {
@@ -105,7 +106,9 @@ void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Node const&
 
 			auto const& static_mesh = resources.static_meshes[primitive.static_mesh];
 			auto const mats = make_instance_mats(node, parent);
-			renderer.draw_indexed(cb, static_mesh, next_instances(mats));
+			static_mesh.draw(cb, next_instances(mats));
+			m_info.triangles_drawn += static_mesh.view().vertex_count / 3;
+			++m_info.draw_calls;
 		}
 	}
 

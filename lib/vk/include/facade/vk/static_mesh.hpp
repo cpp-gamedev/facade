@@ -12,9 +12,10 @@ class StaticMesh {
 		std::uint32_t indices{};
 	};
 
-	StaticMesh(Gfx const& gfx, Geometry const& geometry, std::string name = "(Unnamed)");
+	StaticMesh(Gfx const& gfx, Geometry const& geometry, std::string name = "(Unnamed)", vk::PrimitiveTopology topo = vk::PrimitiveTopology::eTriangleList);
 
 	std::string_view name() const { return m_name; }
+	vk::PrimitiveTopology topology() const { return m_topology; }
 	Info info() const;
 
 	void draw(vk::CommandBuffer cb, std::size_t instances, std::uint32_t binding = 0u) const;
@@ -23,8 +24,9 @@ class StaticMesh {
 	BufferView vbo() const;
 	BufferView ibo() const;
 
-	std::string m_name{};
 	Defer<UniqueBuffer> m_buffer{};
+	std::string m_name{};
+	vk::PrimitiveTopology m_topology{};
 	std::size_t m_vbo_size{};
 	std::uint32_t m_vertices{};
 	std::uint32_t m_indices{};

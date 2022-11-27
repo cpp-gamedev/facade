@@ -26,9 +26,11 @@ SceneRenderer::SceneRenderer(Gfx const& gfx)
 
 void SceneRenderer::render(Scene const& scene, Ptr<Skybox const> skybox, Renderer& renderer, vk::CommandBuffer cb) {
 	m_scene = &scene;
+	m_instances.get().index = 0;
 	write_view(renderer.framebuffer_extent());
 	if (skybox) { render(renderer, cb, *skybox); }
 	for (auto const& node : m_scene->roots()) { render(renderer, cb, m_scene->resources().nodes[node]); }
+	m_instances.rotate();
 }
 
 void SceneRenderer::write_view(glm::vec2 const extent) {
@@ -58,7 +60,7 @@ void SceneRenderer::update_view(Pipeline& out_pipeline) const {
 	out_pipeline.bind(set0);
 }
 
-std::span<glm::mat4x4 const> SceneRenderer::make_instances(Node const& node, glm::mat4x4 const& parent) const {
+std::span<glm::mat4x4 const> SceneRenderer::make_instance_mats(Node const& node, glm::mat4x4 const& parent) {
 	m_instance_mats.clear();
 	if (node.instances.empty()) {
 		m_instance_mats.reserve(1);
@@ -70,7 +72,7 @@ std::span<glm::mat4x4 const> SceneRenderer::make_instances(Node const& node, glm
 	return m_instance_mats;
 }
 
-void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Skybox const& skybox) const {
+void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Skybox const& skybox) {
 	auto state = m_scene->pipeline_state;
 	state.depth_test = false;
 	auto pipeline = renderer.bind_pipeline(cb, state, "skybox");
@@ -79,11 +81,11 @@ void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Skybox cons
 	auto& set1 = pipeline.next_set(1);
 	set1.update(0, skybox.cubemap().descriptor_image());
 	pipeline.bind(set1);
-	auto const instance = glm::translate(matrix_identity_v, m_scene->camera().transform.position());
-	renderer.draw(pipeline, skybox.static_mesh(), {&instance, 1});
+	auto const mat = glm::translate(matrix_identity_v, m_scene->camera().transform.position());
+	renderer.draw_indexed(cb, skybox.static_mesh().view(), next_instances({&mat, 1u}), 1u);
 }
 
-void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Node const& node, glm::mat4 parent) const {
+void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Node const& node, glm::mat4 parent) {
 	auto const& resources = m_scene->resources();
 	if (auto mesh_id = node.find<Mesh>()) {
 		static auto const s_default_material = Material{std::make_unique<LitMaterial>()};
@@ -97,13 +99,30 @@ void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Node const&
 			auto const store = TextureStore{resources.textures, m_white, m_black};
 			material.write_sets(pipeline, store);
 
-			auto const& static_mesh = resources.static_meshes[primitive.static_mesh];
-			auto const instances = make_instances(node, parent);
-			renderer.draw(pipeline, static_mesh, instances);
+			auto const& static_mesh = resources.static_meshes[primitive.static_mesh].view();
+			auto const mats = make_instance_mats(node, parent);
+			renderer.draw_indexed(cb, static_mesh, next_instances(mats), static_cast<std::uint32_t>(mats.size()));
 		}
 	}
 
 	parent = parent * node.transform.matrix();
 	for (auto const& id : node.children) { render(renderer, cb, m_scene->resources().nodes[id], parent); }
+}
+
+vk::Buffer SceneRenderer::next_instances(std::span<glm::mat4x4 const> mats) {
+	auto& buffer = [&]() -> UniqueBuffer& {
+		auto ret = Ptr<UniqueBuffer>{};
+		auto& instance = m_instances.get();
+		if (instance.index < instance.buffers.size()) {
+			ret = &instance.buffers[instance.index++];
+		} else {
+			++instance.index;
+			ret = &instance.buffers.emplace_back();
+		}
+		if (ret->get().size < mats.size_bytes()) { *ret = m_gfx.vma.make_buffer(vk::BufferUsageFlagBits::eVertexBuffer, mats.size_bytes(), true); }
+		return *ret;
+	}();
+	std::memcpy(buffer.get().ptr, mats.data(), mats.size_bytes());
+	return buffer.get().buffer;
 }
 } // namespace facade

@@ -180,7 +180,6 @@ std::size_t Pipes::Hasher::operator()(Key const& key) const {
 Pipes::Pipes(Gfx const& gfx, vk::SampleCountFlagBits samples) : m_gfx{gfx}, m_samples{samples} {
 	auto const features = gfx.gpu.getFeatures();
 	m_sample_shading = features.sampleRateShading;
-	for (auto& drawer : m_drawers.t) { drawer = Drawer{gfx}; }
 }
 
 Pipeline Pipes::get(vk::RenderPass rp, State const& state, Shader shader) {
@@ -190,7 +189,7 @@ Pipeline Pipes::get(vk::RenderPass rp, State const& state, Shader shader) {
 	populate(lock, map, shader);
 	auto& ret = map.pipelines[rp];
 	if (!ret) { ret = make_pipeline(state, shader.vert, shader.frag, *map.pipeline_layout, rp); }
-	return {*ret, *map.pipeline_layout, &*map.set_pools.get(), &m_gfx.shared->device_limits, &m_drawers.get()};
+	return {*ret, *map.pipeline_layout, &*map.set_pools.get(), &m_gfx.shared->device_limits};
 }
 
 void Pipes::rotate() {
@@ -199,8 +198,6 @@ void Pipes::rotate() {
 		map.set_pools.get()->release_all();
 		map.set_pools.rotate();
 	}
-	m_drawers.get().m_index = 0;
-	m_drawers.rotate();
 }
 
 void Pipes::populate(Lock const&, Map& out, Shader shader) const {

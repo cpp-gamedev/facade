@@ -261,13 +261,19 @@ bool Renderer::render() {
 	return true;
 }
 
-void Renderer::draw(Pipeline& pipeline, StaticMesh const& mesh, std::span<glm::mat4x4 const> instances) const {
-	// update stats
+void Renderer::draw_indexed(vk::CommandBuffer cb, MeshView mesh, vk::Buffer instances, std::uint32_t count) const {
 	++m_impl->stats.draw_calls;
-	m_impl->stats.triangles += instances.size() * mesh.view().vertex_count / 3;
+	m_impl->stats.triangles += count * mesh.vertex_count / 3;
 
-	// draw
-	pipeline.draw(mesh, instances);
+	vk::Buffer const buffers[] = {mesh.vertices.buffer, instances};
+	vk::DeviceSize const offsets[] = {0, 0};
+	cb.bindVertexBuffers(0u, buffers, offsets);
+	if (mesh.index_count > 0) {
+		cb.bindIndexBuffer(mesh.indices.buffer, mesh.indices.offset, vk::IndexType::eUint32);
+		cb.drawIndexed(mesh.index_count, count, 0u, 0u, 0u);
+	} else {
+		cb.draw(mesh.vertex_count, count, 0u, 0u);
+	}
 }
 
 Shader Renderer::add_shader(std::string id, SpirV vert, SpirV frag) { return m_impl->shader_db.add(std::move(id), std::move(vert), std::move(frag)); }

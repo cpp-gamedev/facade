@@ -140,14 +140,15 @@ class Renderer {
 	bool render();
 
 	///
-	/// \brief Draw a StaticMesh using the bound Pipeline, and update FrameStats.
-	/// \param pipeline Bound Pipeline
-	/// \param mesh StaticMesh to draw
-	/// \param instances Model matrix instances to draw
+	/// \brief Draw a mesh using the bound Pipeline, and update FrameStats.
+	/// \param cb Command buffer to record draw to
+	/// \param mesh Mesh to draw
+	/// \param instances Per-instance model matrix vertex buffer
+	/// \param count Instance count in instances
 	///
 	/// All descriptor sets referenced by shaders must have been written before calling this!
 	///
-	void draw(Pipeline& pipeline, StaticMesh const& mesh, std::span<glm::mat4x4 const> instances) const;
+	void draw_indexed(vk::CommandBuffer cb, MeshView mesh, vk::Buffer instances, std::uint32_t count) const;
 
 	///
 	/// \brief Add a Shader to the Db.

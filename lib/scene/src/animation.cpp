@@ -1,14 +1,38 @@
 #include <facade/scene/animation.hpp>
 #include <facade/scene/node.hpp>
 #include <facade/util/bool.hpp>
+#include <facade/util/zip_ranges.hpp>
 
 namespace facade {
-void TransformAnimator::update(Node& out_node, float dt) {
+MorphWeights lerp(MorphWeights const& a, MorphWeights const& b, float t) {
+	assert(a.weights.size() == b.weights.size());
+	auto ret = MorphWeights{};
+	for (auto [p, q] : zip_ranges(a.weights.span(), b.weights.span())) { ret.weights.insert(std::lerp(p, q, t)); }
+	return ret;
+}
+
+void Animator::update(std::span<Node> nodes, float time) const {
+	if (translation.target) {
+		assert(*translation.target < nodes.size());
+		if (auto const p = translation.interpolate(time)) { nodes[*translation.target].transform.set_position(*p); }
+	}
+	if (rotation.target) {
+		assert(*rotation.target < nodes.size());
+		if (auto const o = rotation.interpolate(time)) { nodes[*rotation.target].transform.set_orientation(*o); }
+	}
+	if (scale.target) {
+		assert(*scale.target < nodes.size());
+		if (auto const s = scale.interpolate(time)) { nodes[*scale.target].transform.set_scale(*s); }
+	}
+	if (weights.target) {
+		assert(*weights.target < nodes.size());
+		if (auto const w = weights.interpolate(time)) { nodes[*weights.target].weights = *w; }
+	}
+}
+
+void Animation::update(std::span<Node> nodes, float dt) {
 	elapsed += dt;
-	auto const duration = std::max({translation.duration(), rotation.duration(), scale.duration()});
-	if (auto const p = translation(elapsed)) { out_node.transform.set_position(*p); }
-	if (auto const o = rotation(elapsed)) { out_node.transform.set_orientation(*o); }
-	if (auto const s = scale(elapsed)) { out_node.transform.set_scale(*s); }
-	if (elapsed > duration) { elapsed = {}; }
+	animator.update(nodes, elapsed);
+	if (elapsed > animator.duration()) { elapsed = {}; }
 }
 } // namespace facade

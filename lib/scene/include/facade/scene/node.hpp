@@ -1,5 +1,6 @@
 #pragma once
 #include <facade/scene/id.hpp>
+#include <facade/scene/morph_weights.hpp>
 #include <facade/util/transform.hpp>
 #include <facade/util/type_id.hpp>
 #include <optional>
@@ -16,6 +17,7 @@ struct Node {
 	std::vector<Transform> instances{};
 	std::unordered_map<TypeId, std::size_t, Hasher> attachments{};
 	std::vector<Id<Node>> children{};
+	MorphWeights weights{};
 	Id<Node> self{};
 	std::string name{};
 

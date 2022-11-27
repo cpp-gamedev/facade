@@ -189,16 +189,20 @@ std::vector<Node> to_nodes(std::span<gltf2cpp::Node> nodes) {
 		for (auto const& child : in.children) { node.children.push_back(child); }
 		if (in.camera) { node.attach<Camera>(*in.camera); }
 		if (in.mesh) { node.attach<Mesh>(*in.mesh); }
+		for (float const weight : in.weights) {
+			if (node.weights.weights.size() < MorphWeights::max_weights_v) { node.weights.weights.insert(weight); }
+		}
 		ret.push_back(std::move(node));
 	}
 	return ret;
 }
 
 template <typename T>
-Interpolator<T> make_interpolator(std::span<float const> times, std::span<T const> values) {
+Interpolator<T> make_interpolator(std::span<float const> times, std::span<T const> values, gltf2cpp::Interpolation interpolation) {
 	assert(times.size() == values.size());
 	auto ret = Interpolator<T>{};
 	for (auto [t, v] : zip_ranges(times, values)) { ret.keyframes.push_back({v, t}); }
+	ret.interpolation = static_cast<Interpolation>(interpolation);
 	return ret;
 }
 
@@ -214,7 +218,6 @@ Animation to_animation(gltf2cpp::Animation const& animation, std::span<gltf2cpp:
 		auto const& output = accessors[sampler.output];
 		assert(output.component_type == gltf2cpp::ComponentType::eFloat);
 		auto const values = std::get<gltf2cpp::Accessor::Float>(output.data).span();
-		ret.transform.target = channel.target.node;
 		switch (channel.target.path) {
 		case Path::eTranslation:
 		case Path::eScale: {
@@ -223,11 +226,11 @@ Animation to_animation(gltf2cpp::Animation const& animation, std::span<gltf2cpp:
 			vec.resize(values.size() / 3);
 			std::memcpy(vec.data(), values.data(), values.size_bytes());
 			if (channel.target.path == Path::eScale) {
-				ret.transform.scale = make_interpolator<glm::vec3>(times, vec);
-				ret.transform.scale.interpolation = static_cast<Interpolation>(sampler.interpolation);
+				ret.animator.scale.target = channel.target.node;
+				ret.animator.scale.interpolator = make_interpolator<glm::vec3>(times, vec, sampler.interpolation);
 			} else {
-				ret.transform.translation = make_interpolator<glm::vec3>(times, vec);
-				ret.transform.translation.interpolation = static_cast<Interpolation>(sampler.interpolation);
+				ret.animator.translation.target = channel.target.node;
+				ret.animator.translation.interpolator = make_interpolator<glm::vec3>(times, vec, sampler.interpolation);
 			}
 			break;
 		}
@@ -236,8 +239,8 @@ Animation to_animation(gltf2cpp::Animation const& animation, std::span<gltf2cpp:
 			auto vec = std::vector<glm::quat>{};
 			vec.resize(values.size() / 4);
 			std::memcpy(vec.data(), values.data(), values.size_bytes());
-			ret.transform.rotation = make_interpolator<glm::quat>(times, vec);
-			ret.transform.rotation.interpolation = static_cast<Interpolation>(sampler.interpolation);
+			ret.animator.rotation.target = channel.target.node;
+			ret.animator.rotation.interpolator = make_interpolator<glm::quat>(times, vec, sampler.interpolation);
 			break;
 		}
 		case Path::eWeights: {

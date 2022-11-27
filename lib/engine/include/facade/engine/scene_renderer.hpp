@@ -25,6 +25,7 @@ class SceneRenderer {
 
 	void render(Renderer& renderer, vk::CommandBuffer cb, Skybox const& skybox);
 	void render(Renderer& renderer, vk::CommandBuffer cb, Node const& node, glm::mat4 parent = matrix_identity_v);
+	void draw(vk::CommandBuffer cb, StaticMesh const& static_mesh, std::span<glm::mat4x4 const> mats);
 
 	BufferView next_instances(std::span<glm::mat4x4 const> mats);
 

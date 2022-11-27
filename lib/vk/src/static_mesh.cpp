@@ -24,26 +24,26 @@ StaticMesh::StaticMesh(Gfx const& gfx, Geometry const& geometry, std::string nam
 	cmd.cb.copyBuffer(staging.get().buffer, m_buffer.get().get().buffer, bc);
 }
 
-MeshView StaticMesh::view() const { return {vbo(), ibo(), m_vertices, m_indices}; }
+auto StaticMesh::info() const -> Info { return {m_vertices, m_indices}; }
 
-void StaticMesh::draw(vk::CommandBuffer cb, BufferView instances) const {
-	assert(instances.buffer && instances.count > 0);
-	auto mesh_view = view();
-	vk::Buffer const buffers[] = {mesh_view.vertices.buffer, instances.buffer};
-	vk::DeviceSize const offsets[] = {0, 0};
-	cb.bindVertexBuffers(0u, buffers, offsets);
-	if (mesh_view.index_count > 0) {
-		cb.bindIndexBuffer(mesh_view.indices.buffer, mesh_view.indices.offset, vk::IndexType::eUint32);
-		cb.drawIndexed(mesh_view.index_count, instances.count, 0u, 0u, 0u);
+void StaticMesh::draw(vk::CommandBuffer cb, std::size_t const instances, std::uint32_t binding) const {
+	auto const count = static_cast<std::uint32_t>(instances);
+	auto const& v = vbo();
+	cb.bindVertexBuffers(binding, v.buffer, vk::DeviceSize{0});
+	if (m_indices > 0) {
+		auto const& i = ibo();
+		cb.bindIndexBuffer(i.buffer, i.offset, vk::IndexType::eUint32);
+		cb.drawIndexed(m_indices, count, 0u, 0u, 0u);
 	} else {
-		cb.draw(mesh_view.vertex_count, instances.count, 0u, 0u);
+		cb.draw(m_vertices, count, 0u, 0u);
 	}
 }
 
-BufferView StaticMesh::vbo() const { return {m_buffer.get().get().buffer, m_vbo_size}; }
+BufferView StaticMesh::vbo() const { return {.buffer = m_buffer.get().get().buffer, .size = m_vbo_size, .count = m_vertices}; }
 
 BufferView StaticMesh::ibo() const {
 	if (m_vbo_size == m_buffer.get().get().size) { return {}; }
-	return {m_buffer.get().get().buffer, m_buffer.get().get().size - m_vbo_size, m_vbo_size};
+	auto const& buffer = m_buffer.get().get();
+	return {.buffer = buffer.buffer, .size = buffer.size - m_vbo_size, .offset = m_vbo_size, .count = m_indices};
 }
 } // namespace facade

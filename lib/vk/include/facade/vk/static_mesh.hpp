@@ -7,12 +7,17 @@ struct Geometry;
 
 class StaticMesh {
   public:
+	struct Info {
+		std::uint32_t vertices{};
+		std::uint32_t indices{};
+	};
+
 	StaticMesh(Gfx const& gfx, Geometry const& geometry, std::string name = "(Unnamed)");
 
 	std::string_view name() const { return m_name; }
-	MeshView view() const;
+	Info info() const;
 
-	void draw(vk::CommandBuffer cb, BufferView instances) const;
+	void draw(vk::CommandBuffer cb, std::size_t instances, std::uint32_t binding = 0u) const;
 
   private:
 	BufferView vbo() const;

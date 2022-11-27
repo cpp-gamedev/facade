@@ -77,13 +77,6 @@ struct DescriptorImage {
 	vk::Sampler sampler{};
 };
 
-struct MeshView {
-	BufferView vertices{};
-	BufferView indices{};
-	std::uint32_t vertex_count{};
-	std::uint32_t index_count{};
-};
-
 struct ImageCreateInfo {
 	static constexpr auto usage_v = vk::ImageUsageFlagBits::eSampled | vk::ImageUsageFlagBits::eTransferSrc | vk::ImageUsageFlagBits::eTransferDst;
 

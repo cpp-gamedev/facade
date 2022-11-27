@@ -51,8 +51,9 @@ void ResourceInspector::view(StaticMesh const& mesh, Id<StaticMesh> id) const {
 	auto tn = TreeNode{name.c_str()};
 	drag_payload(id, name.c_str());
 	if (tn) {
-		ImGui::Text("%s", FixedString{"Vertices: {}", mesh.view().vertex_count}.c_str());
-		ImGui::Text("%s", FixedString{"Indices: {}", mesh.view().index_count}.c_str());
+		auto const info = mesh.info();
+		ImGui::Text("%s", FixedString{"Vertices: {}", info.vertices}.c_str());
+		ImGui::Text("%s", FixedString{"Indices: {}", info.indices}.c_str());
 	}
 }
 

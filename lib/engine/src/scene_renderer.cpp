@@ -19,6 +19,11 @@ struct DirLightSSBO {
 };
 } // namespace
 
+void SceneRenderer::Instances::rotate() {
+	for (auto& buffer : buffers) { buffer.rotate(); }
+	index = 0;
+}
+
 SceneRenderer::SceneRenderer(Gfx const& gfx)
 	: m_gfx(gfx), m_sampler(gfx), m_view_proj(gfx, Buffer::Type::eUniform), m_dir_lights(gfx, Buffer::Type::eStorage),
 	  m_white(gfx, m_sampler.sampler(), Bmp1x1{0xff_B, 0xff_B, 0xff_B, 0xff_B}.view(), Texture::CreateInfo{.mip_mapped = false}),
@@ -26,7 +31,6 @@ SceneRenderer::SceneRenderer(Gfx const& gfx)
 
 void SceneRenderer::render(Scene const& scene, Ptr<Skybox const> skybox, Renderer& renderer, vk::CommandBuffer cb) {
 	m_scene = &scene;
-	m_instances.get().index = 0;
 	write_view(renderer.framebuffer_extent());
 	if (skybox) { render(renderer, cb, *skybox); }
 	for (auto const& node : m_scene->roots()) { render(renderer, cb, m_scene->resources().nodes[node]); }
@@ -38,19 +42,19 @@ void SceneRenderer::write_view(glm::vec2 const extent) {
 	auto const cam_id = cam_node.find<Camera>();
 	assert(cam_id);
 	auto const& cam = m_scene->resources().cameras[*cam_id];
-	struct {
+	struct ViewSSBO {
 		glm::mat4x4 mat_v;
 		glm::mat4x4 mat_p;
 		glm::vec4 vpos_exposure;
-	} vp{
+	} view{
 		.mat_v = cam.view(cam_node.transform),
 		.mat_p = cam.projection(extent),
 		.vpos_exposure = {cam_node.transform.position(), cam.exposure},
 	};
-	m_view_proj.write(&vp, sizeof(vp));
+	m_view_proj.write<ViewSSBO>({&view, 1});
 	auto dir_lights = FlexArray<DirLightSSBO, 4>{};
 	for (auto const& light : m_scene->lights.dir_lights.span()) { dir_lights.insert(DirLightSSBO::make(light)); }
-	m_dir_lights.write(dir_lights.span().data(), dir_lights.span().size_bytes());
+	m_dir_lights.write(dir_lights.span());
 }
 
 void SceneRenderer::update_view(Pipeline& out_pipeline) const {
@@ -82,7 +86,7 @@ void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Skybox cons
 	set1.update(0, skybox.cubemap().descriptor_image());
 	pipeline.bind(set1);
 	auto const mat = glm::translate(matrix_identity_v, m_scene->camera().transform.position());
-	renderer.draw_indexed(cb, skybox.static_mesh().view(), next_instances({&mat, 1u}), 1u);
+	renderer.draw_indexed(cb, skybox.static_mesh(), next_instances({&mat, 1u}));
 }
 
 void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Node const& node, glm::mat4 parent) {
@@ -99,9 +103,9 @@ void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Node const&
 			auto const store = TextureStore{resources.textures, m_white, m_black};
 			material.write_sets(pipeline, store);
 
-			auto const& static_mesh = resources.static_meshes[primitive.static_mesh].view();
+			auto const& static_mesh = resources.static_meshes[primitive.static_mesh];
 			auto const mats = make_instance_mats(node, parent);
-			renderer.draw_indexed(cb, static_mesh, next_instances(mats), static_cast<std::uint32_t>(mats.size()));
+			renderer.draw_indexed(cb, static_mesh, next_instances(mats));
 		}
 	}
 
@@ -109,20 +113,18 @@ void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Node const&
 	for (auto const& id : node.children) { render(renderer, cb, m_scene->resources().nodes[id], parent); }
 }
 
-vk::Buffer SceneRenderer::next_instances(std::span<glm::mat4x4 const> mats) {
-	auto& buffer = [&]() -> UniqueBuffer& {
-		auto ret = Ptr<UniqueBuffer>{};
-		auto& instance = m_instances.get();
-		if (instance.index < instance.buffers.size()) {
-			ret = &instance.buffers[instance.index++];
+BufferView SceneRenderer::next_instances(std::span<glm::mat4x4 const> mats) {
+	auto& buffer = [&]() -> Buffer& {
+		auto ret = Ptr<Buffer>{};
+		if (m_instances.index < m_instances.buffers.size()) {
+			ret = &m_instances.buffers[m_instances.index++];
 		} else {
-			++instance.index;
-			ret = &instance.buffers.emplace_back();
+			++m_instances.index;
+			ret = &m_instances.buffers.emplace_back(m_gfx, Buffer::Type::eInstance);
 		}
-		if (ret->get().size < mats.size_bytes()) { *ret = m_gfx.vma.make_buffer(vk::BufferUsageFlagBits::eVertexBuffer, mats.size_bytes(), true); }
 		return *ret;
 	}();
-	std::memcpy(buffer.get().ptr, mats.data(), mats.size_bytes());
-	return buffer.get().buffer;
+	buffer.write(mats);
+	return buffer.view();
 }
 } // namespace facade

@@ -26,6 +26,20 @@ StaticMesh::StaticMesh(Gfx const& gfx, Geometry const& geometry, std::string nam
 
 MeshView StaticMesh::view() const { return {vbo(), ibo(), m_vertices, m_indices}; }
 
+void StaticMesh::draw(vk::CommandBuffer cb, BufferView instances) const {
+	assert(instances.buffer && instances.count > 0);
+	auto mesh_view = view();
+	vk::Buffer const buffers[] = {mesh_view.vertices.buffer, instances.buffer};
+	vk::DeviceSize const offsets[] = {0, 0};
+	cb.bindVertexBuffers(0u, buffers, offsets);
+	if (mesh_view.index_count > 0) {
+		cb.bindIndexBuffer(mesh_view.indices.buffer, mesh_view.indices.offset, vk::IndexType::eUint32);
+		cb.drawIndexed(mesh_view.index_count, instances.count, 0u, 0u, 0u);
+	} else {
+		cb.draw(mesh_view.vertex_count, instances.count, 0u, 0u);
+	}
+}
+
 BufferView StaticMesh::vbo() const { return {m_buffer.get().get().buffer, m_vbo_size}; }
 
 BufferView StaticMesh::ibo() const {

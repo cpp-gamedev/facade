@@ -20,15 +20,17 @@ class SceneRenderer {
 	void render(Renderer& renderer, vk::CommandBuffer cb, Skybox const& skybox);
 	void render(Renderer& renderer, vk::CommandBuffer cb, Node const& node, glm::mat4 parent = matrix_identity_v);
 
-	vk::Buffer next_instances(std::span<glm::mat4x4 const> mats);
+	BufferView next_instances(std::span<glm::mat4x4 const> mats);
 
 	struct Instances {
-		std::vector<UniqueBuffer> buffers{};
+		std::vector<Buffer> buffers{};
 		std::size_t index{};
+
+		void rotate();
 	};
 
 	Gfx m_gfx;
-	Rotator<Instances> m_instances{};
+	Instances m_instances{};
 	Sampler m_sampler;
 	Buffer m_view_proj;
 	Buffer m_dir_lights;

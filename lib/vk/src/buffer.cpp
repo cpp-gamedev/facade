@@ -1,3 +1,4 @@
+#include <facade/util/error.hpp>
 #include <facade/vk/buffer.hpp>
 #include <facade/vk/cmd.hpp>
 
@@ -5,23 +6,27 @@ namespace facade {
 namespace {
 constexpr vk::BufferUsageFlags get_usage(Buffer::Type const type) {
 	switch (type) {
-	default:
 	case Buffer::Type::eUniform: return vk::BufferUsageFlagBits::eUniformBuffer;
 	case Buffer::Type::eVertexIndex: return vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsageFlagBits::eIndexBuffer;
 	case Buffer::Type::eStorage: return vk::BufferUsageFlagBits::eStorageBuffer;
+	case Buffer::Type::eInstance: return vk::BufferUsageFlagBits::eVertexBuffer;
 	}
+	throw Error{"Unknown type"};
 }
 } // namespace
 
 Buffer::Buffer(Gfx const& gfx, Type type) : m_gfx{gfx}, m_type{type} {}
 
-void Buffer::write(void const* data, std::size_t size) {
+void Buffer::write(void const* data, std::size_t const size, std::size_t const count) {
 	m_data.clear();
 	if (size > 0) {
 		m_data.resize(size);
 		std::memcpy(m_data.data(), data, size);
+		assert(count > 0 && count <= size);
+		m_count = static_cast<std::uint32_t>(count);
 	} else {
 		m_data.push_back({});
+		m_count = 1u;
 	}
 }
 
@@ -35,7 +40,7 @@ void Buffer::refresh() const {
 
 BufferView Buffer::view() const {
 	refresh();
-	return {m_buffers.get().get().get().buffer, m_data.size()};
+	return {.buffer = m_buffers.get().get().get().buffer, .size = m_data.size(), .count = m_count};
 }
 
 DescriptorBuffer Buffer::descriptor_buffer() const {

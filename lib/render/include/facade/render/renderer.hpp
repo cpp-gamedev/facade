@@ -56,6 +56,8 @@ struct RendererCreateInfo {
 	std::uint8_t desired_msaa{1};
 };
 
+class StaticMesh;
+
 ///
 /// \brief Owns a Vulkan Swapchain and RenderPass, a Shader::Db and Pipes instance each, and renders to the Window passed in constructor.
 ///
@@ -142,13 +144,13 @@ class Renderer {
 	///
 	/// \brief Draw a mesh using the bound Pipeline, and update FrameStats.
 	/// \param cb Command buffer to record draw to
-	/// \param mesh Mesh to draw
+	/// \param mesh StaticMesh to draw
 	/// \param instances Per-instance model matrix vertex buffer
 	/// \param count Instance count in instances
 	///
 	/// All descriptor sets referenced by shaders must have been written before calling this!
 	///
-	void draw_indexed(vk::CommandBuffer cb, MeshView mesh, vk::Buffer instances, std::uint32_t count) const;
+	void draw_indexed(vk::CommandBuffer cb, StaticMesh const& mesh, BufferView instances) const;
 
 	///
 	/// \brief Add a Shader to the Db.

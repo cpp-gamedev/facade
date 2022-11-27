@@ -1,7 +1,6 @@
 #pragma once
 #include <facade/vk/defer.hpp>
 #include <facade/vk/gfx.hpp>
-#include <span>
 
 namespace facade {
 struct Geometry;
@@ -12,7 +11,8 @@ class StaticMesh {
 
 	std::string_view name() const { return m_name; }
 	MeshView view() const;
-	operator MeshView() const { return view(); }
+
+	void draw(vk::CommandBuffer cb, BufferView instances) const;
 
   private:
 	BufferView vbo() const;

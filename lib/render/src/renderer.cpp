@@ -6,6 +6,7 @@
 #include <facade/vk/pipes.hpp>
 #include <facade/vk/render_frame.hpp>
 #include <facade/vk/render_pass.hpp>
+#include <facade/vk/static_mesh.hpp>
 #include <facade/vk/swapchain.hpp>
 
 namespace facade {
@@ -261,19 +262,10 @@ bool Renderer::render() {
 	return true;
 }
 
-void Renderer::draw_indexed(vk::CommandBuffer cb, MeshView mesh, vk::Buffer instances, std::uint32_t count) const {
+void Renderer::draw_indexed(vk::CommandBuffer cb, StaticMesh const& mesh, BufferView instances) const {
 	++m_impl->stats.draw_calls;
-	m_impl->stats.triangles += count * mesh.vertex_count / 3;
-
-	vk::Buffer const buffers[] = {mesh.vertices.buffer, instances};
-	vk::DeviceSize const offsets[] = {0, 0};
-	cb.bindVertexBuffers(0u, buffers, offsets);
-	if (mesh.index_count > 0) {
-		cb.bindIndexBuffer(mesh.indices.buffer, mesh.indices.offset, vk::IndexType::eUint32);
-		cb.drawIndexed(mesh.index_count, count, 0u, 0u, 0u);
-	} else {
-		cb.draw(mesh.vertex_count, count, 0u, 0u);
-	}
+	m_impl->stats.triangles += instances.count * mesh.view().vertex_count / 3;
+	mesh.draw(cb, instances);
 }
 
 Shader Renderer::add_shader(std::string id, SpirV vert, SpirV frag) { return m_impl->shader_db.add(std::move(id), std::move(vert), std::move(frag)); }

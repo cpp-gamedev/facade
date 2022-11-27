@@ -57,6 +57,7 @@ struct BufferView {
 	vk::Buffer buffer{};
 	vk::DeviceSize size{};
 	vk::DeviceSize offset{};
+	std::uint32_t count{1};
 };
 
 struct DescriptorBuffer {

@@ -57,6 +57,7 @@ struct BufferView {
 	vk::Buffer buffer{};
 	vk::DeviceSize size{};
 	vk::DeviceSize offset{};
+	std::uint32_t count{1};
 };
 
 struct DescriptorBuffer {
@@ -74,13 +75,6 @@ struct ImageView {
 struct DescriptorImage {
 	vk::ImageView image{};
 	vk::Sampler sampler{};
-};
-
-struct MeshView {
-	BufferView vertices{};
-	BufferView indices{};
-	std::uint32_t vertex_count{};
-	std::uint32_t index_count{};
 };
 
 struct ImageCreateInfo {

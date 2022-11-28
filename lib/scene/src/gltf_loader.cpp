@@ -1,5 +1,6 @@
 #include <facade/scene/gltf_loader.hpp>
 #include <facade/util/data_provider.hpp>
+#include <facade/util/enumerate.hpp>
 #include <facade/util/error.hpp>
 #include <facade/util/thread_pool.hpp>
 #include <facade/util/zip_ranges.hpp>
@@ -53,6 +54,19 @@ constexpr Material::AlphaMode to_alpha_mode(gltf2cpp::AlphaMode const mode) {
 	case gltf2cpp::AlphaMode::eBlend: return Material::AlphaMode::eBlend;
 	case gltf2cpp::AlphaMode::eMask: return Material::AlphaMode::eMask;
 	}
+}
+
+constexpr vk::PrimitiveTopology to_primitive_topology(gltf2cpp::PrimitiveMode mode) {
+	switch (mode) {
+	case gltf2cpp::PrimitiveMode::ePoints: return vk::PrimitiveTopology::ePointList;
+	case gltf2cpp::PrimitiveMode::eLines: return vk::PrimitiveTopology::eLineList;
+	case gltf2cpp::PrimitiveMode::eLineStrip: return vk::PrimitiveTopology::eLineStrip;
+	case gltf2cpp::PrimitiveMode::eLineLoop: break;
+	case gltf2cpp::PrimitiveMode::eTriangles: return vk::PrimitiveTopology::eTriangleList;
+	case gltf2cpp::PrimitiveMode::eTriangleStrip: return vk::PrimitiveTopology::eTriangleStrip;
+	case gltf2cpp::PrimitiveMode::eTriangleFan: return vk::PrimitiveTopology::eTriangleFan;
+	}
+	throw Error{"Unsupported primitive mode: " + std::to_string(static_cast<int>(mode))};
 }
 
 Sampler::CreateInfo to_sampler_info(gltf2cpp::Sampler const& sampler) {
@@ -113,7 +127,12 @@ struct MeshLayout {
 		std::vector<Mesh::Primitive> primitives{};
 	};
 
-	std::vector<Geometry> geometries{};
+	struct Primitive {
+		Geometry geometry{};
+		vk::PrimitiveTopology topology{vk::PrimitiveTopology::eTriangleList};
+	};
+
+	std::vector<Primitive> primitives{};
 	std::vector<Data> data{};
 };
 
@@ -123,10 +142,9 @@ MeshLayout to_mesh_layout(gltf2cpp::Root& out_root) {
 		auto data = MeshLayout::Data{};
 		data.name = std::move(mesh.name);
 		for (auto& primitive : mesh.primitives) {
-			auto mp = Mesh::Primitive{.static_mesh = ret.geometries.size()};
-			ret.geometries.push_back(to_geometry(std::move(primitive)));
-			mp.material = primitive.material;
-			data.primitives.push_back(std::move(mp));
+			auto const topology = to_primitive_topology(primitive.mode);
+			data.primitives.push_back(Mesh::Primitive{.static_mesh = ret.primitives.size(), .material = primitive.material});
+			ret.primitives.push_back({to_geometry(std::move(primitive)), topology});
 		}
 		ret.data.push_back(std::move(data));
 	}
@@ -189,16 +207,20 @@ std::vector<Node> to_nodes(std::span<gltf2cpp::Node> nodes) {
 		for (auto const& child : in.children) { node.children.push_back(child); }
 		if (in.camera) { node.attach<Camera>(*in.camera); }
 		if (in.mesh) { node.attach<Mesh>(*in.mesh); }
+		for (float const weight : in.weights) {
+			if (node.weights.weights.size() < MorphWeights::max_weights_v) { node.weights.weights.insert(weight); }
+		}
 		ret.push_back(std::move(node));
 	}
 	return ret;
 }
 
 template <typename T>
-Interpolator<T> make_interpolator(std::span<float const> times, std::span<T const> values) {
+Interpolator<T> make_interpolator(std::span<float const> times, std::span<T const> values, gltf2cpp::Interpolation interpolation) {
 	assert(times.size() == values.size());
 	auto ret = Interpolator<T>{};
 	for (auto [t, v] : zip_ranges(times, values)) { ret.keyframes.push_back({v, t}); }
+	ret.interpolation = static_cast<Interpolation>(interpolation);
 	return ret;
 }
 
@@ -214,7 +236,6 @@ Animation to_animation(gltf2cpp::Animation const& animation, std::span<gltf2cpp:
 		auto const& output = accessors[sampler.output];
 		assert(output.component_type == gltf2cpp::ComponentType::eFloat);
 		auto const values = std::get<gltf2cpp::Accessor::Float>(output.data).span();
-		ret.transform.target = channel.target.node;
 		switch (channel.target.path) {
 		case Path::eTranslation:
 		case Path::eScale: {
@@ -223,11 +244,11 @@ Animation to_animation(gltf2cpp::Animation const& animation, std::span<gltf2cpp:
 			vec.resize(values.size() / 3);
 			std::memcpy(vec.data(), values.data(), values.size_bytes());
 			if (channel.target.path == Path::eScale) {
-				ret.transform.scale = make_interpolator<glm::vec3>(times, vec);
-				ret.transform.scale.interpolation = static_cast<Interpolation>(sampler.interpolation);
+				ret.animator.scale.target = channel.target.node;
+				ret.animator.scale.interpolator = make_interpolator<glm::vec3>(times, vec, sampler.interpolation);
 			} else {
-				ret.transform.translation = make_interpolator<glm::vec3>(times, vec);
-				ret.transform.translation.interpolation = static_cast<Interpolation>(sampler.interpolation);
+				ret.animator.translation.target = channel.target.node;
+				ret.animator.translation.interpolator = make_interpolator<glm::vec3>(times, vec, sampler.interpolation);
 			}
 			break;
 		}
@@ -236,8 +257,8 @@ Animation to_animation(gltf2cpp::Animation const& animation, std::span<gltf2cpp:
 			auto vec = std::vector<glm::quat>{};
 			vec.resize(values.size() / 4);
 			std::memcpy(vec.data(), values.data(), values.size_bytes());
-			ret.transform.rotation = make_interpolator<glm::quat>(times, vec);
-			ret.transform.rotation.interpolation = static_cast<Interpolation>(sampler.interpolation);
+			ret.animator.rotation.target = channel.target.node;
+			ret.animator.rotation.interpolator = make_interpolator<glm::quat>(times, vec, sampler.interpolation);
 			break;
 		}
 		case Path::eWeights: {
@@ -309,9 +330,15 @@ bool Scene::GltfLoader::operator()(dj::Json const& json, DataProvider const& pro
 
 	auto static_meshes = std::vector<MaybeFuture<StaticMesh>>{};
 	auto mesh_layout = to_mesh_layout(root);
-	static_meshes.reserve(mesh_layout.geometries.size());
-	for (auto& geometry : mesh_layout.geometries) {
-		static_meshes.push_back(make_load_future(thread_pool, m_status.done, [g = std::move(geometry), this] { return StaticMesh{m_scene.m_gfx, g}; }));
+	static_meshes.reserve(mesh_layout.primitives.size());
+	for (auto& data : mesh_layout.data) {
+		for (auto [primitive, index] : enumerate(data.primitives)) {
+			auto& p = mesh_layout.primitives[primitive.static_mesh];
+			auto name = fmt::format("{}_{}", data.name, index);
+			static_meshes.push_back(make_load_future(thread_pool, m_status.done, [p = std::move(p), n = std::move(name), this] {
+				return StaticMesh{m_scene.m_gfx, p.geometry, std::move(n), p.topology};
+			}));
+		}
 	}
 
 	for (auto const& animation : root.animations) { m_scene.m_storage.resources.animations.m_array.push_back(to_animation(animation, root.accessors)); }

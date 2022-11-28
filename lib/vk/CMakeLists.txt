@@ -51,7 +51,6 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/vk/defer_queue.hpp
   include/${target_prefix}/vk/defer.hpp
   include/${target_prefix}/vk/descriptor_set.hpp
-  include/${target_prefix}/vk/drawer.hpp
   include/${target_prefix}/vk/geometry.hpp
   include/${target_prefix}/vk/gfx.hpp
   include/${target_prefix}/vk/pipeline.hpp
@@ -74,7 +73,6 @@ target_sources(${PROJECT_NAME} PRIVATE
   src/buffer.cpp
   src/cmd.cpp
   src/descriptor_set.cpp
-  src/drawer.cpp
   src/geometry.cpp
   src/gfx.cpp
   src/pipeline.cpp

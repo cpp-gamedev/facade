@@ -31,6 +31,18 @@ void edit_material(SceneResources const& resources, UnlitMaterial& unlit) {
 	if (unlit.texture) { name = FixedString<128>{"{} ({})", resources.textures[*unlit.texture].name(), *unlit.texture}; }
 	make_id_slot(unlit.texture, "Texture", name.c_str(), {true});
 }
+
+constexpr std::string_view to_str(vk::PrimitiveTopology const topo) {
+	switch (topo) {
+	case vk::PrimitiveTopology::ePointList: return "Point list";
+	case vk::PrimitiveTopology::eLineList: return "Line list";
+	case vk::PrimitiveTopology::eLineStrip: return "Line strip";
+	case vk::PrimitiveTopology::eTriangleList: return "Triangle list";
+	case vk::PrimitiveTopology::eTriangleStrip: return "Triangle strip";
+	case vk::PrimitiveTopology::eTriangleFan: return "Triangle fan";
+	default: return "(Unsupported)";
+	}
+}
 } // namespace
 
 void ResourceInspector::view(Texture const& texture, Id<Texture> id) const {
@@ -51,8 +63,10 @@ void ResourceInspector::view(StaticMesh const& mesh, Id<StaticMesh> id) const {
 	auto tn = TreeNode{name.c_str()};
 	drag_payload(id, name.c_str());
 	if (tn) {
-		ImGui::Text("%s", FixedString{"Vertices: {}", mesh.view().vertex_count}.c_str());
-		ImGui::Text("%s", FixedString{"Indices: {}", mesh.view().index_count}.c_str());
+		auto const info = mesh.info();
+		ImGui::Text("%s", FixedString{"Vertices: {}", info.vertices}.c_str());
+		ImGui::Text("%s", FixedString{"Indices: {}", info.indices}.c_str());
+		ImGui::Text("%s", FixedString{"Topology: {}", to_str(mesh.topology())}.c_str());
 	}
 }
 

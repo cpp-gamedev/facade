@@ -158,11 +158,7 @@ bool Scene::select_camera(Id<Node> target) {
 Texture Scene::make_texture(Image::View image) const { return Texture{m_gfx, default_sampler(), image}; }
 
 void Scene::tick(float dt) {
-	for (auto& animation : m_storage.resources.animations.view()) {
-		if (!animation.transform.target) { continue; }
-		assert(*animation.transform.target < m_storage.resources.nodes.size());
-		animation.transform.update(m_storage.resources.nodes[*animation.transform.target], dt);
-	}
+	for (auto& animation : m_storage.resources.animations.view()) { animation.update(m_storage.resources.nodes.view(), dt); }
 }
 
 Node Scene::make_camera_node(Id<Camera> id) const {

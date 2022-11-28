@@ -82,21 +82,21 @@ bool WindowMenu::display_stats(Engine& engine) {
 	ImGui::SetNextWindowSize({250.0f, 250.0f}, ImGuiCond_FirstUseEver);
 	bool show{true};
 	if (auto window = editor::Window{"Frame Stats", &show}) {
-		auto const& stats = engine.renderer().frame_stats();
+		auto const& stats = engine.stats();
 		ImGui::Text("%s", FixedString{"Counter: {}", stats.frame_counter}.c_str());
 		ImGui::Text("%s", FixedString{"Triangles: {}", stats.triangles}.c_str());
 		ImGui::Text("%s", FixedString{"Draw calls: {}", stats.draw_calls}.c_str());
 		ImGui::Text("%s", FixedString{"FPS: {}", (stats.fps == 0 ? static_cast<std::uint32_t>(stats.frame_counter) : stats.fps)}.c_str());
 		ImGui::Text("%s", FixedString{"Frame time: {:.2f}ms", engine.state().dt * 1000.0f}.c_str());
-		ImGui::Text("%s", FixedString{"GPU: {}", stats.gpu_name}.c_str());
-		ImGui::Text("%s", FixedString{"MSAA: {}x", to_int(stats.msaa)}.c_str());
+		ImGui::Text("%s", FixedString{"MSAA: {}x", to_int(stats.current_msaa)}.c_str());
+		ImGui::Text("%s", FixedString{"GPU: {}", engine.gpu_name()}.c_str());
 		ImGui::Text("%s", FixedString{"Load threads: {}", engine.load_thread_count()}.c_str());
 		if (ImGui::SmallButton("Vsync")) { change_vsync(engine); }
 		ImGui::SameLine();
 		ImGui::Text("%s", vsync_status(stats.mode).data());
-		auto& ps = engine.scene().pipeline_state;
-		bool wireframe = ps.mode == vk::PolygonMode::eLine;
-		if (ImGui::Checkbox("Wireframe", &wireframe)) { ps.mode = wireframe ? vk::PolygonMode::eLine : vk::PolygonMode::eFill; }
+		auto& ps = engine.scene().render_mode;
+		bool wireframe = ps.type == RenderMode::Type::eWireframe;
+		if (ImGui::Checkbox("Wireframe", &wireframe)) { ps.type = wireframe ? RenderMode::Type::eWireframe : RenderMode::Type::eFill; }
 		if (wireframe) {
 			ImGui::SameLine();
 			ImGui::DragFloat("Line Width", &ps.line_width, 0.1f, 1.0f, 10.0f);

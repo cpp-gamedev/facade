@@ -1,5 +1,4 @@
 #pragma once
-#include <facade/vk/drawer.hpp>
 #include <facade/vk/pipeline.hpp>
 #include <facade/vk/rotator.hpp>
 #include <facade/vk/shader.hpp>
@@ -46,7 +45,6 @@ class Pipes {
 	vk::UniquePipelineLayout make_pipeline_layout(std::span<vk::DescriptorSetLayout const> set_layouts) const;
 
 	std::unordered_map<Key, Map, Hasher> m_map{};
-	Rotator<Drawer> m_drawers{};
 	Gfx m_gfx{};
 	std::mutex m_mutex{};
 	vk::SampleCountFlagBits m_samples{};

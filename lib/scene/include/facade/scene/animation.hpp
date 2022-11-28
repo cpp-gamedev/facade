@@ -1,22 +1,41 @@
 #pragma once
 #include <facade/scene/id.hpp>
 #include <facade/scene/interpolator.hpp>
+#include <facade/scene/morph_weights.hpp>
+#include <numeric>
 
 namespace facade {
 struct Node;
 
-struct TransformAnimator {
-	Interpolator<glm::vec3> translation{};
-	Interpolator<glm::quat> rotation{};
-	Interpolator<glm::vec3> scale{};
+MorphWeights lerp(MorphWeights const& a, MorphWeights const& b, float t);
+
+template <typename T>
+struct AnimationChannel {
+	Interpolator<T> interpolator{};
 	std::optional<Id<Node>> target{};
 
-	float elapsed{};
+	auto interpolate(float time) const { return interpolator(time); }
+};
 
-	void update(Node& out_node, float dt);
+struct Animator {
+	AnimationChannel<glm::vec3> translation{};
+	AnimationChannel<glm::quat> rotation{};
+	AnimationChannel<glm::vec3> scale{};
+	AnimationChannel<MorphWeights> weights{};
+
+	template <typename... U>
+	static float max_duration(U&&... channels) {
+		return std::max({channels.interpolator.duration()...});
+	}
+
+	float duration() const { return max_duration(translation, rotation, scale, weights); }
+	void update(std::span<Node> nodes, float time) const;
 };
 
 struct Animation {
-	TransformAnimator transform{};
+	Animator animator{};
+	float elapsed{};
+
+	void update(std::span<Node> nodes, float dt);
 };
 } // namespace facade

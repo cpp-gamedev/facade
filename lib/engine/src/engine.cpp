@@ -225,6 +225,21 @@ struct LoadRequest {
 	AtomicLoadStatus status{};
 	float start_time{};
 };
+
+struct Fps {
+	std::uint32_t frames{};
+	std::uint32_t fps{};
+	float start{time::since_start()};
+
+	std::uint32_t next_frame() {
+		++frames;
+		if (auto const now = time::since_start(); now - start >= 1.0f) {
+			start = now;
+			fps = std::exchange(frames, 0);
+		}
+		return fps;
+	}
+};
 } // namespace
 
 struct Engine::Impl {
@@ -237,6 +252,8 @@ struct Engine::Impl {
 
 	ThreadPool thread_pool{};
 	std::mutex mutex{};
+	Stats stats{};
+	Fps fps{};
 
 	struct {
 		LoadRequest request{};
@@ -293,6 +310,8 @@ auto Engine::poll() -> State const& {
 	m_impl->window.window.get().glfw->poll_events();
 	auto const& ret = m_impl.get()->window.window.get().state();
 	m_impl->scene.tick(ret.dt);
+	m_impl->stats.fps = m_impl->fps.next_frame();
+	++m_impl->stats.frame_counter;
 	return ret;
 }
 
@@ -302,6 +321,17 @@ void Engine::render() {
 	if (m_impl->window.renderer.next_frame({&cb, 1})) { m_impl->renderer.render(scene(), &m_impl->skybox, renderer(), cb); }
 	m_impl->window.gui->end_frame();
 	m_impl->window.renderer.render();
+	{
+		auto const& info = m_impl->renderer.info();
+		m_impl->stats.draw_calls = info.draw_calls;
+		m_impl->stats.triangles = info.triangles_drawn;
+	}
+	{
+		auto info = m_impl->window.renderer.info();
+		m_impl->stats.mode = info.present_mode;
+		m_impl->stats.current_msaa = info.current_msaa;
+		m_impl->stats.supported_msaa = info.supported_msaa;
+	}
 }
 
 void Engine::request_stop() { glfwSetWindowShouldClose(window(), GLFW_TRUE); }
@@ -309,6 +339,9 @@ void Engine::request_stop() { glfwSetWindowShouldClose(window(), GLFW_TRUE); }
 glm::ivec2 Engine::window_position() const { return m_impl->window.window.get().position(); }
 glm::uvec2 Engine::window_extent() const { return m_impl->window.window.get().window_extent(); }
 glm::uvec2 Engine::framebuffer_extent() const { return m_impl->window.window.get().framebuffer_extent(); }
+
+Stats const& Engine::stats() const { return m_impl->stats; }
+std::string_view Engine::gpu_name() const { return m_impl->window.renderer.gpu_name(); }
 
 bool Engine::load_async(std::string json_path, UniqueTask<void()> on_loaded) {
 	if (!fs::is_regular_file(json_path)) {

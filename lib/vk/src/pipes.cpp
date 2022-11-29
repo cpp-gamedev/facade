@@ -1,4 +1,5 @@
 #include <facade/util/error.hpp>
+#include <facade/util/hash_combine.hpp>
 #include <facade/vk/geometry.hpp>
 #include <facade/vk/pipes.hpp>
 #include <facade/vk/static_mesh.hpp>
@@ -69,12 +70,14 @@ vk::UniqueShaderModule make_shader_module(vk::Device device, SpirV::View spir_v)
 	return device.createShaderModuleUnique(smci);
 }
 
+static constexpr std::size_t max_attributes_v{16};
+
 struct VertexLayout {
-	FlexArray<vk::VertexInputAttributeDescription, max_sets_v> attributes{};
-	FlexArray<vk::VertexInputBindingDescription, max_sets_v> bindings{};
+	FlexArray<vk::VertexInputAttributeDescription, max_attributes_v> attributes{};
+	FlexArray<vk::VertexInputBindingDescription, max_attributes_v> bindings{};
 };
 
-constexpr VertexLayout vertex_layout() {
+constexpr VertexLayout instanced_vertex_layout() {
 	auto ret = VertexLayout{};
 	ret.bindings.insert(vk::VertexInputBindingDescription{0, sizeof(Vertex)});
 	ret.attributes.insert(vk::VertexInputAttributeDescription{0, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, position)});
@@ -86,6 +89,20 @@ constexpr VertexLayout vertex_layout() {
 	ret.attributes.insert(vk::VertexInputAttributeDescription{5, 1, vk::Format::eR32G32B32A32Sfloat, 1 * sizeof(glm::vec4)});
 	ret.attributes.insert(vk::VertexInputAttributeDescription{6, 1, vk::Format::eR32G32B32A32Sfloat, 2 * sizeof(glm::vec4)});
 	ret.attributes.insert(vk::VertexInputAttributeDescription{7, 1, vk::Format::eR32G32B32A32Sfloat, 3 * sizeof(glm::vec4)});
+	return ret;
+}
+
+constexpr VertexLayout skinned_vertex_layout() {
+	auto ret = VertexLayout{};
+	ret.bindings.insert(vk::VertexInputBindingDescription{0, sizeof(Vertex)});
+	ret.attributes.insert(vk::VertexInputAttributeDescription{0, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, position)});
+	ret.attributes.insert(vk::VertexInputAttributeDescription{1, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, rgb)});
+	ret.attributes.insert(vk::VertexInputAttributeDescription{2, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, normal)});
+	ret.attributes.insert(vk::VertexInputAttributeDescription{3, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, uv)});
+	ret.bindings.insert(vk::VertexInputBindingDescription{1, sizeof(glm::uvec4)});
+	ret.attributes.insert(vk::VertexInputAttributeDescription{4, 1, vk::Format::eR32G32B32A32Uint});
+	ret.bindings.insert(vk::VertexInputBindingDescription{2, sizeof(glm::vec4)});
+	ret.attributes.insert(vk::VertexInputAttributeDescription{5, 2, vk::Format::eR32G32B32A32Sfloat});
 	return ret;
 }
 
@@ -105,7 +122,7 @@ vk::UniquePipeline create_pipeline(vk::Device dv, PipeInfo const& info) {
 	gpci.renderPass = info.render_pass;
 	gpci.layout = info.layout;
 
-	static constexpr auto vl = vertex_layout();
+	auto const vl = info.state.vert_type == Pipeline::VertType::eSkinned ? skinned_vertex_layout() : instanced_vertex_layout();
 	auto const vertex_bindings = vl.bindings.span();
 	auto const vertex_attributes = vl.attributes.span();
 	auto pvisci = vk::PipelineVertexInputStateCreateInfo{};
@@ -170,11 +187,7 @@ vk::UniquePipeline create_pipeline(vk::Device dv, PipeInfo const& info) {
 } // namespace
 
 std::size_t Pipes::Hasher::operator()(Key const& key) const {
-	auto ret = key.shader_hash;
-	ret ^= (std::hash<vk::PolygonMode>{}(key.state.mode) << 16);
-	ret ^= (std::hash<vk::PrimitiveTopology>{}(key.state.topology) << 24);
-	ret ^= (std::hash<bool>{}(key.state.depth_test) << 32);
-	return ret;
+	return make_combined_hash(key.shader_hash, key.state.mode, key.state.topology, key.state.depth_test, key.state.vert_type);
 }
 
 Pipes::Pipes(Gfx const& gfx, vk::SampleCountFlagBits samples) : m_gfx{gfx}, m_samples{samples} {

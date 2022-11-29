@@ -108,8 +108,11 @@ void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Node const&
 	if (auto mesh_id = node.find<Mesh>()) {
 		auto const& mesh = resources.meshes[*mesh_id];
 		for (auto const& primitive : mesh.primitives) {
-			auto const mode = m_scene->render_mode.type == RenderMode::Type::eWireframe ? vk::PolygonMode::eLine : vk::PolygonMode::eFill;
-			auto const state = Pipeline::State{.mode = mode, .topology = to_primitive_topology(primitive.topology)};
+			auto const state = Pipeline::State{
+				.mode = m_scene->render_mode.type == RenderMode::Type::eWireframe ? vk::PolygonMode::eLine : vk::PolygonMode::eFill,
+				.topology = to_primitive_topology(primitive.topology),
+				.vert_type = primitive.morph_mesh ? Pipeline::VertType::eSkinned : Pipeline::VertType::eInstanced,
+			};
 			auto const& material = primitive.material ? resources.materials[primitive.material->value()] : m_material;
 
 			auto pipeline = renderer.bind_pipeline(cb, state, material.shader_id());

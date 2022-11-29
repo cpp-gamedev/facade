@@ -1,7 +1,6 @@
 #include <facade/vk/cmd.hpp>
 #include <facade/vk/geometry.hpp>
 #include <facade/vk/static_mesh.hpp>
-#include <span>
 
 namespace facade {
 namespace {

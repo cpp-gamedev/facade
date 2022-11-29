@@ -32,14 +32,14 @@ void edit_material(SceneResources const& resources, UnlitMaterial& unlit) {
 	make_id_slot(unlit.texture, "Texture", name.c_str(), {true});
 }
 
-constexpr std::string_view to_str(vk::PrimitiveTopology const topo) {
+constexpr std::string_view to_str(Topology const topo) {
 	switch (topo) {
-	case vk::PrimitiveTopology::ePointList: return "Point list";
-	case vk::PrimitiveTopology::eLineList: return "Line list";
-	case vk::PrimitiveTopology::eLineStrip: return "Line strip";
-	case vk::PrimitiveTopology::eTriangleList: return "Triangle list";
-	case vk::PrimitiveTopology::eTriangleStrip: return "Triangle strip";
-	case vk::PrimitiveTopology::eTriangleFan: return "Triangle fan";
+	case Topology::ePoints: return "Points";
+	case Topology::eLines: return "Lines";
+	case Topology::eLineStrip: return "Line strip";
+	case Topology::eTriangles: return "Triangles";
+	case Topology::eTriangleStrip: return "Triangle strip";
+	case Topology::eTriangleFan: return "Triangle fan";
 	default: return "(Unsupported)";
 	}
 }
@@ -66,7 +66,6 @@ void ResourceInspector::view(StaticMesh const& mesh, Id<StaticMesh> id) const {
 		auto const info = mesh.info();
 		ImGui::Text("%s", FixedString{"Vertices: {}", info.vertices}.c_str());
 		ImGui::Text("%s", FixedString{"Indices: {}", info.indices}.c_str());
-		ImGui::Text("%s", FixedString{"Topology: {}", to_str(mesh.topology())}.c_str());
 	}
 }
 
@@ -89,12 +88,18 @@ void ResourceInspector::edit(Mesh& out_mesh, Id<Mesh> id) const {
 		auto to_erase = std::optional<std::size_t>{};
 		for (auto [primitive, index] : enumerate(out_mesh.primitives)) {
 			if (auto tn = TreeNode{FixedString{"Primitive [{}]", index}.c_str()}) {
-				name = FixedString<128>{"{} ({})", m_resources.static_meshes[primitive.static_mesh].name(), primitive.static_mesh};
-				make_id_slot(primitive.static_mesh, "Static Mesh", name.c_str());
+				if (primitive.morph_mesh) {
+					// TODO
+				} else {
+					name = FixedString<128>{"{} ({})", m_resources.static_meshes[primitive.static_mesh].name(), primitive.static_mesh};
+					make_id_slot(primitive.static_mesh, "Static Mesh", name.c_str());
+				}
 
 				name = {};
 				if (primitive.material) { name = FixedString<128>{"{} ({})", m_resources.materials[*primitive.material].name(), *primitive.material}; }
 				make_id_slot(primitive.material, "Material", name.c_str(), {true});
+
+				ImGui::Text("%s", FixedString{"Topology: {}", to_str(primitive.topology)}.c_str());
 
 				if (small_button_red("x###remove_primitive")) { to_erase = index; }
 			}

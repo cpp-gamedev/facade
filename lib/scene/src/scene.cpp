@@ -191,7 +191,9 @@ Id<Mesh> Scene::add_unchecked(Mesh mesh) {
 
 void Scene::check(Mesh const& mesh) const noexcept(false) {
 	for (auto const& primitive : mesh.primitives) {
-		if (primitive.static_mesh >= m_storage.resources.static_meshes.size()) {
+		if (primitive.morph_mesh) {
+			// TODO
+		} else if (primitive.static_mesh >= m_storage.resources.static_meshes.size()) {
 			throw Error{fmt::format("Scene {}: Invalid Static Mesh Id: {}", m_name, primitive.static_mesh)};
 		}
 		if (primitive.material && primitive.material->value() >= m_storage.resources.materials.size()) {

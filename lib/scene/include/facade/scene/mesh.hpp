@@ -4,7 +4,20 @@
 
 namespace facade {
 class StaticMesh;
+class MorphMesh;
 class Material;
+
+///
+/// \brief Primitive topology.
+///
+enum class Topology {
+	ePoints,
+	eLines,
+	eLineStrip,
+	eTriangles,
+	eTriangleStrip,
+	eTriangleFan,
+};
 
 ///
 /// \brief Represents a Mesh in a Scene.
@@ -18,10 +31,16 @@ struct Mesh {
 		/// \brief Id of the StaticMesh this primitive uses.
 		///
 		Id<StaticMesh> static_mesh{};
+
+		std::optional<Id<MorphMesh>> morph_mesh{};
 		///
 		/// \brief Id of the Material this primitive uses.
 		///
 		std::optional<Id<Material>> material{};
+		///
+		/// \brief Primitive topology.
+		///
+		Topology topology{Topology::eTriangles};
 	};
 
 	std::string name{"(Unnamed)"};

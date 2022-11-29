@@ -56,15 +56,15 @@ constexpr Material::AlphaMode to_alpha_mode(gltf2cpp::AlphaMode const mode) {
 	}
 }
 
-constexpr vk::PrimitiveTopology to_primitive_topology(gltf2cpp::PrimitiveMode mode) {
+constexpr Topology to_topology(gltf2cpp::PrimitiveMode mode) {
 	switch (mode) {
-	case gltf2cpp::PrimitiveMode::ePoints: return vk::PrimitiveTopology::ePointList;
-	case gltf2cpp::PrimitiveMode::eLines: return vk::PrimitiveTopology::eLineList;
-	case gltf2cpp::PrimitiveMode::eLineStrip: return vk::PrimitiveTopology::eLineStrip;
+	case gltf2cpp::PrimitiveMode::ePoints: return Topology::ePoints;
+	case gltf2cpp::PrimitiveMode::eLines: return Topology::eLines;
+	case gltf2cpp::PrimitiveMode::eLineStrip: return Topology::eLineStrip;
 	case gltf2cpp::PrimitiveMode::eLineLoop: break;
-	case gltf2cpp::PrimitiveMode::eTriangles: return vk::PrimitiveTopology::eTriangleList;
-	case gltf2cpp::PrimitiveMode::eTriangleStrip: return vk::PrimitiveTopology::eTriangleStrip;
-	case gltf2cpp::PrimitiveMode::eTriangleFan: return vk::PrimitiveTopology::eTriangleFan;
+	case gltf2cpp::PrimitiveMode::eTriangles: return Topology::eTriangles;
+	case gltf2cpp::PrimitiveMode::eTriangleStrip: return Topology::eTriangleStrip;
+	case gltf2cpp::PrimitiveMode::eTriangleFan: return Topology::eTriangleFan;
 	}
 	throw Error{"Unsupported primitive mode: " + std::to_string(static_cast<int>(mode))};
 }
@@ -142,9 +142,12 @@ MeshLayout to_mesh_layout(gltf2cpp::Root& out_root) {
 		auto data = MeshLayout::Data{};
 		data.name = std::move(mesh.name);
 		for (auto& primitive : mesh.primitives) {
-			auto const topology = to_primitive_topology(primitive.mode);
-			data.primitives.push_back(Mesh::Primitive{.static_mesh = ret.primitives.size(), .material = primitive.material});
-			ret.primitives.push_back({to_geometry(std::move(primitive)), topology});
+			data.primitives.push_back(Mesh::Primitive{
+				.static_mesh = ret.primitives.size(),
+				.material = primitive.material,
+				.topology = to_topology(primitive.mode),
+			});
+			ret.primitives.push_back({to_geometry(std::move(primitive))});
 		}
 		ret.data.push_back(std::move(data));
 	}
@@ -336,7 +339,7 @@ bool Scene::GltfLoader::operator()(dj::Json const& json, DataProvider const& pro
 			auto& p = mesh_layout.primitives[primitive.static_mesh];
 			auto name = fmt::format("{}_{}", data.name, index);
 			static_meshes.push_back(make_load_future(thread_pool, m_status.done, [p = std::move(p), n = std::move(name), this] {
-				return StaticMesh{m_scene.m_gfx, p.geometry, std::move(n), p.topology};
+				return StaticMesh{m_scene.m_gfx, p.geometry, std::move(n)};
 			}));
 		}
 	}

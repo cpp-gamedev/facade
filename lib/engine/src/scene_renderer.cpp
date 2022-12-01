@@ -38,7 +38,7 @@ void SceneRenderer::Instances::rotate() {
 }
 
 SceneRenderer::SceneRenderer(Gfx const& gfx)
-	: m_gfx(gfx), m_material(std::make_unique<LitMaterial>()), m_sampler(gfx), m_view_proj(gfx, Buffer::Type::eUniform),
+	: m_gfx(gfx), m_material(Material{LitMaterial{}, "default"}), m_sampler(gfx), m_view_proj(gfx, Buffer::Type::eUniform),
 	  m_dir_lights(gfx, Buffer::Type::eStorage),
 	  m_white(gfx, m_sampler.sampler(), Bmp1x1{0xff_B, 0xff_B, 0xff_B, 0xff_B}.view(), Texture::CreateInfo{.mip_mapped = false}),
 	  m_black(gfx, m_sampler.sampler(), Bmp1x1{0x0_B, 0x0_B, 0x0_B, 0xff_B}.view(), Texture::CreateInfo{.mip_mapped = false}) {}
@@ -102,6 +102,24 @@ void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Skybox cons
 	draw(cb, skybox.static_mesh(), {&mat, 1u});
 }
 
+std::string_view make_shader_id(Material const& mat, std::optional<Id<SkinnedMesh>> sm) {
+	if (sm) { return "skinned"; }
+	if (std::holds_alternative<UnlitMaterial>(mat.instance)) { return "unlit"; }
+	return "lit";
+}
+
+std::array<glm::mat4x4, 4> make_joint_mats(std::span<Node const> nodes, glm::mat4x4 const& parent, std::span<Id<Node> const> joints,
+										   std::span<glm::mat4x4 const> ibm) {
+	auto ret = std::array<glm::mat4x4, 4>{
+		glm::identity<glm::mat4x4>(),
+		glm::identity<glm::mat4x4>(),
+		glm::identity<glm::mat4x4>(),
+		glm::identity<glm::mat4x4>(),
+	};
+	for (std::size_t i = 0; i < ret.size() && i < ibm.size() && i < joints.size(); ++i) { ret[i] = parent * nodes[joints[i]].transform.matrix() * ibm[i]; }
+	return ret;
+}
+
 void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Node const& node, glm::mat4 parent) {
 	auto const& resources = m_scene->resources();
 	auto const store = TextureStore{resources.textures, m_white, m_black};
@@ -111,17 +129,22 @@ void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Node const&
 			auto const state = Pipeline::State{
 				.mode = m_scene->render_mode.type == RenderMode::Type::eWireframe ? vk::PolygonMode::eLine : vk::PolygonMode::eFill,
 				.topology = to_primitive_topology(primitive.topology),
-				.vert_type = primitive.morph_mesh ? Pipeline::VertType::eSkinned : Pipeline::VertType::eInstanced,
+				.vert_type = primitive.skinned_mesh ? Pipeline::VertType::eSkinned : Pipeline::VertType::eInstanced,
 			};
 			auto const& material = primitive.material ? resources.materials[primitive.material->value()] : m_material;
-
-			auto pipeline = renderer.bind_pipeline(cb, state, material.shader_id());
+			auto pipeline = renderer.bind_pipeline(cb, state, std::string{make_shader_id(material, primitive.skinned_mesh)});
 			pipeline.set_line_width(m_scene->render_mode.line_width);
 			update_view(pipeline);
 			material.write_sets(pipeline, store);
 
-			if (primitive.morph_mesh) {
+			if (primitive.skinned_mesh) {
 				// TODO
+				auto const& skin = resources.skins[*node.find<Skin>()];
+				auto& set3 = pipeline.next_set(3);
+				set3.write(0, make_joint_mats(resources.nodes.view(), parent, skin.joints, skin.inverse_bind_matrices));
+				pipeline.bind(set3);
+				auto const& mesh = resources.skinned_meshes[*primitive.skinned_mesh];
+				mesh.draw(cb);
 			} else {
 				auto const mats = make_instance_mats(node, parent);
 				auto const& static_mesh = resources.static_meshes[primitive.static_mesh];

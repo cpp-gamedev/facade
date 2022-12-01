@@ -94,7 +94,7 @@ class Renderer {
 	/// \param shader_id Shader Id to use to find / create a Vulkan Pipeline
 	/// \returns Pipeline with corresponding descriptor sets to write to
 	///
-	Pipeline bind_pipeline(vk::CommandBuffer cb, Pipeline::State const& state = {}, std::string const& shader_id = "default");
+	Pipeline bind_pipeline(vk::CommandBuffer cb, Pipeline::State const& state = {}, std::string const& shader_id = "lit");
 	///
 	/// \brief Execute render pass and submit all recorded command buffers to the graphics queue.
 	/// \returns false If Swapchain Image has not been acquired

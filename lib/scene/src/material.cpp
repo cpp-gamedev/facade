@@ -11,7 +11,7 @@ struct Mat {
 };
 
 // std::bit_cast not available on GCC 10.x
-float bit_cast_f(Material::AlphaMode const mode) {
+float bit_cast_f(AlphaMode const mode) {
 	auto ret = float{};
 	std::memcpy(&ret, &mode, sizeof(mode));
 	return ret;

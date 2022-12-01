@@ -5,4 +5,5 @@ namespace facade::shaders {
 Shader unlit();
 Shader lit();
 Shader skybox();
+Shader skinned();
 } // namespace facade::shaders

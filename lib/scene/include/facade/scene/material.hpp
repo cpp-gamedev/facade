@@ -8,9 +8,15 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <variant>
 
 namespace facade {
 class Pipeline;
+
+///
+/// \brief Alpha blend mode.
+///
+enum class AlphaMode : std::uint32_t { eOpaque = 0, eBlend, eMask };
 
 ///
 /// \brief Texture lookup for materials.
@@ -40,74 +46,9 @@ struct TextureStore {
 };
 
 ///
-/// \brief Base class for concrete materials.
-///
-class MaterialBase {
-  public:
-	///
-	/// \brief Alpha blend mode.
-	///
-	enum class AlphaMode : std::uint32_t { eOpaque = 0, eBlend, eMask };
-
-	inline static std::string const default_shader_id{"default"};
-
-	virtual ~MaterialBase() = default;
-
-	///
-	/// \brief Obtain the ID for the shader used by this material.
-	/// \returns Shader ID for this material instance
-	///
-	virtual std::string const& shader_id() const { return default_shader_id; }
-	///
-	/// \brief Write descriptor sets into the passed pipeline.
-	/// \param pipeline The pipeline to obtain sets from and bind them to
-	/// \param store Texture lookup store
-	///
-	virtual void write_sets(Pipeline& pipeline, TextureStore const& store) const = 0;
-
-	///
-	/// \brief Name of this instance.
-	///
-	std::string name{"(Unnamed)"};
-};
-
-///
-/// \brief Value-semantic strategy wrapper for concrete materials.
-///
-class Material {
-  public:
-	using AlphaMode = MaterialBase::AlphaMode;
-
-	Material(std::unique_ptr<MaterialBase>&& base) : m_base(std::move(base)) {}
-
-	std::string const& shader_id() const {
-		assert(m_base);
-		return m_base->shader_id();
-	}
-
-	void write_sets(Pipeline& pipeline, TextureStore const& store) const {
-		assert(m_base);
-		m_base->write_sets(pipeline, store);
-	}
-
-	std::string_view name() const { return m_base->name; }
-
-	MaterialBase& base() const {
-		assert(m_base);
-		return *m_base;
-	}
-
-  private:
-	std::unique_ptr<MaterialBase> m_base;
-};
-
-///
 /// \brief Unlit Material.
 ///
-class UnlitMaterial : public MaterialBase {
-  public:
-	inline static std::string const shader_id_v{"unlit"};
-
+struct UnlitMaterial {
 	///
 	/// \brief Tint to pass to shader.
 	///
@@ -117,15 +58,13 @@ class UnlitMaterial : public MaterialBase {
 	///
 	std::optional<Id<Texture>> texture{};
 
-	std::string const& shader_id() const override { return shader_id_v; }
-	void write_sets(Pipeline& pipeline, TextureStore const& store) const override;
+	void write_sets(Pipeline& pipeline, TextureStore const& store) const;
 };
 
 ///
 /// \brief PBR lit material.
 ///
-class LitMaterial : public MaterialBase {
-  public:
+struct LitMaterial {
 	///
 	/// \brief Base colour factor.
 	///
@@ -158,6 +97,15 @@ class LitMaterial : public MaterialBase {
 	float alpha_cutoff{};
 	AlphaMode alpha_mode{AlphaMode::eOpaque};
 
-	void write_sets(Pipeline& pipeline, TextureStore const& store) const override;
+	void write_sets(Pipeline& pipeline, TextureStore const& store) const;
+};
+
+struct Material {
+	std::variant<LitMaterial, UnlitMaterial> instance{};
+	std::string name{"(Unnamed)"};
+
+	void write_sets(Pipeline& pipeline, TextureStore const& store) const {
+		std::visit([&pipeline, &store](auto const& mat) { mat.write_sets(pipeline, store); }, instance);
+	}
 };
 } // namespace facade

@@ -9,7 +9,6 @@
 #include <facade/vk/shader.hpp>
 
 namespace facade {
-struct Gfx;
 class Renderer;
 class Scene;
 struct Window;
@@ -52,9 +51,17 @@ class Engine {
 	explicit Engine(CreateInfo const& create_info = {}) noexcept(false);
 
 	///
-	/// \brief Register a shader for the renderer to look up during draws
+	/// \brief Register a shader for the renderer to look up during draws.
 	///
 	void add_shader(Shader shader);
+
+	///
+	/// \brief Register shaders for the renderer to look up during draws.
+	///
+	template <std::convertible_to<Shader>... T>
+	void add_shaders(T... shaders) {
+		(add_shader(shaders), ...);
+	}
 
 	///
 	/// \brief Show the window

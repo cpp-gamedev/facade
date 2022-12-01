@@ -47,12 +47,12 @@ constexpr vk::Filter to_filter(gltf2cpp::Filter const filter) {
 	}
 }
 
-constexpr Material::AlphaMode to_alpha_mode(gltf2cpp::AlphaMode const mode) {
+constexpr AlphaMode to_alpha_mode(gltf2cpp::AlphaMode const mode) {
 	switch (mode) {
 	default:
-	case gltf2cpp::AlphaMode::eOpaque: return Material::AlphaMode::eOpaque;
-	case gltf2cpp::AlphaMode::eBlend: return Material::AlphaMode::eBlend;
-	case gltf2cpp::AlphaMode::eMask: return Material::AlphaMode::eMask;
+	case gltf2cpp::AlphaMode::eOpaque: return AlphaMode::eOpaque;
+	case gltf2cpp::AlphaMode::eBlend: return AlphaMode::eBlend;
+	case gltf2cpp::AlphaMode::eMask: return AlphaMode::eMask;
 	}
 }
 
@@ -79,23 +79,32 @@ Sampler::CreateInfo to_sampler_info(gltf2cpp::Sampler const& sampler) {
 }
 
 Material to_material(gltf2cpp::Material const& material) {
-	auto ret = std::make_unique<LitMaterial>();
-	ret->albedo = {material.pbr.base_color_factor[0], material.pbr.base_color_factor[1], material.pbr.base_color_factor[2]};
-	ret->metallic = material.pbr.metallic_factor;
-	ret->roughness = material.pbr.roughness_factor;
-	ret->alpha_mode = to_alpha_mode(material.alpha_mode);
-	ret->alpha_cutoff = material.alpha_cutoff;
-	if (material.pbr.base_color_texture) { ret->base_colour = material.pbr.base_color_texture->texture; }
-	if (material.pbr.metallic_roughness_texture) { ret->roughness_metallic = material.pbr.metallic_roughness_texture->texture; }
-	if (material.emissive_texture) { ret->emissive = material.emissive_texture->texture; }
-	ret->emissive_factor = {material.emissive_factor[0], material.emissive_factor[1], material.emissive_factor[2]};
-	return {std::move(ret)};
+	auto ret = LitMaterial{};
+	ret.albedo = {material.pbr.base_color_factor[0], material.pbr.base_color_factor[1], material.pbr.base_color_factor[2]};
+	ret.metallic = material.pbr.metallic_factor;
+	ret.roughness = material.pbr.roughness_factor;
+	ret.alpha_mode = to_alpha_mode(material.alpha_mode);
+	ret.alpha_cutoff = material.alpha_cutoff;
+	if (material.pbr.base_color_texture) { ret.base_colour = material.pbr.base_color_texture->texture; }
+	if (material.pbr.metallic_roughness_texture) { ret.roughness_metallic = material.pbr.metallic_roughness_texture->texture; }
+	if (material.emissive_texture) { ret.emissive = material.emissive_texture->texture; }
+	ret.emissive_factor = {material.emissive_factor[0], material.emissive_factor[1], material.emissive_factor[2]};
+	return Material{std::move(ret)};
 }
 
 template <glm::length_t Dim>
 constexpr glm::vec<Dim, float> from_gltf(gltf2cpp::Vec<Dim> const& in) {
 	auto ret = glm::vec<Dim, float>{};
 	std::memcpy(&ret, &in, sizeof(in));
+	return ret;
+}
+
+glm::mat4x4 from_gltf(gltf2cpp::Mat4x4 const& in) {
+	auto ret = glm::mat4x4{};
+	ret[0] = {in[0][0], in[0][1], in[0][2], in[0][3]};
+	ret[1] = {in[1][0], in[1][1], in[1][2], in[1][3]};
+	ret[2] = {in[2][0], in[2][1], in[2][2], in[2][3]};
+	ret[3] = {in[3][0], in[3][1], in[3][2], in[3][3]};
 	return ret;
 }
 
@@ -112,29 +121,41 @@ Geometry to_geometry(gltf2cpp::Mesh::Primitive&& primitive) {
 	return ret;
 }
 
-struct MeshData {
-	struct Primitive {
-		Geometry geometry{};
-		std::optional<std::size_t> material{};
-	};
-
-	std::vector<Primitive> primitives{};
-};
-
 struct MeshLayout {
 	struct Data {
 		std::string name{};
 		std::vector<Mesh::Primitive> primitives{};
 	};
 
-	struct Primitive {
+	struct Static {
 		Geometry geometry{};
-		vk::PrimitiveTopology topology{vk::PrimitiveTopology::eTriangleList};
 	};
 
-	std::vector<Primitive> primitives{};
+	struct Skinned : Static {
+		std::vector<glm::uvec4> joints{};
+		std::vector<glm::vec4> weights{};
+	};
+
+	std::vector<Static> static_meshes{};
+	std::vector<Skinned> skinned_meshes{};
 	std::vector<Data> data{};
 };
+
+MeshLayout::Skinned to_skinned_mesh_layout(gltf2cpp::Mesh::Primitive&& primitive) {
+	auto ret = MeshLayout::Skinned{};
+	ret.joints.resize(primitive.geometry.joints[0].size());
+	std::memcpy(ret.joints.data(), primitive.geometry.joints[0].data(), std::span{primitive.geometry.joints[0]}.size_bytes());
+	ret.weights.resize(primitive.geometry.weights[0].size());
+	std::memcpy(ret.weights.data(), primitive.geometry.weights[0].data(), std::span{primitive.geometry.weights[0]}.size_bytes());
+	ret.geometry = to_geometry(std::move(primitive));
+	return ret;
+}
+
+MeshLayout::Static to_static_mesh_layout(gltf2cpp::Mesh::Primitive&& primitive) {
+	auto ret = MeshLayout::Static{};
+	ret.geometry = to_geometry(std::move(primitive));
+	return ret;
+}
 
 MeshLayout to_mesh_layout(gltf2cpp::Root& out_root) {
 	auto ret = MeshLayout{};
@@ -142,12 +163,22 @@ MeshLayout to_mesh_layout(gltf2cpp::Root& out_root) {
 		auto data = MeshLayout::Data{};
 		data.name = std::move(mesh.name);
 		for (auto& primitive : mesh.primitives) {
-			data.primitives.push_back(Mesh::Primitive{
-				.static_mesh = ret.primitives.size(),
-				.material = primitive.material,
-				.topology = to_topology(primitive.mode),
-			});
-			ret.primitives.push_back({to_geometry(std::move(primitive))});
+			auto const topology = to_topology(primitive.mode);
+			if (!primitive.geometry.joints.empty()) {
+				data.primitives.push_back(Mesh::Primitive{
+					.skinned_mesh = ret.skinned_meshes.size(),
+					.material = primitive.material,
+					.topology = topology,
+				});
+				ret.skinned_meshes.push_back(to_skinned_mesh_layout(std::move(primitive)));
+			} else {
+				data.primitives.push_back(Mesh::Primitive{
+					.static_mesh = ret.static_meshes.size(),
+					.material = primitive.material,
+					.topology = topology,
+				});
+				ret.static_meshes.push_back(to_static_mesh_layout(std::move(primitive)));
+			}
 		}
 		ret.data.push_back(std::move(data));
 	}
@@ -163,11 +194,7 @@ Transform to_transform(gltf2cpp::Transform const& transform) {
 			ret.set_scale({trs.scale[0], trs.scale[1], trs.scale[2]});
 		},
 		[&ret](gltf2cpp::Mat4x4 const& mat) {
-			auto m = glm::mat4x4{};
-			m[0] = {mat[0][0], mat[0][1], mat[0][2], mat[0][3]};
-			m[1] = {mat[1][0], mat[1][1], mat[1][2], mat[1][3]};
-			m[2] = {mat[2][0], mat[2][1], mat[2][2], mat[2][3]};
-			m[3] = {mat[3][0], mat[3][1], mat[3][2], mat[3][3]};
+			auto m = from_gltf(mat);
 			glm::vec3 scale, pos, skew;
 			glm::vec4 persp;
 			glm::quat orn;
@@ -188,6 +215,7 @@ NodeData to_node_data(gltf2cpp::Node&& node) {
 		.children = std::move(node.children),
 		.camera = node.camera,
 		.mesh = node.mesh,
+		.skin = node.skin,
 	};
 }
 
@@ -210,6 +238,7 @@ std::vector<Node> to_nodes(std::span<gltf2cpp::Node> nodes) {
 		for (auto const& child : in.children) { node.children.push_back(child); }
 		if (in.camera) { node.attach<Camera>(*in.camera); }
 		if (in.mesh) { node.attach<Mesh>(*in.mesh); }
+		if (in.skin) { node.attach<Skin>(*in.skin); }
 		for (float const weight : in.weights) {
 			if (node.weights.weights.size() < MorphWeights::max_weights_v) { node.weights.weights.insert(weight); }
 		}
@@ -273,6 +302,23 @@ Animation to_animation(gltf2cpp::Animation const& animation, std::span<gltf2cpp:
 	return ret;
 }
 
+Skin to_skin(gltf2cpp::Skin&& skin, std::span<gltf2cpp::Accessor const> accessors) {
+	auto ret = Skin{};
+	if (skin.inverse_bind_matrices) {
+		auto const ibm = accessors[*skin.inverse_bind_matrices].to_mat4();
+		assert(ibm.size() >= skin.joints.size());
+		ret.inverse_bind_matrices.reserve(ibm.size());
+		for (auto const& mat : ibm) { ret.inverse_bind_matrices.push_back(from_gltf(mat)); }
+	} else {
+		ret.inverse_bind_matrices = std::vector<glm::mat4x4>(ret.joints.size(), glm::identity<glm::mat4x4>());
+	}
+	ret.joints.reserve(skin.joints.size());
+	for (auto const& joint : skin.joints) { ret.joints.push_back(joint); }
+	ret.name = std::move(skin.name);
+	ret.skeleton = skin.skeleton;
+	return ret;
+}
+
 template <typename F>
 auto make_load_future(ThreadPool* pool, std::atomic<std::size_t>& out_done, F func) -> LoadFuture<std::invoke_result_t<F>> {
 	if (pool) { return {*pool, out_done, std::move(func)}; }
@@ -332,24 +378,35 @@ bool Scene::GltfLoader::operator()(dj::Json const& json, DataProvider const& pro
 	}
 
 	auto static_meshes = std::vector<MaybeFuture<StaticMesh>>{};
+	auto skinned_meshes = std::vector<MaybeFuture<SkinnedMesh>>{};
 	auto mesh_layout = to_mesh_layout(root);
-	static_meshes.reserve(mesh_layout.primitives.size());
+	static_meshes.reserve(mesh_layout.static_meshes.size());
+	skinned_meshes.reserve(mesh_layout.skinned_meshes.size());
 	for (auto& data : mesh_layout.data) {
 		for (auto [primitive, index] : enumerate(data.primitives)) {
-			auto& p = mesh_layout.primitives[primitive.static_mesh];
 			auto name = fmt::format("{}_{}", data.name, index);
-			static_meshes.push_back(make_load_future(thread_pool, m_status.done, [p = std::move(p), n = std::move(name), this] {
-				return StaticMesh{m_scene.m_gfx, p.geometry, std::move(n)};
-			}));
+			if (primitive.skinned_mesh) {
+				auto& mesh = mesh_layout.skinned_meshes[*primitive.skinned_mesh];
+				skinned_meshes.push_back(make_load_future(thread_pool, m_status.done, [mesh = std::move(mesh), name = std::move(name), this] {
+					return SkinnedMesh{m_scene.m_gfx, mesh.geometry, {mesh.joints, mesh.weights}, std::move(name)};
+				}));
+			} else {
+				auto& p = mesh_layout.static_meshes[primitive.static_mesh];
+				static_meshes.push_back(make_load_future(thread_pool, m_status.done, [p = std::move(p), n = std::move(name), this] {
+					return StaticMesh{m_scene.m_gfx, p.geometry, std::move(n)};
+				}));
+			}
 		}
 	}
 
 	for (auto const& animation : root.animations) { m_scene.m_storage.resources.animations.m_array.push_back(to_animation(animation, root.accessors)); }
+	for (auto& skin : root.skins) { m_scene.m_storage.resources.skins.m_array.push_back(to_skin(std::move(skin), root.accessors)); }
 
 	m_scene.m_storage.resources.nodes.m_array = to_nodes(root.nodes);
 
 	m_scene.replace(from_maybe_futures(std::move(textures)));
 	m_scene.replace(from_maybe_futures(std::move(static_meshes)));
+	m_scene.replace(from_maybe_futures(std::move(skinned_meshes)));
 
 	m_status.stage = LoadStage::eBuildingScenes;
 	if (root.cameras.empty()) {

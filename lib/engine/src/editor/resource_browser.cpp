@@ -60,13 +60,13 @@ void ResourceBrowser::add_material(bool trigger) {
 		char const* mat_type = m_data.mat.type >= 0 && m_data.mat.type < mat_types_size_v ? mat_types_v[m_data.mat.type] : "Invalid";
 		ImGui::SliderInt("Type", &m_data.mat.type, 0, mat_types_size_v - 1, mat_type);
 		if (ImGui::Button("Add") && *m_data.mat.buffer.c_str()) {
-			auto mat = std::unique_ptr<MaterialBase>{};
+			auto mat = Material{};
 			switch (m_data.mat.type) {
-			case 1: mat = std::make_unique<UnlitMaterial>(); break;
-			default: mat = std::make_unique<LitMaterial>(); break;
+			case 1: mat = Material{UnlitMaterial{}}; break;
+			default: mat = Material{LitMaterial{}}; break;
 			}
-			mat->name = m_data.mat.buffer.c_str();
-			m_scene->add(Material{std::move(mat)});
+			mat.name = m_data.mat.buffer.c_str();
+			m_scene->add(std::move(mat));
 			Popup::close_current();
 		}
 	}

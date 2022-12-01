@@ -4,8 +4,8 @@
 
 namespace facade {
 class StaticMesh;
-class MorphMesh;
-class Material;
+class SkinnedMesh;
+struct Material;
 
 ///
 /// \brief Primitive topology.
@@ -32,7 +32,7 @@ struct Mesh {
 		///
 		Id<StaticMesh> static_mesh{};
 
-		std::optional<Id<MorphMesh>> morph_mesh{};
+		std::optional<Id<SkinnedMesh>> skinned_mesh{};
 		///
 		/// \brief Id of the Material this primitive uses.
 		///

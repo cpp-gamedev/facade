@@ -133,6 +133,10 @@ std::vector<StaticMesh> Scene::replace(std::vector<StaticMesh>&& static_meshes) 
 	return std::exchange(m_storage.resources.static_meshes.m_array, std::move(static_meshes));
 }
 
+std::vector<SkinnedMesh> Scene::replace(std::vector<SkinnedMesh>&& skinned_meshes) {
+	return std::exchange(m_storage.resources.skinned_meshes.m_array, std::move(skinned_meshes));
+}
+
 bool Scene::load(Id<Tree> id) {
 	if (id >= tree_count()) { return false; }
 	return load_tree(id);
@@ -191,8 +195,10 @@ Id<Mesh> Scene::add_unchecked(Mesh mesh) {
 
 void Scene::check(Mesh const& mesh) const noexcept(false) {
 	for (auto const& primitive : mesh.primitives) {
-		if (primitive.morph_mesh) {
-			// TODO
+		if (primitive.skinned_mesh) {
+			if (*primitive.skinned_mesh >= m_storage.resources.skinned_meshes.size()) {
+				throw Error{fmt::format("Scene {}: Invalid Skinned Mesh Id: {}", m_name, *primitive.skinned_mesh)};
+			}
 		} else if (primitive.static_mesh >= m_storage.resources.static_meshes.size()) {
 			throw Error{fmt::format("Scene {}: Invalid Static Mesh Id: {}", m_name, primitive.static_mesh)};
 		}

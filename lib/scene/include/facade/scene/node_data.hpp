@@ -33,5 +33,6 @@ struct NodeData {
 	/// \brief Mesh index.
 	///
 	std::optional<std::size_t> mesh{};
+	std::optional<std::size_t> skin{};
 };
 } // namespace facade

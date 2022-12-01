@@ -113,6 +113,14 @@ class Scene {
 	/// Intended for loaders.
 	///
 	std::vector<StaticMesh> replace(std::vector<StaticMesh>&& static_meshes);
+	///
+	/// \brief Replace all skinned meshes in resources.
+	/// \param static_meshes SkinnedMesh instances to swap in
+	/// \returns Previously stored skinned meshes
+	///
+	/// Intended for loaders.
+	///
+	std::vector<SkinnedMesh> replace(std::vector<SkinnedMesh>&& skinned_meshes);
 
 	///
 	/// \brief Obtain the current Tree Id.

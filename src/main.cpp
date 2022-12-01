@@ -60,9 +60,9 @@ void run(AppOpts const& opts) {
 		scene.lights.dir_lights.insert(DirLight{.direction = glm::normalize(glm::vec3{-1.0f, -1.0f, -1.0f}), .rgb = {.intensity = 5.0f}});
 		scene.camera().transform.set_position({0.0f, 0.0f, 5.0f});
 
-		auto material = std::make_unique<LitMaterial>();
-		material->albedo = {1.0f, 0.0f, 0.0f};
-		auto material_id = scene.add(Material{std::move(material)});
+		auto material = LitMaterial{};
+		material.albedo = {1.0f, 0.0f, 0.0f};
+		auto material_id = scene.add(Material{std::move(material), "custom"});
 		auto static_mesh_id = scene.add(make_cubed_sphere(1.0f, 32));
 		// auto static_mesh_id = scene.add(make_manipulator(0.125f, 1.0f, 16));
 		auto mesh_id = scene.add(Mesh{.primitives = {Mesh::Primitive{.static_mesh = static_mesh_id, .material = material_id}}});
@@ -79,11 +79,7 @@ void run(AppOpts const& opts) {
 		if (config.config.window.position) { glfwSetWindowPos(engine->window(), config.config.window.position->x, config.config.window.position->y); }
 		log_prologue();
 
-		auto lit = shaders::lit();
-		lit.id = "default";
-		engine->add_shader(lit);
-		engine->add_shader(shaders::unlit());
-		engine->add_shader(shaders::skybox());
+		engine->add_shaders(shaders::lit(), shaders::unlit(), shaders::skybox(), shaders::skinned());
 
 		post_scene_load();
 		engine->show(true);
@@ -170,7 +166,7 @@ void run(AppOpts const& opts) {
 			continue;
 		}
 
-		if (auto* node = engine->scene().resources().nodes.find(node_id)) {
+		if (auto* node = engine->scene().resources().nodes.find(node_id); node && node->instances.size() > 1) {
 			node->instances[0].rotate(glm::radians(drot_z[0]) * dt, {0.0f, 1.0f, 0.0f});
 			node->instances[1].rotate(glm::radians(drot_z[1]) * dt, {1.0f, 0.0f, 0.0f});
 		}

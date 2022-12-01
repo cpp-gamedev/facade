@@ -26,7 +26,7 @@ void edit_material(NotClosed<Window> target, SceneResources const& resources, Li
 	make_id_slot(lit.emissive, "Emissive", name.c_str(), {true});
 }
 
-void edit_material(SceneResources const& resources, UnlitMaterial& unlit) {
+void edit_material(NotClosed<Window>, SceneResources const& resources, UnlitMaterial& unlit) {
 	auto name = FixedString<128>{};
 	if (unlit.texture) { name = FixedString<128>{"{} ({})", resources.textures[*unlit.texture].name(), *unlit.texture}; }
 	make_id_slot(unlit.texture, "Texture", name.c_str(), {true});
@@ -70,13 +70,11 @@ void ResourceInspector::view(StaticMesh const& mesh, Id<StaticMesh> id) const {
 }
 
 void ResourceInspector::edit(Material& out_material, Id<Material> id) const {
-	auto const name = FixedString<128>{"{} ({})", out_material.name(), id};
+	auto const name = FixedString<128>{"{} ({})", out_material.name, id};
 	auto tn = TreeNode{name.c_str()};
 	drag_payload(id, name.c_str());
 	if (tn) {
-		auto& mat = out_material.base();
-		if (auto* lit = dynamic_cast<LitMaterial*>(&mat)) { return edit_material(m_target, m_resources, *lit); }
-		if (auto* unlit = dynamic_cast<UnlitMaterial*>(&mat)) { return edit_material(m_resources, *unlit); }
+		std::visit([&](auto& mat) { edit_material(m_target, m_resources, mat); }, out_material.instance);
 	}
 }
 
@@ -88,7 +86,7 @@ void ResourceInspector::edit(Mesh& out_mesh, Id<Mesh> id) const {
 		auto to_erase = std::optional<std::size_t>{};
 		for (auto [primitive, index] : enumerate(out_mesh.primitives)) {
 			if (auto tn = TreeNode{FixedString{"Primitive [{}]", index}.c_str()}) {
-				if (primitive.morph_mesh) {
+				if (primitive.skinned_mesh) {
 					// TODO
 				} else {
 					name = FixedString<128>{"{} ({})", m_resources.static_meshes[primitive.static_mesh].name(), primitive.static_mesh};
@@ -96,7 +94,7 @@ void ResourceInspector::edit(Mesh& out_mesh, Id<Mesh> id) const {
 				}
 
 				name = {};
-				if (primitive.material) { name = FixedString<128>{"{} ({})", m_resources.materials[*primitive.material].name(), *primitive.material}; }
+				if (primitive.material) { name = FixedString<128>{"{} ({})", m_resources.materials[*primitive.material].name, *primitive.material}; }
 				make_id_slot(primitive.material, "Material", name.c_str(), {true});
 
 				ImGui::Text("%s", FixedString{"Topology: {}", to_str(primitive.topology)}.c_str());

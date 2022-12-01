@@ -195,13 +195,13 @@ Pipes::Pipes(Gfx const& gfx, vk::SampleCountFlagBits samples) : m_gfx{gfx}, m_sa
 	m_sample_shading = features.sampleRateShading;
 }
 
-Pipeline Pipes::get(vk::RenderPass rp, State const& state, Shader shader) {
-	auto const key = Key{.state = state, .shader_hash = std::hash<std::string_view>{}(shader.id)};
+Pipeline Pipes::get(vk::RenderPass rp, State const& state, Shader::Program const& shader) {
+	auto const key = Key{.state = state, .shader_hash = make_combined_hash(shader.vert.id.view(), shader.frag.id.view())};
 	auto lock = Lock{m_mutex};
 	auto& map = m_map[key];
 	populate(lock, map, shader);
 	auto& ret = map.pipelines[rp];
-	if (!ret) { ret = make_pipeline(state, shader.vert, shader.frag, *map.pipeline_layout, rp); }
+	if (!ret) { ret = make_pipeline(state, shader.vert.spir_v, shader.frag.spir_v, *map.pipeline_layout, rp); }
 	return {*ret, *map.pipeline_layout, &*map.set_pools.get(), &m_gfx.shared->device_limits};
 }
 
@@ -213,9 +213,9 @@ void Pipes::rotate() {
 	}
 }
 
-void Pipes::populate(Lock const&, Map& out, Shader shader) const {
+void Pipes::populate(Lock const&, Map& out, Shader::Program const& shader) const {
 	if (out.populated) { return; }
-	out.set_layouts = make_set_layouts(shader.vert, shader.frag);
+	out.set_layouts = make_set_layouts(shader.vert.spir_v, shader.frag.spir_v);
 	for (auto& pool : out.set_pools.t) { pool.emplace(m_gfx, out.set_layouts); }
 	out.pipeline_layout = make_pipeline_layout(out.set_pools.get()->descriptor_set_layouts().span());
 	out.populated = true;

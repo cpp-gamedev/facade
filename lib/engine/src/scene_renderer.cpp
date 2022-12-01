@@ -92,7 +92,7 @@ std::span<glm::mat4x4 const> SceneRenderer::make_instance_mats(Node const& node,
 }
 
 void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Skybox const& skybox) {
-	auto pipeline = renderer.bind_pipeline(cb, {.depth_test = false}, "skybox");
+	auto pipeline = renderer.bind_pipeline(cb, {.depth_test = false}, {"default.vert", "skybox.frag"});
 	pipeline.set_line_width(1.0f);
 	update_view(pipeline);
 	auto& set1 = pipeline.next_set(1);
@@ -102,10 +102,14 @@ void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Skybox cons
 	draw(cb, skybox.static_mesh(), {&mat, 1u});
 }
 
-std::string_view make_shader_id(Material const& mat, std::optional<Id<SkinnedMesh>> sm) {
-	if (sm) { return "skinned"; }
-	if (std::holds_alternative<UnlitMaterial>(mat.instance)) { return "unlit"; }
-	return "lit";
+Shader::Id vert_shader(std::optional<Id<SkinnedMesh>> sm) {
+	if (sm) { return "skinned.vert"; }
+	return "default.vert";
+}
+
+Shader::Id frag_shader(Material const& mat) {
+	if (std::holds_alternative<UnlitMaterial>(mat.instance)) { return "unlit.frag"; }
+	return "lit.frag";
 }
 
 std::array<glm::mat4x4, 4> make_joint_mats(std::span<Node const> nodes, glm::mat4x4 const& parent, std::span<Id<Node> const> joints,
@@ -132,7 +136,8 @@ void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Node const&
 				.vert_type = primitive.skinned_mesh ? Pipeline::VertType::eSkinned : Pipeline::VertType::eInstanced,
 			};
 			auto const& material = primitive.material ? resources.materials[primitive.material->value()] : m_material;
-			auto pipeline = renderer.bind_pipeline(cb, state, std::string{make_shader_id(material, primitive.skinned_mesh)});
+			auto shader = RenderShader{vert_shader(primitive.skinned_mesh), frag_shader(material)};
+			auto pipeline = renderer.bind_pipeline(cb, state, shader);
 			pipeline.set_line_width(m_scene->render_mode.line_width);
 			update_view(pipeline);
 			material.write_sets(pipeline, store);

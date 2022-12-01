@@ -165,11 +165,13 @@ bool Renderer::next_frame(std::span<vk::CommandBuffer> out) {
 	return fill_and_return();
 }
 
-Pipeline Renderer::bind_pipeline(vk::CommandBuffer cb, Pipeline::State const& state, std::string const& shader_id) {
+Pipeline Renderer::bind_pipeline(vk::CommandBuffer cb, Pipeline::State const& state, RenderShader const& shader) {
 	// obtain pipeline and bind it
-	auto const shader = m_impl->shader_db.find(shader_id);
-	if (!shader) { throw Error{fmt::format("Failed to find shader: {}", shader_id)}; }
-	auto ret = m_impl->pipes.get(m_impl->render_pass.render_pass(), state, shader);
+	auto const vert = m_impl->shader_db.find(shader.vert);
+	auto const frag = m_impl->shader_db.find(shader.frag);
+	if (!vert) { throw Error{fmt::format("Failed to find vertex shader: {}", shader.vert)}; }
+	if (!vert) { throw Error{fmt::format("Failed to find fragment shader: {}", shader.frag)}; }
+	auto ret = m_impl->pipes.get(m_impl->render_pass.render_pass(), state, {vert, frag});
 	ret.bind(cb);
 
 	// set viewport and scissor
@@ -225,7 +227,7 @@ bool Renderer::render() {
 	return true;
 }
 
-Shader Renderer::add_shader(std::string id, SpirV vert, SpirV frag) { return m_impl->shader_db.add(std::move(id), std::move(vert), std::move(frag)); }
+Shader Renderer::add_shader(std::string id, SpirV spir_v) { return m_impl->shader_db.add(std::move(id), std::move(spir_v)); }
 bool Renderer::add_shader(Shader shader) { return m_impl->shader_db.add(std::move(shader)); }
 Shader Renderer::find_shader(std::string const& id) const { return m_impl->shader_db.find(id); }
 } // namespace facade

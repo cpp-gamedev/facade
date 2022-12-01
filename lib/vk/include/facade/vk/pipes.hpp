@@ -18,7 +18,7 @@ class Pipes {
 
 	Pipes(Gfx const& gfx, vk::SampleCountFlagBits samples);
 
-	[[nodiscard]] Pipeline get(vk::RenderPass rp, State const& state, Shader shader);
+	[[nodiscard]] Pipeline get(vk::RenderPass rp, State const& state, Shader::Program const& shader);
 
 	void rotate();
 
@@ -40,7 +40,7 @@ class Pipes {
 	};
 	using Lock = std::scoped_lock<std::mutex>;
 
-	void populate(Lock const&, Map& out, Shader shader) const;
+	void populate(Lock const&, Map& out, Shader::Program const& shader) const;
 	vk::UniquePipeline make_pipeline(State const& state, SpirV::View vert, SpirV::View frag, vk::PipelineLayout layout, vk::RenderPass rp) const;
 	vk::UniquePipelineLayout make_pipeline_layout(std::span<vk::DescriptorSetLayout const> set_layouts) const;
 

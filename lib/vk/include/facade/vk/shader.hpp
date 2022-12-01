@@ -1,35 +1,39 @@
 #pragma once
+#include <facade/util/fixed_string.hpp>
 #include <facade/vk/spir_v.hpp>
-#include <string>
 #include <unordered_map>
 
 namespace facade {
 struct Shader {
 	class Db;
+	using Id = FixedString<64>;
+	struct Program;
 
-	std::string_view id{};
-	SpirV::View vert{};
-	SpirV::View frag{};
+	Id id{};
+	SpirV::View spir_v{};
 
-	explicit operator bool() const { return vert && frag; }
+	explicit operator bool() const { return static_cast<bool>(spir_v); }
 	bool operator==(Shader const& rhs) const { return id == rhs.id; }
+};
+
+struct Shader::Program {
+	Shader vert{};
+	Shader frag{};
 };
 
 class Shader::Db {
   public:
-	Shader add(std::string id, SpirV vert, SpirV frag);
+	Shader add(Id const& id, SpirV spir_v);
 	bool add(Shader shader);
-	bool contains(std::string const& id) const { return m_map.contains(id); }
-	Shader find(std::string const& id) const;
+	bool contains(Id const& id) const { return m_map.contains(id); }
+	Shader find(Id const& id) const;
 
   private:
 	struct Entry {
-		SpirV vert{};
-		SpirV frag{};
-		SpirV::View vvert{};
-		SpirV::View vfrag{};
+		SpirV spir_v{};
+		SpirV::View view{};
 	};
 
-	std::unordered_map<std::string, Entry, std::hash<std::string_view>> m_map{};
+	std::unordered_map<Id, Entry, std::hash<std::string_view>> m_map{};
 };
 } // namespace facade

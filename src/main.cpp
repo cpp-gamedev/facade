@@ -79,7 +79,7 @@ void run(AppOpts const& opts) {
 		if (config.config.window.position) { glfwSetWindowPos(engine->window(), config.config.window.position->x, config.config.window.position->y); }
 		log_prologue();
 
-		engine->add_shaders(shaders::lit(), shaders::unlit(), shaders::skybox(), shaders::skinned());
+		engine->add_shaders(vert::default_(), vert::skinned(), frag::unlit(), frag::lit(), frag::skybox());
 
 		post_scene_load();
 		engine->show(true);

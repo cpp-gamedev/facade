@@ -16,6 +16,11 @@ struct RendererCreateInfo {
 	std::uint8_t desired_msaa{1};
 };
 
+struct RenderShader {
+	Shader::Id vert{"lit.vert"};
+	Shader::Id frag{"lit.frag"};
+};
+
 ///
 /// \brief Owns a Vulkan Swapchain and RenderPass, a Shader::Db and Pipes instance each, and renders to the Window passed in constructor.
 ///
@@ -94,7 +99,7 @@ class Renderer {
 	/// \param shader_id Shader Id to use to find / create a Vulkan Pipeline
 	/// \returns Pipeline with corresponding descriptor sets to write to
 	///
-	Pipeline bind_pipeline(vk::CommandBuffer cb, Pipeline::State const& state = {}, std::string const& shader_id = "lit");
+	Pipeline bind_pipeline(vk::CommandBuffer cb, Pipeline::State const& state = {}, RenderShader const& shader = {});
 	///
 	/// \brief Execute render pass and submit all recorded command buffers to the graphics queue.
 	/// \returns false If Swapchain Image has not been acquired
@@ -104,11 +109,10 @@ class Renderer {
 	///
 	/// \brief Add a Shader to the Db.
 	/// \param id The id to associate the shader with
-	/// \param vert Vertex shader code
-	/// \param frag Fragment shader code
+	/// \param spir_v SPIR-V shader code
 	/// \returns Shader referencing added SpirV
 	///
-	Shader add_shader(std::string id, SpirV vert, SpirV frag);
+	Shader add_shader(std::string id, SpirV spir_v);
 	///
 	/// \brief Add a Shader to the Db.
 	/// \param shader Shader data to add (SpirV is not owned by Renderer)

@@ -1,9 +1,15 @@
 #pragma once
 #include <facade/vk/shader.hpp>
 
-namespace facade::shaders {
+namespace facade {
+namespace vert {
+Shader default_();
+Shader skinned();
+} // namespace vert
+
+namespace frag {
 Shader unlit();
 Shader lit();
 Shader skybox();
-Shader skinned();
-} // namespace facade::shaders
+} // namespace frag
+} // namespace facade

@@ -2,8 +2,7 @@ if("${target_prefix}" STREQUAL "")
   message(FATAL_ERROR "target_prefix unset")
 endif()
 
-file(ARCHIVE_EXTRACT INPUT "${CMAKE_CURRENT_SOURCE_DIR}/src.zip" DESTINATION "${CMAKE_CURRENT_SOURCE_DIR}")
-
+# file(ARCHIVE_EXTRACT INPUT "${CMAKE_CURRENT_SOURCE_DIR}/src.zip" DESTINATION "${CMAKE_CURRENT_SOURCE_DIR}")
 add_subdirectory(src/vk_dynamic)
 add_library(${target_prefix}::vk-dynamic ALIAS vk-dynamic)
 

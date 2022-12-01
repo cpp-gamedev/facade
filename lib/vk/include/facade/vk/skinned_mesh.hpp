@@ -37,5 +37,14 @@ class SkinnedMesh {
 	std::size_t m_vbo_size{};
 	std::uint32_t m_vertices{};
 	std::uint32_t m_indices{};
+
+	struct Offsets {
+		std::size_t positions{};
+		std::size_t rgbs{};
+		std::size_t normals{};
+		std::size_t uvs{};
+	};
+
+	Offsets m_offsets{};
 };
 } // namespace facade

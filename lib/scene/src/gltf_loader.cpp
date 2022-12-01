@@ -92,13 +92,6 @@ Material to_material(gltf2cpp::Material const& material) {
 	return Material{std::move(ret)};
 }
 
-template <glm::length_t Dim>
-constexpr glm::vec<Dim, float> from_gltf(gltf2cpp::Vec<Dim> const& in) {
-	auto ret = glm::vec<Dim, float>{};
-	std::memcpy(&ret, &in, sizeof(in));
-	return ret;
-}
-
 glm::mat4x4 from_gltf(gltf2cpp::Mat4x4 const& in) {
 	auto ret = glm::mat4x4{};
 	ret[0] = {in[0][0], in[0][1], in[0][2], in[0][3]};
@@ -108,15 +101,23 @@ glm::mat4x4 from_gltf(gltf2cpp::Mat4x4 const& in) {
 	return ret;
 }
 
+template <glm::length_t Dim>
+std::vector<glm::vec<Dim, float>> from_gltf(std::vector<gltf2cpp::Vec<Dim>> const in) {
+	if (in.empty()) { return {}; }
+	auto ret = std::vector<glm::vec<Dim, float>>(in.size());
+	std::memcpy(ret.data(), in.data(), std::span{in}.size_bytes());
+	return ret;
+}
+
 Geometry to_geometry(gltf2cpp::Mesh::Primitive&& primitive) {
 	auto ret = Geometry{};
-	for (std::size_t i = 0; i < primitive.geometry.positions.size(); ++i) {
-		auto vertex = Vertex{.position = from_gltf<3>(primitive.geometry.positions[i])};
-		if (!primitive.geometry.colors.empty()) { vertex.rgb = from_gltf<3>(primitive.geometry.colors[0][i]); }
-		if (!primitive.geometry.normals.empty()) { vertex.normal = from_gltf<3>(primitive.geometry.normals[i]); }
-		if (!primitive.geometry.tex_coords.empty()) { vertex.uv = from_gltf<2>(primitive.geometry.tex_coords[0][i]); }
-		ret.vertices.push_back(vertex);
-	}
+	ret.positions = from_gltf<3>(primitive.geometry.positions);
+	if (!primitive.geometry.colors.empty()) { ret.rgbs = from_gltf<3>(primitive.geometry.colors[0]); }
+	if (ret.rgbs.empty()) { ret.rgbs = std::vector<glm::vec3>(ret.positions.size(), glm::vec3{1.0f}); }
+	ret.normals = from_gltf<3>(primitive.geometry.normals);
+	if (ret.normals.empty()) { ret.normals = std::vector<glm::vec3>(ret.positions.size(), glm::vec3{0.0f, 0.0f, 1.0f}); }
+	if (!primitive.geometry.tex_coords.empty()) { ret.uvs = from_gltf<2>(primitive.geometry.tex_coords[0]); }
+	if (ret.uvs.empty()) { ret.uvs = std::vector<glm::vec2>(ret.positions.size()); }
 	ret.indices = std::move(primitive.geometry.indices);
 	return ret;
 }

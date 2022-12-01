@@ -8,15 +8,31 @@ constexpr auto flags_v = vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUsag
 } // namespace
 
 StaticMesh::StaticMesh(Gfx const& gfx, Geometry const& geometry, std::string name) : m_buffer(gfx.shared->defer_queue), m_name(std::move(name)) {
-	auto const vertices = std::span<Vertex const>{geometry.vertices};
 	auto const indices = std::span<std::uint32_t const>{geometry.indices};
-	m_vertices = static_cast<std::uint32_t>(vertices.size());
+	assert(geometry.positions.size() == geometry.rgbs.size() && geometry.positions.size() == geometry.normals.size() &&
+		   geometry.positions.size() == geometry.uvs.size());
+	m_vertices = static_cast<std::uint32_t>(geometry.positions.size());
 	m_indices = static_cast<std::uint32_t>(indices.size());
-	m_vbo_size = vertices.size_bytes();
+	m_vbo_size = geometry.positions.size() * (sizeof(geometry.positions[0]) + sizeof(geometry.rgbs[0]) + sizeof(geometry.normals[0]) + sizeof(geometry.uvs[0]));
 	auto const size = m_vbo_size + indices.size_bytes();
 	m_buffer.swap(gfx.vma.make_buffer(flags_v, size, false));
 	auto staging = gfx.vma.make_buffer(vk::BufferUsageFlagBits::eTransferSrc, size, true);
-	std::memcpy(staging.get().ptr, vertices.data(), vertices.size_bytes());
+	auto s = std::span{geometry.positions}.size_bytes();
+	auto o = std::size_t{};
+	m_offsets.positions = 0u;
+	std::memcpy(static_cast<std::byte*>(staging.get().ptr) + o, geometry.positions.data(), s);
+	o += s;
+	m_offsets.rgbs = o;
+	s = std::span{geometry.rgbs}.size_bytes();
+	std::memcpy(static_cast<std::byte*>(staging.get().ptr) + o, geometry.rgbs.data(), s);
+	o += s;
+	m_offsets.normals = o;
+	s = std::span{geometry.normals}.size_bytes();
+	std::memcpy(static_cast<std::byte*>(staging.get().ptr) + o, geometry.normals.data(), s);
+	o += s;
+	m_offsets.uvs = o;
+	s = std::span{geometry.uvs}.size_bytes();
+	std::memcpy(static_cast<std::byte*>(staging.get().ptr) + o, geometry.uvs.data(), s);
 	if (!indices.empty()) { std::memcpy(static_cast<std::byte*>(staging.get().ptr) + m_vbo_size, indices.data(), indices.size_bytes()); }
 	auto const bc = vk::BufferCopy{{}, {}, size};
 	auto cmd = Cmd{gfx, vk::PipelineStageFlagBits::eTopOfPipe};
@@ -25,10 +41,12 @@ StaticMesh::StaticMesh(Gfx const& gfx, Geometry const& geometry, std::string nam
 
 auto StaticMesh::info() const -> Info { return {m_vertices, m_indices}; }
 
-void StaticMesh::draw(vk::CommandBuffer cb, std::size_t const instances, std::uint32_t binding) const {
+void StaticMesh::draw(vk::CommandBuffer cb, std::size_t const instances) const {
 	auto const count = static_cast<std::uint32_t>(instances);
 	auto const& v = vbo();
-	cb.bindVertexBuffers(binding, v.buffer, vk::DeviceSize{0});
+	vk::Buffer const buffers[] = {v.buffer, v.buffer, v.buffer, v.buffer};
+	vk::DeviceSize const offsets[] = {m_offsets.positions, m_offsets.rgbs, m_offsets.normals, m_offsets.uvs};
+	cb.bindVertexBuffers(0u, buffers, offsets);
 	if (m_indices > 0) {
 		auto const& i = ibo();
 		cb.bindIndexBuffer(i.buffer, i.offset, vk::IndexType::eUint32);

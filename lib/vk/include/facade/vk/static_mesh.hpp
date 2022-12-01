@@ -17,7 +17,7 @@ class StaticMesh {
 	std::string_view name() const { return m_name; }
 	Info info() const;
 
-	void draw(vk::CommandBuffer cb, std::size_t instances, std::uint32_t binding = 0u) const;
+	void draw(vk::CommandBuffer cb, std::size_t instances) const;
 
   private:
 	BufferView vbo() const;
@@ -28,5 +28,14 @@ class StaticMesh {
 	std::size_t m_vbo_size{};
 	std::uint32_t m_vertices{};
 	std::uint32_t m_indices{};
+
+	struct Offsets {
+		std::size_t positions{};
+		std::size_t rgbs{};
+		std::size_t normals{};
+		std::size_t uvs{};
+	};
+
+	Offsets m_offsets{};
 };
 } // namespace facade

@@ -79,30 +79,40 @@ struct VertexLayout {
 
 constexpr VertexLayout instanced_vertex_layout() {
 	auto ret = VertexLayout{};
-	ret.bindings.insert(vk::VertexInputBindingDescription{0, sizeof(Vertex)});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{0, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, position)});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{1, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, rgb)});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{2, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, normal)});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{3, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, uv)});
-	ret.bindings.insert(vk::VertexInputBindingDescription{1, sizeof(glm::mat4x4), vk::VertexInputRate::eInstance});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{4, 1, vk::Format::eR32G32B32A32Sfloat, 0 * sizeof(glm::vec4)});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{5, 1, vk::Format::eR32G32B32A32Sfloat, 1 * sizeof(glm::vec4)});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{6, 1, vk::Format::eR32G32B32A32Sfloat, 2 * sizeof(glm::vec4)});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{7, 1, vk::Format::eR32G32B32A32Sfloat, 3 * sizeof(glm::vec4)});
+	ret.bindings.insert(vk::VertexInputBindingDescription{0, sizeof(glm::vec3)});
+	ret.attributes.insert(vk::VertexInputAttributeDescription{0, 0, vk::Format::eR32G32B32Sfloat});
+
+	ret.bindings.insert(vk::VertexInputBindingDescription{1, sizeof(glm::vec3)});
+	ret.attributes.insert(vk::VertexInputAttributeDescription{1, 1, vk::Format::eR32G32B32Sfloat});
+
+	ret.bindings.insert(vk::VertexInputBindingDescription{2, sizeof(glm::vec3)});
+	ret.attributes.insert(vk::VertexInputAttributeDescription{2, 2, vk::Format::eR32G32B32Sfloat});
+
+	ret.bindings.insert(vk::VertexInputBindingDescription{3, sizeof(glm::vec2)});
+	ret.attributes.insert(vk::VertexInputAttributeDescription{3, 3, vk::Format::eR32G32Sfloat});
+
+	ret.bindings.insert(vk::VertexInputBindingDescription{4, sizeof(glm::mat4x4), vk::VertexInputRate::eInstance});
+	ret.attributes.insert(vk::VertexInputAttributeDescription{4, 4, vk::Format::eR32G32B32A32Sfloat, 0 * sizeof(glm::vec4)});
+	ret.attributes.insert(vk::VertexInputAttributeDescription{5, 4, vk::Format::eR32G32B32A32Sfloat, 1 * sizeof(glm::vec4)});
+	ret.attributes.insert(vk::VertexInputAttributeDescription{6, 4, vk::Format::eR32G32B32A32Sfloat, 2 * sizeof(glm::vec4)});
+	ret.attributes.insert(vk::VertexInputAttributeDescription{7, 4, vk::Format::eR32G32B32A32Sfloat, 3 * sizeof(glm::vec4)});
 	return ret;
 }
 
 constexpr VertexLayout skinned_vertex_layout() {
 	auto ret = VertexLayout{};
-	ret.bindings.insert(vk::VertexInputBindingDescription{0, sizeof(Vertex)});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{0, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, position)});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{1, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, rgb)});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{2, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, normal)});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{3, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, uv)});
-	ret.bindings.insert(vk::VertexInputBindingDescription{1, sizeof(glm::uvec4)});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{4, 1, vk::Format::eR32G32B32A32Uint});
-	ret.bindings.insert(vk::VertexInputBindingDescription{2, sizeof(glm::vec4)});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{5, 2, vk::Format::eR32G32B32A32Sfloat});
+	ret.bindings.insert(vk::VertexInputBindingDescription{0, sizeof(glm::vec3)});
+	ret.attributes.insert(vk::VertexInputAttributeDescription{0, 0, vk::Format::eR32G32B32Sfloat});
+	ret.bindings.insert(vk::VertexInputBindingDescription{1, sizeof(glm::vec3)});
+	ret.attributes.insert(vk::VertexInputAttributeDescription{1, 1, vk::Format::eR32G32B32Sfloat});
+	ret.bindings.insert(vk::VertexInputBindingDescription{2, sizeof(glm::vec3)});
+	ret.attributes.insert(vk::VertexInputAttributeDescription{2, 2, vk::Format::eR32G32B32Sfloat});
+	ret.bindings.insert(vk::VertexInputBindingDescription{3, sizeof(glm::vec2)});
+	ret.attributes.insert(vk::VertexInputAttributeDescription{3, 3, vk::Format::eR32G32Sfloat});
+	ret.bindings.insert(vk::VertexInputBindingDescription{4, sizeof(glm::uvec4)});
+	ret.attributes.insert(vk::VertexInputAttributeDescription{4, 4, vk::Format::eR32G32B32A32Uint});
+	ret.bindings.insert(vk::VertexInputBindingDescription{5, sizeof(glm::vec4)});
+	ret.attributes.insert(vk::VertexInputAttributeDescription{5, 5, vk::Format::eR32G32B32A32Sfloat});
 	return ret;
 }
 

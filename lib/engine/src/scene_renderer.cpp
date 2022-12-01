@@ -164,7 +164,7 @@ void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Node const&
 
 void SceneRenderer::draw(vk::CommandBuffer cb, StaticMesh const& static_mesh, std::span<glm::mat4x4 const> mats) {
 	auto const instances = next_instances(mats);
-	cb.bindVertexBuffers(1u, instances.buffer, vk::DeviceSize{0});
+	cb.bindVertexBuffers(4u, instances.buffer, vk::DeviceSize{0});
 	static_mesh.draw(cb, mats.size());
 	m_info.triangles_drawn += static_mesh.info().vertices / 3;
 	++m_info.draw_calls;

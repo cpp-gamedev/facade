@@ -24,8 +24,8 @@ layout (set = 0, binding = 1) readonly buffer DL {
 	DirLight dir_lights[];
 };
 
-layout (set = 3, binding = 0) uniform JM {
-	mat4 mat_joint[4];
+layout (set = 3, binding = 0) readonly buffer JM {
+	mat4 mat_joint[];
 };
 
 out gl_PerVertex {

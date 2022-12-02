@@ -1,5 +1,6 @@
 #include <facade/engine/scene_renderer.hpp>
 #include <facade/util/error.hpp>
+#include <facade/util/zip_ranges.hpp>
 #include <facade/vk/skybox.hpp>
 
 namespace facade {
@@ -32,7 +33,18 @@ constexpr vk::PrimitiveTopology to_primitive_topology(Topology topology) {
 }
 } // namespace
 
-void SceneRenderer::Instances::rotate() {
+Buffer& SceneRenderer::Buffers::get(Gfx const& gfx) {
+	auto ret = Ptr<Buffer>{};
+	if (index < buffers.size()) {
+		ret = &buffers[index++];
+	} else {
+		++index;
+		ret = &buffers.emplace_back(gfx, type);
+	}
+	return *ret;
+}
+
+void SceneRenderer::Buffers::rotate() {
 	for (auto& buffer : buffers) { buffer.rotate(); }
 	index = 0;
 }
@@ -41,7 +53,11 @@ SceneRenderer::SceneRenderer(Gfx const& gfx)
 	: m_gfx(gfx), m_material(Material{LitMaterial{}, "default"}), m_sampler(gfx), m_view_proj(gfx, Buffer::Type::eUniform),
 	  m_dir_lights(gfx, Buffer::Type::eStorage),
 	  m_white(gfx, m_sampler.sampler(), Bmp1x1{0xff_B, 0xff_B, 0xff_B, 0xff_B}.view(), Texture::CreateInfo{.mip_mapped = false}),
-	  m_black(gfx, m_sampler.sampler(), Bmp1x1{0x0_B, 0x0_B, 0x0_B, 0xff_B}.view(), Texture::CreateInfo{.mip_mapped = false}) {}
+	  m_black(gfx, m_sampler.sampler(), Bmp1x1{0x0_B, 0x0_B, 0x0_B, 0xff_B}.view(), Texture::CreateInfo{.mip_mapped = false}) {
+
+	m_instances.type = Buffer::Type::eInstance;
+	m_joints.type = Buffer::Type::eStorage;
+}
 
 void SceneRenderer::render(Scene const& scene, Ptr<Skybox const> skybox, Renderer& renderer, vk::CommandBuffer cb) {
 	m_scene = &scene;
@@ -50,6 +66,7 @@ void SceneRenderer::render(Scene const& scene, Ptr<Skybox const> skybox, Rendere
 	if (skybox) { render(renderer, cb, *skybox); }
 	for (auto const& node : m_scene->roots()) { render(renderer, cb, m_scene->resources().nodes[node]); }
 	m_instances.rotate();
+	m_joints.rotate();
 }
 
 void SceneRenderer::write_view(glm::vec2 const extent) {
@@ -91,6 +108,16 @@ std::span<glm::mat4x4 const> SceneRenderer::make_instance_mats(Node const& node,
 	return m_instance_mats;
 }
 
+std::span<glm::mat4x4 const> SceneRenderer::make_joint_mats(Skin const& skin, glm::mat4x4 const& parent) {
+	auto const& resources = m_scene->resources();
+	m_joint_mats.clear();
+	m_joint_mats.reserve(skin.joints.size());
+	for (auto const& [j, ibm] : zip_ranges(skin.joints, skin.inverse_bind_matrices)) {
+		m_joint_mats.push_back(parent * resources.nodes[j].transform.matrix() * ibm);
+	}
+	return m_joint_mats;
+}
+
 void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Skybox const& skybox) {
 	auto pipeline = renderer.bind_pipeline(cb, {.depth_test = false}, {"default.vert", "skybox.frag"});
 	pipeline.set_line_width(1.0f);
@@ -112,18 +139,6 @@ Shader::Id frag_shader(Material const& mat) {
 	return "lit.frag";
 }
 
-std::array<glm::mat4x4, 4> make_joint_mats(std::span<Node const> nodes, glm::mat4x4 const& parent, std::span<Id<Node> const> joints,
-										   std::span<glm::mat4x4 const> ibm) {
-	auto ret = std::array<glm::mat4x4, 4>{
-		glm::identity<glm::mat4x4>(),
-		glm::identity<glm::mat4x4>(),
-		glm::identity<glm::mat4x4>(),
-		glm::identity<glm::mat4x4>(),
-	};
-	for (std::size_t i = 0; i < ret.size() && i < ibm.size() && i < joints.size(); ++i) { ret[i] = parent * nodes[joints[i]].transform.matrix() * ibm[i]; }
-	return ret;
-}
-
 void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Node const& node, glm::mat4 parent) {
 	auto const& resources = m_scene->resources();
 	auto const store = TextureStore{resources.textures, m_white, m_black};
@@ -143,10 +158,9 @@ void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Node const&
 			material.write_sets(pipeline, store);
 
 			if (primitive.skinned_mesh) {
-				// TODO
-				auto const& skin = resources.skins[*node.find<Skin>()];
 				auto& set3 = pipeline.next_set(3);
-				set3.write(0, make_joint_mats(resources.nodes.view(), parent, skin.joints, skin.inverse_bind_matrices));
+				auto joints = next_joints(make_joint_mats(resources.skins[*node.find<Skin>()], parent * node.transform.matrix()));
+				set3.update(0, DescriptorBuffer{joints.buffer, joints.size, vk::DescriptorType::eStorageBuffer});
 				pipeline.bind(set3);
 				auto const& mesh = resources.skinned_meshes[*primitive.skinned_mesh];
 				mesh.draw(cb);
@@ -171,16 +185,13 @@ void SceneRenderer::draw(vk::CommandBuffer cb, StaticMesh const& static_mesh, st
 }
 
 BufferView SceneRenderer::next_instances(std::span<glm::mat4x4 const> mats) {
-	auto& buffer = [&]() -> Buffer& {
-		auto ret = Ptr<Buffer>{};
-		if (m_instances.index < m_instances.buffers.size()) {
-			ret = &m_instances.buffers[m_instances.index++];
-		} else {
-			++m_instances.index;
-			ret = &m_instances.buffers.emplace_back(m_gfx, Buffer::Type::eInstance);
-		}
-		return *ret;
-	}();
+	auto& buffer = m_instances.get(m_gfx);
+	buffer.write(mats);
+	return buffer.view();
+}
+
+BufferView SceneRenderer::next_joints(std::span<glm::mat4x4 const> mats) {
+	auto& buffer = m_joints.get(m_gfx);
 	buffer.write(mats);
 	return buffer.view();
 }

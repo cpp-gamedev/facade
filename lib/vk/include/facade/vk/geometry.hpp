@@ -30,6 +30,11 @@ struct Geometry::Packed {
 	std::vector<std::uint32_t> indices{};
 
 	static Packed from(Geometry const& geometry);
+
+	std::size_t size_bytes() const {
+		assert(positions.size() == rgbs.size() && positions.size() == normals.size() && positions.size() == uvs.size());
+		return positions.size() * (sizeof(positions) + sizeof(rgbs[0]) + sizeof(normals[0]) + sizeof(uvs[0])) + (indices.size() * sizeof(indices[0]));
+	}
 };
 
 Geometry make_cube(glm::vec3 size, glm::vec3 rgb = glm::vec3{1.0f}, glm::vec3 origin = {});

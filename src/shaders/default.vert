@@ -11,10 +11,10 @@ layout (location = 1) in vec3 vrgb;
 layout (location = 2) in vec3 vnormal;
 layout (location = 3) in vec2 vuv;
 
-layout (location = 4) in vec4 imat0;
-layout (location = 5) in vec4 imat1;
-layout (location = 6) in vec4 imat2;
-layout (location = 7) in vec4 imat3;
+layout (location = 6) in vec4 imat0;
+layout (location = 7) in vec4 imat1;
+layout (location = 8) in vec4 imat2;
+layout (location = 9) in vec4 imat3;
 
 layout (set = 0, binding = 0) uniform VP {
 	mat4 mat_v;

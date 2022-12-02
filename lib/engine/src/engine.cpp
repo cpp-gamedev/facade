@@ -263,7 +263,7 @@ struct Engine::Impl {
 	} load{};
 
 	Impl(UniqueWin window, std::uint8_t msaa, bool validation, std::optional<std::uint32_t> thread_count)
-		: window(std::move(window), std::make_unique<DearImGui>(), msaa, validation), renderer(this->window.renderer), scene(this->window.gfx),
+		: window(std::move(window), std::make_unique<DearImGui>(), msaa, validation), renderer(this->window.gfx), scene(this->window.gfx),
 		  skybox(this->window.gfx), msaa(msaa), thread_pool(thread_count) {
 		s_instance = this;
 		load.request.status.reset();

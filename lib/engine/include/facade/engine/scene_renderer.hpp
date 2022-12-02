@@ -13,7 +13,7 @@ class SceneRenderer {
 		std::uint32_t draw_calls{};
 	};
 
-	explicit SceneRenderer(Renderer& renderer);
+	explicit SceneRenderer(Gfx const& gfx);
 
 	Info const& info() const { return m_info; }
 	void render(Scene const& scene, Ptr<Skybox const> skybox, Renderer& renderer, vk::CommandBuffer cb);

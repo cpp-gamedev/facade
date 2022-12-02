@@ -163,7 +163,7 @@ Pipeline Pipes::get(vk::RenderPass rp, State const& state, VertexLayout const& v
 	auto const key = Key{
 		.state = state,
 		.shader_hash = make_combined_hash(shader.vert.id.view(), shader.frag.id.view()),
-		.vertex_layout_hash = make_combined_hash(vlayout.id.view()),
+		.vertex_layout_hash = vlayout.hash(),
 	};
 	auto lock = Lock{m_mutex};
 	auto& map = m_map[key];

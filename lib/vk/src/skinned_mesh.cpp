@@ -28,13 +28,9 @@ SkinnedMesh::SkinnedMesh(Gfx const& gfx, Geometry::Packed const& geometry, Creat
 	if (create_info.joints.size() != create_info.weights.size()) { throw Error{"Mismatched joints and weights"}; }
 
 	auto const indices = std::span<std::uint32_t const>{geometry.indices};
-	assert(geometry.positions.size() == geometry.rgbs.size() && geometry.positions.size() == geometry.normals.size() &&
-		   geometry.positions.size() == geometry.uvs.size());
 	m_vertices = static_cast<std::uint32_t>(geometry.positions.size());
 	m_indices = static_cast<std::uint32_t>(indices.size());
-	m_offsets.indices =
-		geometry.positions.size() * (sizeof(geometry.positions[0]) + sizeof(geometry.rgbs[0]) + sizeof(geometry.normals[0]) + sizeof(geometry.uvs[0]));
-	auto const size = m_offsets.indices + indices.size_bytes();
+	auto const size = geometry.size_bytes();
 	m_vibo.swap(gfx.vma.make_buffer(vi_flags_v, size, false));
 	auto staging = FlexArray<UniqueBuffer, 2>{};
 

@@ -27,14 +27,9 @@ class SkinnedMesh {
 	void draw(vk::CommandBuffer cb) const;
 
   private:
-	BufferView vbo() const;
-	BufferView ibo() const;
-
 	Defer<UniqueBuffer> m_vibo{};
-	Defer<UniqueBuffer> m_joints{};
-	Defer<UniqueBuffer> m_weights{};
+	Defer<UniqueBuffer> m_jwbo{};
 	std::string m_name{};
-	std::size_t m_vbo_size{};
 	std::uint32_t m_vertices{};
 	std::uint32_t m_indices{};
 
@@ -43,6 +38,9 @@ class SkinnedMesh {
 		std::size_t rgbs{};
 		std::size_t normals{};
 		std::size_t uvs{};
+		std::size_t joints{};
+		std::size_t weights{};
+		std::size_t indices{};
 	};
 
 	Offsets m_offsets{};

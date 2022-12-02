@@ -87,7 +87,7 @@ Id<Material> Scene::add(Material material) {
 	return id;
 }
 
-Id<StaticMesh> Scene::add(Geometry const& geometry, std::string name) {
+Id<StaticMesh> Scene::add(Geometry::Packed const& geometry, std::string name) {
 	auto const id = m_storage.resources.static_meshes.size();
 	m_storage.resources.static_meshes.m_array.emplace_back(m_gfx, geometry, std::move(name));
 	return id;

@@ -9,7 +9,7 @@ constexpr auto v_flags_v = vk::BufferUsageFlagBits::eVertexBuffer | vk::BufferUs
 constexpr auto vi_flags_v = v_flags_v | vk::BufferUsageFlagBits::eIndexBuffer;
 } // namespace
 
-SkinnedMesh::SkinnedMesh(Gfx const& gfx, Geometry const& geometry, CreateInfo const& create_info, std::string name)
+SkinnedMesh::SkinnedMesh(Gfx const& gfx, Geometry::Packed const& geometry, CreateInfo const& create_info, std::string name)
 	: m_vibo(gfx.shared->defer_queue), m_joints(gfx.shared->defer_queue), m_weights(gfx.shared->defer_queue), m_name(std::move(name)) {
 	if (create_info.joints.size() != create_info.weights.size()) { throw Error{"Mismatched joints and weights"}; }
 

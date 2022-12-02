@@ -5,37 +5,10 @@
 #include <optional>
 
 namespace facade {
-Geometry& Geometry::reserve(std::size_t vs, std::size_t is) {
-	positions.reserve(vs);
-	rgbs.reserve(vs);
-	normals.reserve(vs);
-	uvs.reserve(vs);
-	indices.reserve(is);
-	return *this;
-}
-
-Geometry& Geometry::append(Geometry const& geometry) {
-	auto const i_offset = static_cast<std::uint32_t>(geometry.positions.size());
-	assert(geometry.positions.size() == geometry.rgbs.size() && geometry.positions.size() == geometry.normals.size() &&
-		   geometry.positions.size() == geometry.uvs.size());
-	reserve(geometry.positions.size(), geometry.indices.size());
-	for (auto const& position : geometry.positions) { positions.push_back(position); }
-	for (auto const& uv : geometry.uvs) { uvs.push_back(uv); }
-	for (auto const& normal : geometry.normals) { normals.push_back(normal); }
-	for (auto const& rgb : geometry.rgbs) { rgbs.push_back(rgb); }
-	std::transform(geometry.indices.begin(), geometry.indices.end(), std::back_inserter(indices), [i_offset](std::uint32_t const i) { return i + i_offset; });
-	return *this;
-}
-
 Geometry& Geometry::append(std::span<Vertex const> vs, std::span<std::uint32_t const> is) {
-	auto const i_offset = static_cast<std::uint32_t>(vs.size());
-	reserve(vs.size(), is.size());
-	for (auto const& vertex : vs) {
-		positions.push_back(vertex.position);
-		uvs.push_back(vertex.uv);
-		normals.push_back(vertex.normal);
-		rgbs.push_back(vertex.rgb);
-	}
+	auto const i_offset = static_cast<std::uint32_t>(vertices.size());
+	vertices.reserve(vertices.size() + vs.size());
+	std::copy(vs.begin(), vs.end(), std::back_inserter(vertices));
 	std::transform(is.begin(), is.end(), std::back_inserter(indices), [i_offset](std::uint32_t const i) { return i + i_offset; });
 	return *this;
 }
@@ -92,6 +65,18 @@ Geometry& Geometry::append_cube(glm::vec3 size, glm::vec3 rgb, glm::vec3 const o
 
 	return append(vs, is);
 }
+
+Geometry::Packed Geometry::Packed::from(Geometry const& geometry) {
+	auto ret = Packed{};
+	for (auto const& vertex : geometry.vertices) {
+		ret.positions.push_back(vertex.position);
+		ret.rgbs.push_back(vertex.rgb);
+		ret.normals.push_back(vertex.normal);
+		ret.uvs.push_back(vertex.uv);
+	}
+	ret.indices = geometry.indices;
+	return ret;
+}
 } // namespace facade
 
 auto facade::make_cube(glm::vec3 size, glm::vec3 rgb, glm::vec3 const origin) -> Geometry {
@@ -102,7 +87,8 @@ auto facade::make_cube(glm::vec3 size, glm::vec3 rgb, glm::vec3 const origin) ->
 auto facade::make_cubed_sphere(float diam, std::uint32_t quads_per_side, glm::vec3 rgb) -> Geometry {
 	Geometry ret;
 	auto quad_count = static_cast<std::uint32_t>(quads_per_side * quads_per_side);
-	ret.reserve(quad_count * 4 * 6, quad_count * 6 * 6);
+	ret.vertices.reserve(quad_count * 4 * 6);
+	ret.indices.reserve(quad_count * 6 * 6);
 	auto const bl = glm::vec3{-1.0f, -1.0f, 1.0f};
 	auto points = std::vector<std::pair<glm::vec3, glm::vec2>>{};
 	points.reserve(4 * quad_count);
@@ -134,11 +120,8 @@ auto facade::make_cubed_sphere(float diam, std::uint32_t quads_per_side, glm::ve
 		for (auto const& p : out_points) {
 			update_indices();
 			auto const pt = transform(p.first).value() * diam * 0.5f;
-			indices.insert(static_cast<std::uint32_t>(ret.positions.size()));
-			ret.positions.push_back(pt);
-			ret.rgbs.push_back(rgb);
-			ret.normals.push_back(pt);
-			ret.uvs.push_back(p.second);
+			indices.insert(static_cast<std::uint32_t>(ret.vertices.size()));
+			ret.vertices.push_back({pt, rgb, pt, p.second});
 		}
 		update_indices();
 	};
@@ -236,10 +219,10 @@ auto facade::make_cylinder(float xz_diam, float y_height, std::uint32_t xz_point
 auto facade::make_arrow(float stalk_diam, float stalk_height, std::uint32_t xz_points, glm::vec3 rgb) -> Geometry {
 	auto const head_size = 2.0f * stalk_diam;
 	auto ret = make_cone(head_size, head_size, xz_points, rgb);
-	for (auto& position : ret.positions) { position.y += stalk_height + 0.5f * head_size; }
+	for (auto& v : ret.vertices) { v.position.y += stalk_height + 0.5f * head_size; }
 	auto stalk = make_cylinder(stalk_diam, stalk_height, xz_points, rgb);
-	for (auto& position : stalk.positions) { position.y += 0.5f * stalk_height; }
-	ret.append(stalk);
+	for (auto& v : stalk.vertices) { v.position.y += 0.5f * stalk_height; }
+	ret.append(stalk.vertices, stalk.indices);
 	return ret;
 }
 
@@ -247,15 +230,17 @@ auto facade::make_manipulator(float stalk_diam, float stalk_height, std::uint32_
 	auto arrow = [&](std::optional<glm::vec3> const rotation) {
 		auto ret = make_arrow(stalk_diam, stalk_height, xy_points, rgb);
 		if (rotation) {
-			for (auto& position : ret.positions) { position = glm::rotate(position, glm::radians(90.0f), *rotation); }
-			for (auto& normal : ret.normals) { normal = glm::normalize(glm::rotate(normal, glm::radians(90.0f), *rotation)); }
+			for (auto& v : ret.vertices) {
+				v.position = glm::rotate(v.position, glm::radians(90.0f), *rotation);
+				v.normal = glm::normalize(glm::rotate(v.normal, glm::radians(90.0f), *rotation));
+			}
 		}
 		return ret;
 	};
 	auto x = arrow(-front_v);
 	auto const y = arrow({});
 	auto const z = arrow(right_v);
-	x.append(y);
-	x.append(z);
+	x.append(y.vertices, y.indices);
+	x.append(z.vertices, z.indices);
 	return x;
 }

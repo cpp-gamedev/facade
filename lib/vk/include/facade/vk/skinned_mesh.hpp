@@ -1,8 +1,8 @@
 #pragma once
 #include <facade/vk/defer.hpp>
+#include <facade/vk/geometry.hpp>
 #include <facade/vk/gfx.hpp>
 #include <glm/vec4.hpp>
-#include <span>
 
 namespace facade {
 struct Geometry;
@@ -19,7 +19,7 @@ class SkinnedMesh {
 		std::uint32_t indices{};
 	};
 
-	SkinnedMesh(Gfx const& gfx, Geometry const& geometry, CreateInfo const& create_info, std::string name = "(Unnamed)");
+	SkinnedMesh(Gfx const& gfx, Geometry::Packed const& geometry, CreateInfo const& create_info, std::string name = "(Unnamed)");
 
 	std::string_view name() const { return m_name; }
 	Info info() const;

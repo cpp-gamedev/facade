@@ -74,7 +74,8 @@ class Scene {
 	/// \param geometry Geometry to initialize StaticMesh with
 	/// \returns Id to stored StaticMesh
 	///
-	Id<StaticMesh> add(Geometry const& geometry, std::string name = "(Unnamed)");
+	// TODO: Overload for interleaved
+	Id<StaticMesh> add(Geometry::Packed const& geometry, std::string name = "(Unnamed)");
 	///
 	/// \brief Add a Texture.
 	/// \param image Image to use for the Texture

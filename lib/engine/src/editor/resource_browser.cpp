@@ -123,7 +123,7 @@ void ResourceBrowser::add_static_mesh(bool trigger) {
 			case SmType::eArrow: geometry = make_arrow(sm.arrow.stalk_diam, sm.arrow.stalk_height, arrow_pts, sm.arrow.vertex_rgb); break;
 			default: logger::warn("Unknown static mesh type"); break;
 			}
-			if (!geometry.positions.empty()) { m_scene->add(std::move(geometry), sm.buffer.c_str()); }
+			if (!geometry.vertices.empty()) { m_scene->add(Geometry::Packed::from(geometry), sm.buffer.c_str()); }
 			Popup::close_current();
 		}
 	}

@@ -109,8 +109,8 @@ std::vector<glm::vec<Dim, float>> from_gltf(std::vector<gltf2cpp::Vec<Dim>> cons
 	return ret;
 }
 
-Geometry to_geometry(gltf2cpp::Mesh::Primitive&& primitive) {
-	auto ret = Geometry{};
+Geometry::Packed to_geometry(gltf2cpp::Mesh::Primitive&& primitive) {
+	auto ret = Geometry::Packed{};
 	ret.positions = from_gltf<3>(primitive.geometry.positions);
 	if (!primitive.geometry.colors.empty()) { ret.rgbs = from_gltf<3>(primitive.geometry.colors[0]); }
 	if (ret.rgbs.empty()) { ret.rgbs = std::vector<glm::vec3>(ret.positions.size(), glm::vec3{1.0f}); }
@@ -129,7 +129,7 @@ struct MeshLayout {
 	};
 
 	struct Static {
-		Geometry geometry{};
+		Geometry::Packed geometry{};
 	};
 
 	struct Skinned : Static {

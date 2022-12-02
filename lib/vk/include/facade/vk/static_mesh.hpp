@@ -1,10 +1,9 @@
 #pragma once
 #include <facade/vk/defer.hpp>
+#include <facade/vk/geometry.hpp>
 #include <facade/vk/gfx.hpp>
 
 namespace facade {
-struct Geometry;
-
 class StaticMesh {
   public:
 	struct Info {
@@ -12,7 +11,7 @@ class StaticMesh {
 		std::uint32_t indices{};
 	};
 
-	StaticMesh(Gfx const& gfx, Geometry const& geometry, std::string name = "(Unnamed)");
+	StaticMesh(Gfx const& gfx, Geometry::Packed const& geometry, std::string name = "(Unnamed)");
 
 	std::string_view name() const { return m_name; }
 	Info info() const;

@@ -13,17 +13,23 @@ struct Vertex {
 };
 
 struct Geometry {
+	struct Packed;
+
+	std::vector<Vertex> vertices{};
+	std::vector<std::uint32_t> indices{};
+
+	Geometry& append(std::span<Vertex const> vs, std::span<std::uint32_t const> is);
+	Geometry& append_cube(glm::vec3 size, glm::vec3 rgb = glm::vec3{1.0f}, glm::vec3 origin = {});
+};
+
+struct Geometry::Packed {
 	std::vector<glm::vec3> positions{};
 	std::vector<glm::vec3> rgbs{};
 	std::vector<glm::vec3> normals{};
 	std::vector<glm::vec2> uvs{};
 	std::vector<std::uint32_t> indices{};
 
-	Geometry& reserve(std::size_t vertices, std::size_t indices);
-
-	Geometry& append(Geometry const& geometry);
-	Geometry& append(std::span<Vertex const> vs, std::span<std::uint32_t const> is);
-	Geometry& append_cube(glm::vec3 size, glm::vec3 rgb = glm::vec3{1.0f}, glm::vec3 origin = {});
+	static Packed from(Geometry const& geometry);
 };
 
 Geometry make_cube(glm::vec3 size, glm::vec3 rgb = glm::vec3{1.0f}, glm::vec3 origin = {});

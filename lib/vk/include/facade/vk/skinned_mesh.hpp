@@ -23,8 +23,9 @@ class SkinnedMesh {
 
 	std::string_view name() const { return m_name; }
 	Info info() const;
+	bool has_joints() const { return m_jwbo.get().get().size > 0; }
 
-	void draw(vk::CommandBuffer cb) const;
+	void draw(vk::CommandBuffer cb, std::uint32_t instances = 1u) const;
 
   private:
 	Defer<UniqueBuffer> m_vibo{};

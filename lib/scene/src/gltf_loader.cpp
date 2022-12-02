@@ -144,10 +144,12 @@ struct MeshLayout {
 
 MeshLayout::Skinned to_skinned_mesh_layout(gltf2cpp::Mesh::Primitive&& primitive) {
 	auto ret = MeshLayout::Skinned{};
-	ret.joints.resize(primitive.geometry.joints[0].size());
-	std::memcpy(ret.joints.data(), primitive.geometry.joints[0].data(), std::span{primitive.geometry.joints[0]}.size_bytes());
-	ret.weights.resize(primitive.geometry.weights[0].size());
-	std::memcpy(ret.weights.data(), primitive.geometry.weights[0].data(), std::span{primitive.geometry.weights[0]}.size_bytes());
+	if (!primitive.geometry.joints.empty()) {
+		ret.joints.resize(primitive.geometry.joints[0].size());
+		std::memcpy(ret.joints.data(), primitive.geometry.joints[0].data(), std::span{primitive.geometry.joints[0]}.size_bytes());
+		ret.weights.resize(primitive.geometry.weights[0].size());
+		std::memcpy(ret.weights.data(), primitive.geometry.weights[0].data(), std::span{primitive.geometry.weights[0]}.size_bytes());
+	}
 	ret.geometry = to_geometry(std::move(primitive));
 	return ret;
 }

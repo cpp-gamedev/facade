@@ -5,6 +5,7 @@
 #include <facade/vk/gfx.hpp>
 #include <facade/vk/pipeline.hpp>
 #include <facade/vk/shader.hpp>
+#include <facade/vk/vertex_layout.hpp>
 #include <memory>
 
 namespace facade {
@@ -99,7 +100,7 @@ class Renderer {
 	/// \param shader_id Shader Id to use to find / create a Vulkan Pipeline
 	/// \returns Pipeline with corresponding descriptor sets to write to
 	///
-	Pipeline bind_pipeline(vk::CommandBuffer cb, Pipeline::State const& state = {}, RenderShader const& shader = {});
+	Pipeline bind_pipeline(vk::CommandBuffer cb, VertexLayout::Id const& vlayout, Pipeline::State const& state = {}, RenderShader const& shader = {});
 	///
 	/// \brief Execute render pass and submit all recorded command buffers to the graphics queue.
 	/// \returns false If Swapchain Image has not been acquired
@@ -125,6 +126,11 @@ class Renderer {
 	/// \returns Shader if found, default / empty instance if not
 	///
 	Shader find_shader(std::string const& id) const;
+
+	VertexLayout const& add_vertex_layout(VertexLayout const& vlayout);
+	Ptr<VertexLayout const> find_vertex_layout(VertexLayout::Id const& id) const;
+
+	Gfx const& gfx() const;
 
   private:
 	struct Impl;

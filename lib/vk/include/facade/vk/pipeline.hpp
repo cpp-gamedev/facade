@@ -6,13 +6,10 @@
 namespace facade {
 class Pipeline {
   public:
-	enum class VertType { eInstanced, eSkinned };
-
 	struct State {
 		vk::PolygonMode mode{vk::PolygonMode::eFill};
 		vk::PrimitiveTopology topology{vk::PrimitiveTopology::eTriangleList};
 		bool depth_test{true};
-		VertType vert_type{VertType::eInstanced};
 
 		bool operator==(State const&) const = default;
 	};

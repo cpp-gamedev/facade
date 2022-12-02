@@ -70,53 +70,8 @@ vk::UniqueShaderModule make_shader_module(vk::Device device, SpirV::View spir_v)
 	return device.createShaderModuleUnique(smci);
 }
 
-static constexpr std::size_t max_attributes_v{16};
-
-struct VertexLayout {
-	FlexArray<vk::VertexInputAttributeDescription, max_attributes_v> attributes{};
-	FlexArray<vk::VertexInputBindingDescription, max_attributes_v> bindings{};
-};
-
-constexpr VertexLayout instanced_vertex_layout() {
-	auto ret = VertexLayout{};
-	ret.bindings.insert(vk::VertexInputBindingDescription{0, sizeof(glm::vec3)});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{0, 0, vk::Format::eR32G32B32Sfloat});
-
-	ret.bindings.insert(vk::VertexInputBindingDescription{1, sizeof(glm::vec3)});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{1, 1, vk::Format::eR32G32B32Sfloat});
-
-	ret.bindings.insert(vk::VertexInputBindingDescription{2, sizeof(glm::vec3)});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{2, 2, vk::Format::eR32G32B32Sfloat});
-
-	ret.bindings.insert(vk::VertexInputBindingDescription{3, sizeof(glm::vec2)});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{3, 3, vk::Format::eR32G32Sfloat});
-
-	ret.bindings.insert(vk::VertexInputBindingDescription{4, sizeof(glm::mat4x4), vk::VertexInputRate::eInstance});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{4, 4, vk::Format::eR32G32B32A32Sfloat, 0 * sizeof(glm::vec4)});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{5, 4, vk::Format::eR32G32B32A32Sfloat, 1 * sizeof(glm::vec4)});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{6, 4, vk::Format::eR32G32B32A32Sfloat, 2 * sizeof(glm::vec4)});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{7, 4, vk::Format::eR32G32B32A32Sfloat, 3 * sizeof(glm::vec4)});
-	return ret;
-}
-
-constexpr VertexLayout skinned_vertex_layout() {
-	auto ret = VertexLayout{};
-	ret.bindings.insert(vk::VertexInputBindingDescription{0, sizeof(glm::vec3)});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{0, 0, vk::Format::eR32G32B32Sfloat});
-	ret.bindings.insert(vk::VertexInputBindingDescription{1, sizeof(glm::vec3)});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{1, 1, vk::Format::eR32G32B32Sfloat});
-	ret.bindings.insert(vk::VertexInputBindingDescription{2, sizeof(glm::vec3)});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{2, 2, vk::Format::eR32G32B32Sfloat});
-	ret.bindings.insert(vk::VertexInputBindingDescription{3, sizeof(glm::vec2)});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{3, 3, vk::Format::eR32G32Sfloat});
-	ret.bindings.insert(vk::VertexInputBindingDescription{4, sizeof(glm::uvec4)});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{4, 4, vk::Format::eR32G32B32A32Uint});
-	ret.bindings.insert(vk::VertexInputBindingDescription{5, sizeof(glm::vec4)});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{5, 5, vk::Format::eR32G32B32A32Sfloat});
-	return ret;
-}
-
 struct PipeInfo {
+	VertexLayout const& vlayout;
 	Pipes::State state{};
 	vk::ShaderModule vert{};
 	vk::ShaderModule frag{};
@@ -132,9 +87,8 @@ vk::UniquePipeline create_pipeline(vk::Device dv, PipeInfo const& info) {
 	gpci.renderPass = info.render_pass;
 	gpci.layout = info.layout;
 
-	auto const vl = info.state.vert_type == Pipeline::VertType::eSkinned ? skinned_vertex_layout() : instanced_vertex_layout();
-	auto const vertex_bindings = vl.bindings.span();
-	auto const vertex_attributes = vl.attributes.span();
+	auto const vertex_bindings = info.vlayout.bindings.span();
+	auto const vertex_attributes = info.vlayout.attributes.span();
 	auto pvisci = vk::PipelineVertexInputStateCreateInfo{};
 	pvisci.pVertexBindingDescriptions = vertex_bindings.data();
 	pvisci.vertexBindingDescriptionCount = static_cast<std::uint32_t>(vertex_bindings.size());
@@ -197,7 +151,7 @@ vk::UniquePipeline create_pipeline(vk::Device dv, PipeInfo const& info) {
 } // namespace
 
 std::size_t Pipes::Hasher::operator()(Key const& key) const {
-	return make_combined_hash(key.shader_hash, key.state.mode, key.state.topology, key.state.depth_test, key.state.vert_type);
+	return make_combined_hash(key.shader_hash, key.vertex_layout_hash, key.state.mode, key.state.topology, key.state.depth_test);
 }
 
 Pipes::Pipes(Gfx const& gfx, vk::SampleCountFlagBits samples) : m_gfx{gfx}, m_samples{samples} {
@@ -205,13 +159,17 @@ Pipes::Pipes(Gfx const& gfx, vk::SampleCountFlagBits samples) : m_gfx{gfx}, m_sa
 	m_sample_shading = features.sampleRateShading;
 }
 
-Pipeline Pipes::get(vk::RenderPass rp, State const& state, Shader::Program const& shader) {
-	auto const key = Key{.state = state, .shader_hash = make_combined_hash(shader.vert.id.view(), shader.frag.id.view())};
+Pipeline Pipes::get(vk::RenderPass rp, State const& state, VertexLayout const& vlayout, Shader::Program const& shader) {
+	auto const key = Key{
+		.state = state,
+		.shader_hash = make_combined_hash(shader.vert.id.view(), shader.frag.id.view()),
+		.vertex_layout_hash = make_combined_hash(vlayout.id.view()),
+	};
 	auto lock = Lock{m_mutex};
 	auto& map = m_map[key];
 	populate(lock, map, shader);
 	auto& ret = map.pipelines[rp];
-	if (!ret) { ret = make_pipeline(state, shader.vert.spir_v, shader.frag.spir_v, *map.pipeline_layout, rp); }
+	if (!ret) { ret = make_pipeline(state, vlayout, shader.vert.spir_v, shader.frag.spir_v, *map.pipeline_layout, rp); }
 	return {*ret, *map.pipeline_layout, &*map.set_pools.get(), &m_gfx.shared->device_limits};
 }
 
@@ -238,10 +196,12 @@ vk::UniquePipelineLayout Pipes::make_pipeline_layout(std::span<vk::DescriptorSet
 	return m_gfx.device.createPipelineLayoutUnique(plci);
 }
 
-vk::UniquePipeline Pipes::make_pipeline(State const& state, SpirV::View vert, SpirV::View frag, vk::PipelineLayout layout, vk::RenderPass rp) const {
+vk::UniquePipeline Pipes::make_pipeline(State const& state, VertexLayout const& vlayout, SpirV::View vert, SpirV::View frag, vk::PipelineLayout layout,
+										vk::RenderPass rp) const {
 	auto v = make_shader_module(m_gfx.device, vert);
 	auto f = make_shader_module(m_gfx.device, frag);
 	auto const info = PipeInfo{
+		.vlayout = vlayout,
 		.state = state,
 		.vert = *v,
 		.frag = *f,

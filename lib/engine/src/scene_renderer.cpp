@@ -31,6 +31,45 @@ constexpr vk::PrimitiveTopology to_primitive_topology(Topology topology) {
 	}
 	throw Error{"Unsupported primitive topology: " + std::to_string(static_cast<int>(topology))};
 }
+
+VertexLayout instanced_vertex_layout() {
+	auto ret = VertexLayout{.id = "instanced"};
+	ret.bindings.insert(vk::VertexInputBindingDescription{0, sizeof(glm::vec3)});
+	ret.attributes.insert(vk::VertexInputAttributeDescription{0, 0, vk::Format::eR32G32B32Sfloat});
+
+	ret.bindings.insert(vk::VertexInputBindingDescription{1, sizeof(glm::vec3)});
+	ret.attributes.insert(vk::VertexInputAttributeDescription{1, 1, vk::Format::eR32G32B32Sfloat});
+
+	ret.bindings.insert(vk::VertexInputBindingDescription{2, sizeof(glm::vec3)});
+	ret.attributes.insert(vk::VertexInputAttributeDescription{2, 2, vk::Format::eR32G32B32Sfloat});
+
+	ret.bindings.insert(vk::VertexInputBindingDescription{3, sizeof(glm::vec2)});
+	ret.attributes.insert(vk::VertexInputAttributeDescription{3, 3, vk::Format::eR32G32Sfloat});
+
+	ret.bindings.insert(vk::VertexInputBindingDescription{4, sizeof(glm::mat4x4), vk::VertexInputRate::eInstance});
+	ret.attributes.insert(vk::VertexInputAttributeDescription{4, 4, vk::Format::eR32G32B32A32Sfloat, 0 * sizeof(glm::vec4)});
+	ret.attributes.insert(vk::VertexInputAttributeDescription{5, 4, vk::Format::eR32G32B32A32Sfloat, 1 * sizeof(glm::vec4)});
+	ret.attributes.insert(vk::VertexInputAttributeDescription{6, 4, vk::Format::eR32G32B32A32Sfloat, 2 * sizeof(glm::vec4)});
+	ret.attributes.insert(vk::VertexInputAttributeDescription{7, 4, vk::Format::eR32G32B32A32Sfloat, 3 * sizeof(glm::vec4)});
+	return ret;
+}
+
+VertexLayout skinned_vertex_layout() {
+	auto ret = VertexLayout{.id = "skinned"};
+	ret.bindings.insert(vk::VertexInputBindingDescription{0, sizeof(glm::vec3)});
+	ret.attributes.insert(vk::VertexInputAttributeDescription{0, 0, vk::Format::eR32G32B32Sfloat});
+	ret.bindings.insert(vk::VertexInputBindingDescription{1, sizeof(glm::vec3)});
+	ret.attributes.insert(vk::VertexInputAttributeDescription{1, 1, vk::Format::eR32G32B32Sfloat});
+	ret.bindings.insert(vk::VertexInputBindingDescription{2, sizeof(glm::vec3)});
+	ret.attributes.insert(vk::VertexInputAttributeDescription{2, 2, vk::Format::eR32G32B32Sfloat});
+	ret.bindings.insert(vk::VertexInputBindingDescription{3, sizeof(glm::vec2)});
+	ret.attributes.insert(vk::VertexInputAttributeDescription{3, 3, vk::Format::eR32G32Sfloat});
+	ret.bindings.insert(vk::VertexInputBindingDescription{4, sizeof(glm::uvec4)});
+	ret.attributes.insert(vk::VertexInputAttributeDescription{4, 4, vk::Format::eR32G32B32A32Uint});
+	ret.bindings.insert(vk::VertexInputBindingDescription{5, sizeof(glm::vec4)});
+	ret.attributes.insert(vk::VertexInputAttributeDescription{5, 5, vk::Format::eR32G32B32A32Sfloat});
+	return ret;
+}
 } // namespace
 
 Buffer& SceneRenderer::Buffers::get(Gfx const& gfx) {
@@ -49,14 +88,17 @@ void SceneRenderer::Buffers::rotate() {
 	index = 0;
 }
 
-SceneRenderer::SceneRenderer(Gfx const& gfx)
-	: m_gfx(gfx), m_material(Material{LitMaterial{}, "default"}), m_sampler(gfx), m_view_proj(gfx, Buffer::Type::eUniform),
-	  m_dir_lights(gfx, Buffer::Type::eStorage),
-	  m_white(gfx, m_sampler.sampler(), Bmp1x1{0xff_B, 0xff_B, 0xff_B, 0xff_B}.view(), Texture::CreateInfo{.mip_mapped = false}),
-	  m_black(gfx, m_sampler.sampler(), Bmp1x1{0x0_B, 0x0_B, 0x0_B, 0xff_B}.view(), Texture::CreateInfo{.mip_mapped = false}) {
+SceneRenderer::SceneRenderer(Renderer& renderer)
+	: m_gfx(renderer.gfx()), m_material(Material{LitMaterial{}, "default"}), m_sampler(m_gfx), m_view_proj(m_gfx, Buffer::Type::eUniform),
+	  m_dir_lights(m_gfx, Buffer::Type::eStorage),
+	  m_white(m_gfx, m_sampler.sampler(), Bmp1x1{0xff_B, 0xff_B, 0xff_B, 0xff_B}.view(), Texture::CreateInfo{.mip_mapped = false}),
+	  m_black(m_gfx, m_sampler.sampler(), Bmp1x1{0x0_B, 0x0_B, 0x0_B, 0xff_B}.view(), Texture::CreateInfo{.mip_mapped = false}) {
 
 	m_instances.type = Buffer::Type::eInstance;
 	m_joints.type = Buffer::Type::eStorage;
+
+	renderer.add_vertex_layout(instanced_vertex_layout());
+	renderer.add_vertex_layout(skinned_vertex_layout());
 }
 
 void SceneRenderer::render(Scene const& scene, Ptr<Skybox const> skybox, Renderer& renderer, vk::CommandBuffer cb) {
@@ -119,7 +161,7 @@ std::span<glm::mat4x4 const> SceneRenderer::make_joint_mats(Skin const& skin, gl
 }
 
 void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Skybox const& skybox) {
-	auto pipeline = renderer.bind_pipeline(cb, {.depth_test = false}, {"default.vert", "skybox.frag"});
+	auto pipeline = renderer.bind_pipeline(cb, "instanced", {.depth_test = false}, {"default.vert", "skybox.frag"});
 	pipeline.set_line_width(1.0f);
 	update_view(pipeline);
 	auto& set1 = pipeline.next_set(1);
@@ -148,11 +190,11 @@ void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Node const&
 			auto const state = Pipeline::State{
 				.mode = m_scene->render_mode.type == RenderMode::Type::eWireframe ? vk::PolygonMode::eLine : vk::PolygonMode::eFill,
 				.topology = to_primitive_topology(primitive.topology),
-				.vert_type = primitive.skinned_mesh ? Pipeline::VertType::eSkinned : Pipeline::VertType::eInstanced,
 			};
+			VertexLayout::Id const vlayout = primitive.skinned_mesh ? "skinned" : "instanced";
 			auto const& material = primitive.material ? resources.materials[primitive.material->value()] : m_material;
 			auto shader = RenderShader{vert_shader(primitive.skinned_mesh), frag_shader(material)};
-			auto pipeline = renderer.bind_pipeline(cb, state, shader);
+			auto pipeline = renderer.bind_pipeline(cb, vlayout, state, shader);
 			pipeline.set_line_width(m_scene->render_mode.line_width);
 			update_view(pipeline);
 			material.write_sets(pipeline, store);

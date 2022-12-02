@@ -67,6 +67,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/vk/static_mesh.hpp
   include/${target_prefix}/vk/swapchain.hpp
   include/${target_prefix}/vk/texture.hpp
+  include/${target_prefix}/vk/vertex_layout.hpp
   include/${target_prefix}/vk/vk.hpp
   include/${target_prefix}/vk/vma.hpp
   include/${target_prefix}/vk/wsi.hpp

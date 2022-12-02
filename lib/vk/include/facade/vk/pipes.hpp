@@ -2,6 +2,7 @@
 #include <facade/vk/pipeline.hpp>
 #include <facade/vk/rotator.hpp>
 #include <facade/vk/shader.hpp>
+#include <facade/vk/vertex_layout.hpp>
 #include <vulkan/vulkan_hash.hpp>
 #include <mutex>
 #include <optional>
@@ -18,7 +19,7 @@ class Pipes {
 
 	Pipes(Gfx const& gfx, vk::SampleCountFlagBits samples);
 
-	[[nodiscard]] Pipeline get(vk::RenderPass rp, State const& state, Shader::Program const& shader);
+	[[nodiscard]] Pipeline get(vk::RenderPass rp, State const& state, VertexLayout const& vlayout, Shader::Program const& shader);
 
 	void rotate();
 
@@ -26,6 +27,7 @@ class Pipes {
 	struct Key {
 		State state{};
 		std::size_t shader_hash{};
+		std::size_t vertex_layout_hash{};
 		bool operator==(Key const&) const = default;
 	};
 	struct Hasher {
@@ -41,7 +43,8 @@ class Pipes {
 	using Lock = std::scoped_lock<std::mutex>;
 
 	void populate(Lock const&, Map& out, Shader::Program const& shader) const;
-	vk::UniquePipeline make_pipeline(State const& state, SpirV::View vert, SpirV::View frag, vk::PipelineLayout layout, vk::RenderPass rp) const;
+	vk::UniquePipeline make_pipeline(State const& state, VertexLayout const& vlayout, SpirV::View vert, SpirV::View frag, vk::PipelineLayout layout,
+									 vk::RenderPass rp) const;
 	vk::UniquePipelineLayout make_pipeline_layout(std::span<vk::DescriptorSetLayout const> set_layouts) const;
 
 	std::unordered_map<Key, Map, Hasher> m_map{};

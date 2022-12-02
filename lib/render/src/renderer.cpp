@@ -41,6 +41,7 @@ struct Renderer::Impl {
 	Gui* gui{};
 
 	Shader::Db shader_db{};
+	VertexLayout::Db vlayout_db{};
 	std::optional<RenderTarget> render_target{};
 	Framebuffer framebuffer{};
 
@@ -165,13 +166,15 @@ bool Renderer::next_frame(std::span<vk::CommandBuffer> out) {
 	return fill_and_return();
 }
 
-Pipeline Renderer::bind_pipeline(vk::CommandBuffer cb, Pipeline::State const& state, RenderShader const& shader) {
+Pipeline Renderer::bind_pipeline(vk::CommandBuffer cb, VertexLayout::Id const& vlayout, Pipeline::State const& state, RenderShader const& shader) {
 	// obtain pipeline and bind it
 	auto const vert = m_impl->shader_db.find(shader.vert);
 	auto const frag = m_impl->shader_db.find(shader.frag);
+	auto const vl = m_impl->vlayout_db.find(vlayout);
 	if (!vert) { throw Error{fmt::format("Failed to find vertex shader: {}", shader.vert)}; }
 	if (!vert) { throw Error{fmt::format("Failed to find fragment shader: {}", shader.frag)}; }
-	auto ret = m_impl->pipes.get(m_impl->render_pass.render_pass(), state, {vert, frag});
+	if (!vl) { throw Error{fmt::format("Failed to find vertex layout: {}", vlayout)}; }
+	auto ret = m_impl->pipes.get(m_impl->render_pass.render_pass(), state, *vl, {vert, frag});
 	ret.bind(cb);
 
 	// set viewport and scissor
@@ -230,4 +233,9 @@ bool Renderer::render() {
 Shader Renderer::add_shader(std::string id, SpirV spir_v) { return m_impl->shader_db.add(std::move(id), std::move(spir_v)); }
 bool Renderer::add_shader(Shader shader) { return m_impl->shader_db.add(std::move(shader)); }
 Shader Renderer::find_shader(std::string const& id) const { return m_impl->shader_db.find(id); }
+
+VertexLayout const& Renderer::add_vertex_layout(VertexLayout const& vlayout) { return m_impl->vlayout_db.add(vlayout); }
+Ptr<VertexLayout const> Renderer::find_vertex_layout(VertexLayout::Id const& id) const { return m_impl->vlayout_db.find(id); }
+
+Gfx const& Renderer::gfx() const { return m_impl->gfx; }
 } // namespace facade

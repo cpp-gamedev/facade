@@ -115,25 +115,26 @@ void SceneRenderer::update_view(Pipeline& out_pipeline) const {
 	out_pipeline.bind(set0);
 }
 
-std::span<glm::mat4x4 const> SceneRenderer::make_instance_mats(std::span<Transform const> instances, glm::mat4x4 const& parent) {
-	m_instance_mats.clear();
-	if (instances.empty()) {
-		m_instance_mats.push_back(parent);
-	} else {
-		m_instance_mats.reserve(instances.size());
-		for (auto const& transform : instances) { m_instance_mats.push_back(parent * transform.matrix()); }
-	}
-	return m_instance_mats;
+BufferView SceneRenderer::make_instance_mats(std::span<Transform const> instances, glm::mat4x4 const& parent) {
+	auto rewrite = [&](std::vector<glm::mat4x4>& mats) {
+		if (instances.empty()) {
+			mats.push_back(parent);
+		} else {
+			mats.reserve(instances.size());
+			for (auto const& transform : instances) { mats.push_back(parent * transform.matrix()); }
+		}
+	};
+	return m_instances.rewrite(m_gfx, instances.empty() ? 1u : instances.size(), rewrite).view();
 }
 
-std::span<glm::mat4x4 const> SceneRenderer::make_joint_mats(Skin const& skin, glm::mat4x4 const& parent) {
+DescriptorBuffer SceneRenderer::make_joint_mats(Skin const& skin, glm::mat4x4 const& parent) {
 	auto const& resources = m_scene->resources();
-	m_joint_mats.clear();
-	m_joint_mats.reserve(skin.joints.size());
-	for (auto const& [j, ibm] : zip_ranges(skin.joints, skin.inverse_bind_matrices)) {
-		m_joint_mats.push_back(parent * resources.nodes[j].transform.matrix() * ibm);
-	}
-	return m_joint_mats;
+	auto rewrite = [&](std::vector<glm::mat4x4>& mats) {
+		for (auto const& [j, ibm] : zip_ranges(skin.joints, skin.inverse_bind_matrices)) {
+			mats.push_back(parent * resources.nodes[j].transform.matrix() * ibm);
+		}
+	};
+	return m_joints.rewrite(m_gfx, skin.joints.size(), rewrite).descriptor_buffer();
 }
 
 void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Skybox const& skybox) {
@@ -144,7 +145,8 @@ void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Skybox cons
 	set1.update(0, skybox.cubemap().descriptor_image());
 	pipeline.bind(set1);
 	auto const mat = glm::translate(matrix_identity_v, m_scene->camera().transform.position());
-	draw(cb, skybox.static_mesh(), {&mat, 1u});
+	auto const buffer = make_instance_mats({}, mat);
+	draw(cb, skybox.static_mesh(), buffer);
 }
 
 Shader::Id vert_shader(std::optional<Id<SkinnedMesh>> sm) {
@@ -178,15 +180,14 @@ void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Node const&
 
 			if (primitive.skinned_mesh) {
 				auto& set3 = pipeline.next_set(3);
-				auto joints = next_joints(make_joint_mats(resources.skins[*node.find<Skin>()], parent));
+				auto joints = make_joint_mats(resources.skins[*node.find<Skin>()], parent);
 				set3.update(0, DescriptorBuffer{joints.buffer, joints.size, vk::DescriptorType::eStorageBuffer});
 				pipeline.bind(set3);
 				auto const& mesh = resources.skinned_meshes[*primitive.skinned_mesh];
 				mesh.draw(cb);
 			} else {
-				auto const mats = make_instance_mats(node.instances, parent);
 				auto const& static_mesh = resources.static_meshes[primitive.static_mesh];
-				draw(cb, static_mesh, mats);
+				draw(cb, static_mesh, make_instance_mats(node.instances, parent));
 			}
 		}
 	}
@@ -194,23 +195,10 @@ void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Node const&
 	for (auto const& id : node.children) { render(renderer, cb, m_scene->resources().nodes[id], parent); }
 }
 
-void SceneRenderer::draw(vk::CommandBuffer cb, StaticMesh const& static_mesh, std::span<glm::mat4x4 const> mats) {
-	auto const instances = next_instances(mats);
+void SceneRenderer::draw(vk::CommandBuffer cb, StaticMesh const& static_mesh, BufferView instances) {
 	cb.bindVertexBuffers(6u, instances.buffer, vk::DeviceSize{0});
-	static_mesh.draw(cb, mats.size());
+	static_mesh.draw(cb, instances.count);
 	m_info.triangles_drawn += static_mesh.info().vertices / 3;
 	++m_info.draw_calls;
-}
-
-BufferView SceneRenderer::next_instances(std::span<glm::mat4x4 const> mats) {
-	auto& buffer = m_instances.get(m_gfx);
-	buffer.write(mats);
-	return buffer.view();
-}
-
-BufferView SceneRenderer::next_joints(std::span<glm::mat4x4 const> mats) {
-	auto& buffer = m_joints.get(m_gfx);
-	buffer.write(mats);
-	return buffer.view();
 }
 } // namespace facade

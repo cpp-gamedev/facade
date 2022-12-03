@@ -32,8 +32,8 @@ constexpr vk::PrimitiveTopology to_primitive_topology(Topology topology) {
 	throw Error{"Unsupported primitive topology: " + std::to_string(static_cast<int>(topology))};
 }
 
-constexpr VertexLayout instanced_vertex_layout() {
-	auto ret = VertexLayout{};
+constexpr VertexInput instanced_vertex_layout() {
+	auto ret = VertexInput{};
 	ret.bindings.insert(vk::VertexInputBindingDescription{0, sizeof(glm::vec3)});
 	ret.attributes.insert(vk::VertexInputAttributeDescription{0, 0, vk::Format::eR32G32B32Sfloat});
 
@@ -54,8 +54,8 @@ constexpr VertexLayout instanced_vertex_layout() {
 	return ret;
 }
 
-constexpr VertexLayout skinned_vertex_layout() {
-	auto ret = VertexLayout{};
+constexpr VertexInput skinned_vertex_layout() {
+	auto ret = VertexInput{};
 	ret.bindings.insert(vk::VertexInputBindingDescription{0, sizeof(glm::vec3)});
 	ret.attributes.insert(vk::VertexInputAttributeDescription{0, 0, vk::Format::eR32G32B32Sfloat});
 	ret.bindings.insert(vk::VertexInputBindingDescription{1, sizeof(glm::vec3)});
@@ -72,31 +72,11 @@ constexpr VertexLayout skinned_vertex_layout() {
 }
 } // namespace
 
-Buffer& SceneRenderer::Buffers::get(Gfx const& gfx) {
-	auto ret = Ptr<Buffer>{};
-	if (index < buffers.size()) {
-		ret = &buffers[index++];
-	} else {
-		++index;
-		ret = &buffers.emplace_back(gfx, type);
-	}
-	return *ret;
-}
-
-void SceneRenderer::Buffers::rotate() {
-	for (auto& buffer : buffers) { buffer.rotate(); }
-	index = 0;
-}
-
 SceneRenderer::SceneRenderer(Gfx const& gfx)
-	: m_gfx(gfx), m_material(Material{LitMaterial{}, "default"}), m_sampler(gfx), m_view_proj(gfx, Buffer::Type::eUniform),
-	  m_dir_lights(gfx, Buffer::Type::eStorage),
+	: m_gfx(gfx), m_material(Material{LitMaterial{}, "default"}), m_instances(Buffer::Type::eInstance), m_joints(Buffer::Type::eStorage), m_sampler(gfx),
+	  m_view_proj(gfx, Buffer::Type::eUniform), m_dir_lights(gfx, Buffer::Type::eStorage),
 	  m_white(gfx, m_sampler.sampler(), Bmp1x1{0xff_B, 0xff_B, 0xff_B, 0xff_B}.view(), Texture::CreateInfo{.mip_mapped = false}),
-	  m_black(gfx, m_sampler.sampler(), Bmp1x1{0x0_B, 0x0_B, 0x0_B, 0xff_B}.view(), Texture::CreateInfo{.mip_mapped = false}) {
-
-	m_instances.type = Buffer::Type::eInstance;
-	m_joints.type = Buffer::Type::eStorage;
-}
+	  m_black(gfx, m_sampler.sampler(), Bmp1x1{0x0_B, 0x0_B, 0x0_B, 0xff_B}.view(), Texture::CreateInfo{.mip_mapped = false}) {}
 
 void SceneRenderer::render(Scene const& scene, Ptr<Skybox const> skybox, Renderer& renderer, vk::CommandBuffer cb) {
 	m_scene = &scene;
@@ -135,14 +115,13 @@ void SceneRenderer::update_view(Pipeline& out_pipeline) const {
 	out_pipeline.bind(set0);
 }
 
-std::span<glm::mat4x4 const> SceneRenderer::make_instance_mats(Node const& node, glm::mat4x4 const& parent) {
-	auto const mat = parent * node.transform.matrix();
+std::span<glm::mat4x4 const> SceneRenderer::make_instance_mats(std::span<Transform const> instances, glm::mat4x4 const& parent) {
 	m_instance_mats.clear();
-	if (node.instances.empty()) {
-		m_instance_mats.push_back(mat);
+	if (instances.empty()) {
+		m_instance_mats.push_back(parent);
 	} else {
-		m_instance_mats.reserve(node.instances.size());
-		for (auto const& transform : node.instances) { m_instance_mats.push_back(mat * transform.matrix()); }
+		m_instance_mats.reserve(instances.size());
+		for (auto const& transform : instances) { m_instance_mats.push_back(parent * transform.matrix()); }
 	}
 	return m_instance_mats;
 }
@@ -181,6 +160,7 @@ Shader::Id frag_shader(Material const& mat) {
 void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Node const& node, glm::mat4 parent) {
 	auto const& resources = m_scene->resources();
 	auto const store = TextureStore{resources.textures, m_white, m_black};
+	parent = parent * node.transform.matrix();
 	if (auto mesh_id = node.find<Mesh>()) {
 		auto const& mesh = resources.meshes[*mesh_id];
 		for (auto const& primitive : mesh.primitives) {
@@ -188,7 +168,7 @@ void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Node const&
 				.mode = m_scene->render_mode.type == RenderMode::Type::eWireframe ? vk::PolygonMode::eLine : vk::PolygonMode::eFill,
 				.topology = to_primitive_topology(primitive.topology),
 			};
-			VertexLayout const vlayout = primitive.skinned_mesh ? skinned_vertex_layout() : instanced_vertex_layout();
+			VertexInput const vlayout = primitive.skinned_mesh ? skinned_vertex_layout() : instanced_vertex_layout();
 			auto const& material = primitive.material ? resources.materials[primitive.material->value()] : m_material;
 			auto shader = RenderShader{vert_shader(primitive.skinned_mesh), frag_shader(material)};
 			auto pipeline = renderer.bind_pipeline(cb, vlayout, state, shader);
@@ -198,20 +178,19 @@ void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Node const&
 
 			if (primitive.skinned_mesh) {
 				auto& set3 = pipeline.next_set(3);
-				auto joints = next_joints(make_joint_mats(resources.skins[*node.find<Skin>()], parent * node.transform.matrix()));
+				auto joints = next_joints(make_joint_mats(resources.skins[*node.find<Skin>()], parent));
 				set3.update(0, DescriptorBuffer{joints.buffer, joints.size, vk::DescriptorType::eStorageBuffer});
 				pipeline.bind(set3);
 				auto const& mesh = resources.skinned_meshes[*primitive.skinned_mesh];
 				mesh.draw(cb);
 			} else {
-				auto const mats = make_instance_mats(node, parent);
+				auto const mats = make_instance_mats(node.instances, parent);
 				auto const& static_mesh = resources.static_meshes[primitive.static_mesh];
 				draw(cb, static_mesh, mats);
 			}
 		}
 	}
 
-	parent = parent * node.transform.matrix();
 	for (auto const& id : node.children) { render(renderer, cb, m_scene->resources().nodes[id], parent); }
 }
 

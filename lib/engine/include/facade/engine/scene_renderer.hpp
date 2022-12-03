@@ -21,7 +21,7 @@ class SceneRenderer {
   private:
 	void write_view(glm::vec2 const extent);
 	void update_view(Pipeline& out_pipeline) const;
-	std::span<glm::mat4x4 const> make_instance_mats(Node const& node, glm::mat4x4 const& parent);
+	std::span<glm::mat4x4 const> make_instance_mats(std::span<Transform const> instances, glm::mat4x4 const& parent);
 	std::span<glm::mat4x4 const> make_joint_mats(Skin const& skin, glm::mat4x4 const& parent);
 
 	void render(Renderer& renderer, vk::CommandBuffer cb, Skybox const& skybox);
@@ -32,19 +32,10 @@ class SceneRenderer {
 	BufferView next_instances(std::span<glm::mat4x4 const> mats);
 	BufferView next_joints(std::span<glm::mat4x4 const> mats);
 
-	struct Buffers {
-		std::vector<Buffer> buffers{};
-		std::size_t index{};
-		Buffer::Type type{};
-
-		Buffer& get(Gfx const& gfx);
-		void rotate();
-	};
-
 	Gfx m_gfx;
 	Material m_material;
-	Buffers m_instances{};
-	Buffers m_joints{};
+	Buffer::Pool m_instances;
+	Buffer::Pool m_joints;
 	Sampler m_sampler;
 	Buffer m_view_proj;
 	Buffer m_dir_lights;

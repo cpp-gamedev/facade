@@ -71,7 +71,7 @@ vk::UniqueShaderModule make_shader_module(vk::Device device, SpirV::View spir_v)
 }
 
 struct PipeInfo {
-	VertexLayout const& vlayout;
+	VertexInput const& vinput;
 	Pipes::State state{};
 	vk::ShaderModule vert{};
 	vk::ShaderModule frag{};
@@ -87,8 +87,8 @@ vk::UniquePipeline create_pipeline(vk::Device dv, PipeInfo const& info) {
 	gpci.renderPass = info.render_pass;
 	gpci.layout = info.layout;
 
-	auto const vertex_bindings = info.vlayout.bindings.span();
-	auto const vertex_attributes = info.vlayout.attributes.span();
+	auto const vertex_bindings = info.vinput.bindings.span();
+	auto const vertex_attributes = info.vinput.attributes.span();
 	auto pvisci = vk::PipelineVertexInputStateCreateInfo{};
 	pvisci.pVertexBindingDescriptions = vertex_bindings.data();
 	pvisci.vertexBindingDescriptionCount = static_cast<std::uint32_t>(vertex_bindings.size());
@@ -151,7 +151,7 @@ vk::UniquePipeline create_pipeline(vk::Device dv, PipeInfo const& info) {
 } // namespace
 
 std::size_t Pipes::Hasher::operator()(Key const& key) const {
-	return make_combined_hash(key.shader_hash, key.vertex_layout_hash, key.state.mode, key.state.topology, key.state.depth_test);
+	return make_combined_hash(key.shader_hash, key.vertex_input_hash, key.state.mode, key.state.topology, key.state.depth_test);
 }
 
 Pipes::Pipes(Gfx const& gfx, vk::SampleCountFlagBits samples) : m_gfx{gfx}, m_samples{samples} {
@@ -159,17 +159,17 @@ Pipes::Pipes(Gfx const& gfx, vk::SampleCountFlagBits samples) : m_gfx{gfx}, m_sa
 	m_sample_shading = features.sampleRateShading;
 }
 
-Pipeline Pipes::get(vk::RenderPass rp, State const& state, VertexLayout const& vlayout, Shader::Program const& shader) {
+Pipeline Pipes::get(vk::RenderPass rp, State const& state, VertexInput const& vinput, Shader::Program const& shader) {
 	auto const key = Key{
 		.state = state,
 		.shader_hash = make_combined_hash(shader.vert.id.view(), shader.frag.id.view()),
-		.vertex_layout_hash = vlayout.hash(),
+		.vertex_input_hash = vinput.hash(),
 	};
 	auto lock = Lock{m_mutex};
 	auto& map = m_map[key];
 	populate(lock, map, shader);
 	auto& ret = map.pipelines[rp];
-	if (!ret) { ret = make_pipeline(state, vlayout, shader.vert.spir_v, shader.frag.spir_v, *map.pipeline_layout, rp); }
+	if (!ret) { ret = make_pipeline(state, vinput, shader.vert.spir_v, shader.frag.spir_v, *map.pipeline_layout, rp); }
 	return {*ret, *map.pipeline_layout, &*map.set_pools.get(), &m_gfx.shared->device_limits};
 }
 
@@ -196,12 +196,12 @@ vk::UniquePipelineLayout Pipes::make_pipeline_layout(std::span<vk::DescriptorSet
 	return m_gfx.device.createPipelineLayoutUnique(plci);
 }
 
-vk::UniquePipeline Pipes::make_pipeline(State const& state, VertexLayout const& vlayout, SpirV::View vert, SpirV::View frag, vk::PipelineLayout layout,
+vk::UniquePipeline Pipes::make_pipeline(State const& state, VertexInput const& vinput, SpirV::View vert, SpirV::View frag, vk::PipelineLayout layout,
 										vk::RenderPass rp) const {
 	auto v = make_shader_module(m_gfx.device, vert);
 	auto f = make_shader_module(m_gfx.device, frag);
 	auto const info = PipeInfo{
-		.vlayout = vlayout,
+		.vinput = vinput,
 		.state = state,
 		.vert = *v,
 		.frag = *f,

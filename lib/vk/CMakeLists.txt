@@ -89,6 +89,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   src/static_mesh.cpp
   src/swapchain.cpp
   src/texture.cpp
+  src/vertex_layout.cpp
   src/vk.cpp
   src/vma.cpp
 )

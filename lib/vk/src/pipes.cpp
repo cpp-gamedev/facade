@@ -2,7 +2,6 @@
 #include <facade/util/hash_combine.hpp>
 #include <facade/vk/geometry.hpp>
 #include <facade/vk/pipes.hpp>
-#include <facade/vk/static_mesh.hpp>
 #include <spirv_glsl.hpp>
 #include <map>
 

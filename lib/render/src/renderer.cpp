@@ -6,7 +6,6 @@
 #include <facade/vk/pipes.hpp>
 #include <facade/vk/render_frame.hpp>
 #include <facade/vk/render_pass.hpp>
-#include <facade/vk/static_mesh.hpp>
 #include <facade/vk/swapchain.hpp>
 
 namespace facade {

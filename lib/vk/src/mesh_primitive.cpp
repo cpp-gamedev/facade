@@ -23,18 +23,27 @@ struct Writer {
 	}
 };
 
-VertexLayout instanced_vertex_layout() {
+VertexLayout common_vertex_layout() {
 	auto ret = VertexLayout{};
-
+	// position
 	ret.input.bindings.insert(vk::VertexInputBindingDescription{0, sizeof(glm::vec3)});
 	ret.input.attributes.insert(vk::VertexInputAttributeDescription{0, 0, vk::Format::eR32G32B32Sfloat});
+	// rgb
 	ret.input.bindings.insert(vk::VertexInputBindingDescription{1, sizeof(glm::vec3)});
 	ret.input.attributes.insert(vk::VertexInputAttributeDescription{1, 1, vk::Format::eR32G32B32Sfloat});
+	// normal
 	ret.input.bindings.insert(vk::VertexInputBindingDescription{2, sizeof(glm::vec3)});
 	ret.input.attributes.insert(vk::VertexInputAttributeDescription{2, 2, vk::Format::eR32G32B32Sfloat});
+	// uv
 	ret.input.bindings.insert(vk::VertexInputBindingDescription{3, sizeof(glm::vec2)});
 	ret.input.attributes.insert(vk::VertexInputAttributeDescription{3, 3, vk::Format::eR32G32Sfloat});
+	return ret;
+}
 
+VertexLayout instanced_vertex_layout() {
+	auto ret = common_vertex_layout();
+
+	// instance matrix
 	ret.input.bindings.insert(vk::VertexInputBindingDescription{6, sizeof(glm::mat4x4), vk::VertexInputRate::eInstance});
 	ret.input.attributes.insert(vk::VertexInputAttributeDescription{6, 6, vk::Format::eR32G32B32A32Sfloat, 0 * sizeof(glm::vec4)});
 	ret.input.attributes.insert(vk::VertexInputAttributeDescription{7, 6, vk::Format::eR32G32B32A32Sfloat, 1 * sizeof(glm::vec4)});
@@ -47,19 +56,12 @@ VertexLayout instanced_vertex_layout() {
 }
 
 VertexLayout skinned_vertex_layout() {
-	auto ret = VertexLayout{};
+	auto ret = common_vertex_layout();
 
-	ret.input.bindings.insert(vk::VertexInputBindingDescription{0, sizeof(glm::vec3)});
-	ret.input.attributes.insert(vk::VertexInputAttributeDescription{0, 0, vk::Format::eR32G32B32Sfloat});
-	ret.input.bindings.insert(vk::VertexInputBindingDescription{1, sizeof(glm::vec3)});
-	ret.input.attributes.insert(vk::VertexInputAttributeDescription{1, 1, vk::Format::eR32G32B32Sfloat});
-	ret.input.bindings.insert(vk::VertexInputBindingDescription{2, sizeof(glm::vec3)});
-	ret.input.attributes.insert(vk::VertexInputAttributeDescription{2, 2, vk::Format::eR32G32B32Sfloat});
-	ret.input.bindings.insert(vk::VertexInputBindingDescription{3, sizeof(glm::vec2)});
-	ret.input.attributes.insert(vk::VertexInputAttributeDescription{3, 3, vk::Format::eR32G32Sfloat});
-
+	// joints
 	ret.input.bindings.insert(vk::VertexInputBindingDescription{4, sizeof(glm::uvec4)});
 	ret.input.attributes.insert(vk::VertexInputAttributeDescription{4, 4, vk::Format::eR32G32B32A32Uint});
+	// weights
 	ret.input.bindings.insert(vk::VertexInputBindingDescription{5, sizeof(glm::vec4)});
 	ret.input.attributes.insert(vk::VertexInputAttributeDescription{5, 5, vk::Format::eR32G32B32A32Sfloat});
 
@@ -125,6 +127,7 @@ UniqueBuffer MeshPrimitive::Builder::upload(vk::CommandBuffer cb, Geometry::Pack
 }
 
 UniqueBuffer MeshPrimitive::Builder::upload(vk::CommandBuffer cb, std::span<glm::uvec4 const> joints, std::span<glm::vec4 const> weights) {
+	assert(joints.size() >= weights.size());
 	auto const size = joints.size_bytes() + weights.size_bytes();
 	m_ret.m_jwbo.swap(m_gfx.vma.make_buffer(v_flags_v, size, false));
 	auto staging = m_gfx.vma.make_buffer(vk::BufferUsageFlagBits::eTransferSrc, size, true);

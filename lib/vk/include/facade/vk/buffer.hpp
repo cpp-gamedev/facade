@@ -65,7 +65,7 @@ class Buffer::Pool {
 	Buffer::Type m_type{};
 };
 
-template <typename Type>
+template <typename T>
 class Buffer::VecPool : public Pool {
   public:
 	explicit VecPool(Buffer::Type type) : Pool(type) {}
@@ -89,6 +89,6 @@ class Buffer::VecPool : public Pool {
 	}
 
   private:
-	std::vector<Type> m_vec{};
+	std::vector<T> m_vec{};
 };
 } // namespace facade

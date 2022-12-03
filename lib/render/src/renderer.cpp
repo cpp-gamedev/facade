@@ -164,25 +164,6 @@ bool Renderer::next_frame(std::span<vk::CommandBuffer> out) {
 	return fill_and_return();
 }
 
-Pipeline Renderer::bind_pipeline(vk::CommandBuffer cb, VertexInput const& vlayout, Pipeline::State state, RenderShader shader) {
-	// obtain pipeline and bind it
-	auto const vert = m_impl->shader_db.find(shader.vert);
-	auto const frag = m_impl->shader_db.find(shader.frag);
-	if (!vert) { throw Error{fmt::format("Failed to find vertex shader: {}", shader.vert)}; }
-	if (!vert) { throw Error{fmt::format("Failed to find fragment shader: {}", shader.frag)}; }
-	if (vlayout.attributes.empty() || vlayout.bindings.empty()) { throw Error{fmt::format("Invalid vertex layout")}; }
-	auto ret = m_impl->pipes.get(m_impl->render_pass.render_pass(), state, vlayout, {vert, frag});
-	ret.bind(cb);
-
-	// set viewport and scissor
-	glm::vec2 const extent = glm::uvec2{m_impl->render_target->extent.width, m_impl->render_target->extent.height};
-	auto viewport = vk::Viewport{0.0f, extent.y, extent.x, -extent.y, 0.0f, 1.0f};
-	auto scissor = vk::Rect2D{{}, m_impl->render_target->extent};
-	cb.setViewport(0u, viewport);
-	cb.setScissor(0u, scissor);
-	return ret;
-}
-
 Pipeline Renderer::bind_pipeline(vk::CommandBuffer cb, VertexLayout const& vlayout, Pipeline::State state, Shader::Id id_frag) {
 	auto const vert = m_impl->shader_db.find(vlayout.shader);
 	auto const frag = m_impl->shader_db.find(id_frag);

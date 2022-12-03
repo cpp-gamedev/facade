@@ -155,6 +155,15 @@ bool Scene::select_camera(Id<Node> target) {
 	return false;
 }
 
+Ptr<Node const> Scene::parent(Id<Node> id) const {
+	for (auto& node : m_storage.resources.nodes.view()) {
+		if (std::find(node.children.begin(), node.children.end(), id) != node.children.end()) { return &node; }
+	}
+	return {};
+}
+
+Ptr<Node> Scene::parent(Id<Node> id) { return const_cast<Node*>(std::as_const(*this).parent(id)); }
+
 Texture Scene::make_texture(Image::View image) const { return Texture{m_gfx, default_sampler(), image}; }
 
 void Scene::tick(float dt) {

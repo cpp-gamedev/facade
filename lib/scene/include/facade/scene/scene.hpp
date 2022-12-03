@@ -161,6 +161,19 @@ class Scene {
 	bool select_camera(Id<Node> target);
 
 	///
+	/// \brief Find the parent node (if any).
+	/// \param id Id of Node whose parent to search for
+	/// \returns Pointer to parent if found
+	///
+	Ptr<Node const> parent(Id<Node> id) const;
+	///
+	/// \brief Find the parent node (if any).
+	/// \param id Id of Node whose parent to search for
+	/// \returns Pointer to parent if found
+	///
+	Ptr<Node> parent(Id<Node> id);
+
+	///
 	/// \brief Obtain the default Sampler.
 	///
 	vk::Sampler default_sampler() const { return m_sampler.sampler(); }

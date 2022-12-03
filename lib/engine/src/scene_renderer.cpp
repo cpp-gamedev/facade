@@ -88,11 +88,17 @@ BufferView SceneRenderer::make_instance_mats(std::span<Transform const> instance
 	return m_instances.rewrite(m_gfx, instances.empty() ? 1u : instances.size(), rewrite).view();
 }
 
+glm::mat4 global_mat(Scene const& scene, Node const& node) {
+	auto const ret = node.transform.matrix();
+	if (auto const* parent = scene.parent(node.self)) { return global_mat(scene, *parent) * ret; }
+	return ret;
+}
+
 DescriptorBuffer SceneRenderer::make_joint_mats(Skin const& skin, glm::mat4x4 const& parent) {
 	auto const& resources = m_scene->resources();
 	auto rewrite = [&](std::vector<glm::mat4x4>& mats) {
 		for (auto const& [j, ibm] : zip_ranges(skin.joints, skin.inverse_bind_matrices)) {
-			mats.push_back(parent * resources.nodes[j].transform.matrix() * ibm);
+			mats.push_back(parent * global_mat(*m_scene, resources.nodes[j]) * ibm);
 		}
 	};
 	return m_joints.rewrite(m_gfx, skin.joints.size(), rewrite).descriptor_buffer();
@@ -100,7 +106,7 @@ DescriptorBuffer SceneRenderer::make_joint_mats(Skin const& skin, glm::mat4x4 co
 
 void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Skybox const& skybox) {
 	auto const& vlayout = skybox.mesh().vertex_layout();
-	auto pipeline = renderer.bind_pipeline(cb, vlayout.input, {.depth_test = false}, {vlayout.shader, "skybox.frag"});
+	auto pipeline = renderer.bind_pipeline(cb, vlayout, {.depth_test = false}, "skybox.frag");
 	pipeline.set_line_width(1.0f);
 	update_view(pipeline);
 	auto& set1 = pipeline.next_set(1);
@@ -129,8 +135,7 @@ void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Node const&
 			auto const& mesh_primitive = resources.primitives[primitive.primitive];
 			VertexLayout const& vlayout = mesh_primitive.vertex_layout();
 			auto const& material = primitive.material ? resources.materials[primitive.material->value()] : m_material;
-			auto shader = RenderShader{vlayout.shader, frag_shader(material)};
-			auto pipeline = renderer.bind_pipeline(cb, vlayout.input, state, shader);
+			auto pipeline = renderer.bind_pipeline(cb, vlayout, state, frag_shader(material));
 			pipeline.set_line_width(m_scene->render_mode.line_width);
 			update_view(pipeline);
 			material.write_sets(pipeline, store);

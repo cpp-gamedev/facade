@@ -96,12 +96,11 @@ class Renderer {
 	///
 	/// \brief Get or create a Vulkan Pipeline, bind it, and return a corresponding Pipeline.
 	/// \param cb Command buffer to use to bind pipeline
+	/// \param vlayout Vertex Layout to use to find / create a Vulkan Pipeline
 	/// \param state Pipeline state to use to find / create a Vulkan Pipeline
-	/// \param shader_id Shader Id to use to find / create a Vulkan Pipeline
+	/// \param id_frag Fragment shader Id to use to find / create a Vulkan Pipeline
 	/// \returns Pipeline with corresponding descriptor sets to write to
 	///
-	Pipeline bind_pipeline(vk::CommandBuffer cb, VertexInput const& vlayout, Pipeline::State state = {}, RenderShader shader = {});
-	// TODO: remove above
 	Pipeline bind_pipeline(vk::CommandBuffer cb, VertexLayout const& vlayout, Pipeline::State state = {}, Shader::Id id_frag = "lit.frag");
 	///
 	/// \brief Execute render pass and submit all recorded command buffers to the graphics queue.

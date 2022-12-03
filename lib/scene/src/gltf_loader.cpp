@@ -7,6 +7,7 @@
 #include <facade/vk/geometry.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
 #include <gltf2cpp/gltf2cpp.hpp>
+#include <span>
 
 namespace facade {
 namespace {
@@ -94,10 +95,10 @@ Material to_material(gltf2cpp::Material const& material) {
 
 glm::mat4x4 from_gltf(gltf2cpp::Mat4x4 const& in) {
 	auto ret = glm::mat4x4{};
-	ret[0] = {in[0][0], in[0][1], in[0][2], in[0][3]};
-	ret[1] = {in[1][0], in[1][1], in[1][2], in[1][3]};
-	ret[2] = {in[2][0], in[2][1], in[2][2], in[2][3]};
-	ret[3] = {in[3][0], in[3][1], in[3][2], in[3][3]};
+	std::memcpy(&ret[0], &in[0], sizeof(ret[0]));
+	std::memcpy(&ret[1], &in[1], sizeof(ret[1]));
+	std::memcpy(&ret[2], &in[2], sizeof(ret[2]));
+	std::memcpy(&ret[3], &in[3], sizeof(ret[3]));
 	return ret;
 }
 
@@ -105,7 +106,7 @@ template <glm::length_t Dim>
 std::vector<glm::vec<Dim, float>> from_gltf(std::vector<gltf2cpp::Vec<Dim>> const in) {
 	if (in.empty()) { return {}; }
 	auto ret = std::vector<glm::vec<Dim, float>>(in.size());
-	std::memcpy(ret.data(), in.data(), std::span{in}.size_bytes());
+	std::memcpy(ret.data(), in.data(), std::span<gltf2cpp::Vec<Dim> const>{in}.size_bytes());
 	return ret;
 }
 
@@ -174,7 +175,7 @@ Transform to_transform(gltf2cpp::Transform const& transform) {
 	auto visitor = Visitor{
 		[&ret](gltf2cpp::Trs const& trs) {
 			ret.set_position({trs.translation[0], trs.translation[1], trs.translation[2]});
-			ret.set_orientation({trs.rotation[0], trs.rotation[1], trs.rotation[2], trs.rotation[3]});
+			ret.set_orientation({trs.rotation[3], trs.rotation[0], trs.rotation[1], trs.rotation[2]});
 			ret.set_scale({trs.scale[0], trs.scale[1], trs.scale[2]});
 		},
 		[&ret](gltf2cpp::Mat4x4 const& mat) {

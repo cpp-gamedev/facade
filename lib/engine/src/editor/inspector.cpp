@@ -58,7 +58,7 @@ void ResourceInspector::view(Texture const& texture, Id<Texture> id) const {
 	}
 }
 
-void ResourceInspector::view(StaticMesh const& mesh, Id<StaticMesh> id) const {
+void ResourceInspector::view(MeshPrimitive const& mesh, Id<MeshPrimitive> id) const {
 	auto const name = FixedString<128>{"{} ({})", mesh.name(), id};
 	auto tn = TreeNode{name.c_str()};
 	drag_payload(id, name.c_str());
@@ -86,12 +86,8 @@ void ResourceInspector::edit(Mesh& out_mesh, Id<Mesh> id) const {
 		auto to_erase = std::optional<std::size_t>{};
 		for (auto [primitive, index] : enumerate(out_mesh.primitives)) {
 			if (auto tn = TreeNode{FixedString{"Primitive [{}]", index}.c_str()}) {
-				if (primitive.skinned_mesh) {
-					// TODO
-				} else {
-					name = FixedString<128>{"{} ({})", m_resources.static_meshes[primitive.static_mesh].name(), primitive.static_mesh};
-					make_id_slot(primitive.static_mesh, "Static Mesh", name.c_str());
-				}
+				name = FixedString<128>{"{} ({})", m_resources.primitives[primitive.primitive].name(), primitive.primitive};
+				make_id_slot(primitive.primitive, "Mesh Primitive", name.c_str());
 
 				name = {};
 				if (primitive.material) { name = FixedString<128>{"{} ({})", m_resources.materials[*primitive.material].name, *primitive.material}; }
@@ -106,7 +102,7 @@ void ResourceInspector::edit(Mesh& out_mesh, Id<Mesh> id) const {
 		if (ImGui::SmallButton("+###add_primitive")) {
 			if (!out_mesh.primitives.empty()) {
 				out_mesh.primitives.push_back(out_mesh.primitives.front());
-			} else if (!m_resources.static_meshes.empty()) {
+			} else if (!m_resources.primitives.empty()) {
 				out_mesh.primitives.push_back({});
 			}
 		}

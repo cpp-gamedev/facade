@@ -53,6 +53,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/vk/descriptor_set.hpp
   include/${target_prefix}/vk/geometry.hpp
   include/${target_prefix}/vk/gfx.hpp
+  include/${target_prefix}/vk/mesh_primitive.hpp
   include/${target_prefix}/vk/pipeline.hpp
   include/${target_prefix}/vk/pipes.hpp
   include/${target_prefix}/vk/render_frame.hpp
@@ -77,6 +78,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   src/descriptor_set.cpp
   src/geometry.cpp
   src/gfx.cpp
+  src/mesh_primitive.cpp
   src/pipeline.cpp
   src/pipes.cpp
   src/render_frame.cpp

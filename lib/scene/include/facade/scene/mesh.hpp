@@ -3,8 +3,7 @@
 #include <optional>
 
 namespace facade {
-class StaticMesh;
-class SkinnedMesh;
+class MeshPrimitive;
 struct Material;
 
 ///
@@ -28,11 +27,9 @@ struct Mesh {
 	///
 	struct Primitive {
 		///
-		/// \brief Id of the StaticMesh this primitive uses.
+		/// \brief Id of the MeshPrimitive this primitive uses.
 		///
-		Id<StaticMesh> static_mesh{};
-
-		std::optional<Id<SkinnedMesh>> skinned_mesh{};
+		Id<MeshPrimitive> primitive{};
 		///
 		/// \brief Id of the Material this primitive uses.
 		///

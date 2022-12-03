@@ -14,13 +14,13 @@ void ResourceBrowser::display(NotClosed<Window> target, Scene& out_scene) {
 	auto const ri = ResourceInspector{target, out_scene};
 	auto& resources = out_scene.resources();
 	static constexpr auto flags_v = ImGuiTreeNodeFlags_Framed;
-	bool material{}, mesh{}, static_mesh{};
+	bool material{}, mesh{}, primitive{};
 	if (auto tn = TreeNode("Textures", flags_v)) {
 		for (auto [texture, id] : enumerate(resources.textures.view())) { ri.view(texture, id); }
 	}
-	if (auto tn = TreeNode("Static Meshes", flags_v)) {
-		for (auto [static_mesh, id] : enumerate(resources.static_meshes.view())) { ri.view(static_mesh, id); }
-		if (ImGui::Button("Add...")) { static_mesh = true; }
+	if (auto tn = TreeNode("Mesh Primitives", flags_v)) {
+		for (auto [primitive, id] : enumerate(resources.primitives.view())) { ri.view(primitive, id); }
+		if (ImGui::Button("Add...")) { primitive = true; }
 	}
 	if (auto tn = TreeNode("Materials", flags_v)) {
 		for (auto [material, id] : enumerate(resources.materials.view())) { ri.edit(material, id); }
@@ -33,7 +33,7 @@ void ResourceBrowser::display(NotClosed<Window> target, Scene& out_scene) {
 
 	add_mesh(mesh);
 	add_material(material);
-	add_static_mesh(static_mesh);
+	add_mesh_primitive(primitive);
 }
 
 void ResourceBrowser::add_mesh(bool trigger) {
@@ -72,58 +72,58 @@ void ResourceBrowser::add_material(bool trigger) {
 	}
 }
 
-void ResourceBrowser::add_static_mesh(bool trigger) {
-	if (trigger) { Popup::open("Add Static Mesh"); }
-	if (auto popup = Popup{"Add Static Mesh"}) {
-		if (m_data.static_mesh.buffer.empty()) { m_data.static_mesh.buffer.resize(128, '\0'); }
-		auto& sm = m_data.static_mesh;
+void ResourceBrowser::add_mesh_primitive(bool trigger) {
+	if (trigger) { Popup::open("Add Mesh Primitive"); }
+	if (auto popup = Popup{"Add Mesh Primitive"}) {
+		if (m_data.primitive.buffer.empty()) { m_data.primitive.buffer.resize(128, '\0'); }
+		auto& prim = m_data.primitive;
 		auto const reflect = Reflector{*m_target};
 		if (trigger) { ImGui::SetKeyboardFocusHere(); }
-		ImGui::InputText("Name", sm.buffer.data(), sm.buffer.size());
+		ImGui::InputText("Name", prim.buffer.data(), prim.buffer.size());
 		ImGui::Separator();
-		if (auto tab = TabBar{"Static Mesh"}) {
+		if (auto tab = TabBar{"Mesh Primitive"}) {
 			if (auto item = TabBar::Item{tab, "Cube"}) {
-				reflect("Dimensions", sm.cube.size, 0.05f, 0.01f, Reflector::max_v);
-				reflect("Vertex Colour", Reflector::AsRgb{sm.cube.vertex_rgb});
-				sm.type = SmType::eCube;
+				reflect("Dimensions", prim.cube.size, 0.05f, 0.01f, Reflector::max_v);
+				reflect("Vertex Colour", Reflector::AsRgb{prim.cube.vertex_rgb});
+				prim.type = SmType::eCube;
 			}
 			if (auto item = TabBar::Item{tab, "Sphere"}) {
-				ImGui::DragFloat("Diameter", &sm.sphere.diameter, 0.05f, 0.01f, Reflector::max_v);
-				reflect("Vertex Colour", Reflector::AsRgb{sm.sphere.vertex_rgb});
-				ImGui::SliderInt("Quads per side", &sm.sphere.quads_per_side, 1, 128);
-				sm.type = SmType::eSphere;
+				ImGui::DragFloat("Diameter", &prim.sphere.diameter, 0.05f, 0.01f, Reflector::max_v);
+				reflect("Vertex Colour", Reflector::AsRgb{prim.sphere.vertex_rgb});
+				ImGui::SliderInt("Quads per side", &prim.sphere.quads_per_side, 1, 128);
+				prim.type = SmType::eSphere;
 			}
 			auto cylinder = TabBar::Item{tab, "Cylinder"};
 			auto cone = TabBar::Item{tab, "Cone"};
 			if (cylinder || cone) {
-				ImGui::DragFloat("Diameter (xz)", &sm.conic.xz_diam, 0.05f, 0.01f, Reflector::max_v);
-				ImGui::DragFloat("Height (y)", &sm.conic.y_height, 0.05f, 0.01f, Reflector::max_v);
-				reflect("Vertex Colour", Reflector::AsRgb{sm.conic.vertex_rgb});
-				ImGui::SliderInt("Points", &sm.conic.xz_points, 6, 1024);
-				sm.type = cylinder ? SmType::eCylinder : SmType::eCone;
+				ImGui::DragFloat("Diameter (xz)", &prim.conic.xz_diam, 0.05f, 0.01f, Reflector::max_v);
+				ImGui::DragFloat("Height (y)", &prim.conic.y_height, 0.05f, 0.01f, Reflector::max_v);
+				reflect("Vertex Colour", Reflector::AsRgb{prim.conic.vertex_rgb});
+				ImGui::SliderInt("Points", &prim.conic.xz_points, 6, 1024);
+				prim.type = cylinder ? SmType::eCylinder : SmType::eCone;
 			}
 			if (auto item = TabBar::Item{tab, "Arrow"}) {
-				ImGui::DragFloat("Diameter (xz)", &sm.arrow.stalk_diam, 0.05f, 0.01f, Reflector::max_v);
-				ImGui::DragFloat("Height (y)", &sm.arrow.stalk_height, 0.05f, 0.01f, Reflector::max_v);
-				reflect("Vertex Colour", Reflector::AsRgb{sm.arrow.vertex_rgb});
-				ImGui::SliderInt("Points", &sm.arrow.xz_points, 6, 1024);
-				sm.type = SmType::eArrow;
+				ImGui::DragFloat("Diameter (xz)", &prim.arrow.stalk_diam, 0.05f, 0.01f, Reflector::max_v);
+				ImGui::DragFloat("Height (y)", &prim.arrow.stalk_height, 0.05f, 0.01f, Reflector::max_v);
+				reflect("Vertex Colour", Reflector::AsRgb{prim.arrow.vertex_rgb});
+				ImGui::SliderInt("Points", &prim.arrow.xz_points, 6, 1024);
+				prim.type = SmType::eArrow;
 			}
 		}
-		if (ImGui::Button("Add") && *sm.buffer.c_str()) {
-			auto const qps = static_cast<std::uint32_t>(sm.sphere.quads_per_side);
-			auto const conic_pts = static_cast<std::uint32_t>(sm.conic.xz_points);
-			auto const arrow_pts = static_cast<std::uint32_t>(sm.arrow.xz_points);
+		if (ImGui::Button("Add") && *prim.buffer.c_str()) {
+			auto const qps = static_cast<std::uint32_t>(prim.sphere.quads_per_side);
+			auto const conic_pts = static_cast<std::uint32_t>(prim.conic.xz_points);
+			auto const arrow_pts = static_cast<std::uint32_t>(prim.arrow.xz_points);
 			auto geometry = Geometry{};
-			switch (sm.type) {
-			case SmType::eCube: geometry = make_cube(sm.cube.size, sm.cube.vertex_rgb); break;
-			case SmType::eSphere: geometry = make_cubed_sphere(sm.sphere.diameter, qps, sm.sphere.vertex_rgb); break;
-			case SmType::eCone: geometry = make_cone(sm.conic.xz_diam, sm.conic.y_height, conic_pts); break;
-			case SmType::eCylinder: geometry = make_cylinder(sm.conic.xz_diam, sm.conic.y_height, conic_pts); break;
-			case SmType::eArrow: geometry = make_arrow(sm.arrow.stalk_diam, sm.arrow.stalk_height, arrow_pts, sm.arrow.vertex_rgb); break;
-			default: logger::warn("Unknown static mesh type"); break;
+			switch (prim.type) {
+			case SmType::eCube: geometry = make_cube(prim.cube.size, prim.cube.vertex_rgb); break;
+			case SmType::eSphere: geometry = make_cubed_sphere(prim.sphere.diameter, qps, prim.sphere.vertex_rgb); break;
+			case SmType::eCone: geometry = make_cone(prim.conic.xz_diam, prim.conic.y_height, conic_pts); break;
+			case SmType::eCylinder: geometry = make_cylinder(prim.conic.xz_diam, prim.conic.y_height, conic_pts); break;
+			case SmType::eArrow: geometry = make_arrow(prim.arrow.stalk_diam, prim.arrow.stalk_height, arrow_pts, prim.arrow.vertex_rgb); break;
+			default: logger::warn("Unknown mesh primitive type"); break;
 			}
-			if (!geometry.vertices.empty()) { m_scene->add(Geometry::Packed::from(geometry), sm.buffer.c_str()); }
+			if (!geometry.vertices.empty()) { m_scene->add(Geometry::Packed::from(geometry), prim.buffer.c_str()); }
 			Popup::close_current();
 		}
 	}

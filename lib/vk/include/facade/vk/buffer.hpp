@@ -71,7 +71,7 @@ class Buffer::VecPool : public Pool {
 	explicit VecPool(Buffer::Type type) : Pool(type) {}
 
 	template <typename F>
-	BufferView rewrite(Gfx const& gfx, std::size_t reserve, F func) {
+	Buffer const& rewrite(Gfx const& gfx, std::size_t reserve, F func) {
 		clear(reserve);
 		func(m_vec);
 		return update(gfx);
@@ -82,10 +82,10 @@ class Buffer::VecPool : public Pool {
 		m_vec.reserve(reserve);
 	}
 
-	BufferView update(Gfx const& gfx) {
+	Buffer const& update(Gfx const& gfx) {
 		auto& ret = get(gfx);
 		ret.write(std::span{m_vec});
-		return ret.view();
+		return ret;
 	}
 
   private:

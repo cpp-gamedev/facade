@@ -7,8 +7,7 @@
 #include <facade/scene/resource_array.hpp>
 #include <facade/scene/skin.hpp>
 #include <facade/util/type_id.hpp>
-#include <facade/vk/skinned_mesh.hpp>
-#include <facade/vk/static_mesh.hpp>
+#include <facade/vk/mesh_primitive.hpp>
 #include <facade/vk/texture.hpp>
 
 namespace facade {
@@ -20,8 +19,7 @@ struct SceneResources {
 	ResourceArray<Camera> cameras{};
 	ResourceArray<Sampler> samplers{};
 	ResourceArray<Material> materials{};
-	ResourceArray<StaticMesh> static_meshes{};
-	ResourceArray<SkinnedMesh> skinned_meshes{};
+	ResourceArray<MeshPrimitive> primitives{};
 	ResourceArray<Skin> skins{};
 	ResourceArray<Texture> textures{};
 	ResourceArray<Mesh> meshes{};

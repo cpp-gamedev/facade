@@ -27,7 +27,7 @@ class SceneRenderer {
 	void render(Renderer& renderer, vk::CommandBuffer cb, Skybox const& skybox);
 	void render(Renderer& renderer, vk::CommandBuffer cb, Node const& node, glm::mat4x4 parent = matrix_identity_v);
 	void draw(Renderer& renderer, vk::CommandBuffer cb, Node const& node, Mesh::Primitive const& primitive);
-	void draw(vk::CommandBuffer cb, StaticMesh const& static_mesh, BufferView instances);
+	void draw(vk::CommandBuffer cb, MeshPrimitive const& mesh, BufferView instances);
 
 	Gfx m_gfx;
 	Material m_material;

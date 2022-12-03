@@ -70,12 +70,12 @@ class Scene {
 	///
 	Id<Material> add(Material material);
 	///
-	/// \brief Add a StaticMesh.
-	/// \param geometry Geometry to initialize StaticMesh with
-	/// \returns Id to stored StaticMesh
+	/// \brief Add a MeshPrimitive.
+	/// \param geometry Geometry to initialize MeshPrimitive with
+	/// \returns Id to stored MeshPrimitive
 	///
 	// TODO: Overload for interleaved
-	Id<StaticMesh> add(Geometry::Packed const& geometry, std::string name = "(Unnamed)");
+	Id<MeshPrimitive> add(Geometry::Packed const& geometry, std::string name = "(Unnamed)");
 	///
 	/// \brief Add a Texture.
 	/// \param image Image to use for the Texture
@@ -107,21 +107,13 @@ class Scene {
 	///
 	std::vector<Texture> replace(std::vector<Texture>&& textures);
 	///
-	/// \brief Replace all static meshes in resources.
-	/// \param static_meshes StaticMesh instances to swap in
-	/// \returns Previously stored static meshes
+	/// \brief Replace all MeshPrimitive instances in resources.
+	/// \param primitives MeshPrimitive instances to swap in
+	/// \returns Previously stored primitives
 	///
 	/// Intended for loaders.
 	///
-	std::vector<StaticMesh> replace(std::vector<StaticMesh>&& static_meshes);
-	///
-	/// \brief Replace all skinned meshes in resources.
-	/// \param static_meshes SkinnedMesh instances to swap in
-	/// \returns Previously stored skinned meshes
-	///
-	/// Intended for loaders.
-	///
-	std::vector<SkinnedMesh> replace(std::vector<SkinnedMesh>&& skinned_meshes);
+	std::vector<MeshPrimitive> replace(std::vector<MeshPrimitive>&& primitives);
 
 	///
 	/// \brief Obtain the current Tree Id.

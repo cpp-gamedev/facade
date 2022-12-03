@@ -1,5 +1,5 @@
 #pragma once
-#include <facade/vk/static_mesh.hpp>
+#include <facade/vk/mesh_primitive.hpp>
 #include <facade/vk/texture.hpp>
 
 namespace facade {
@@ -13,12 +13,12 @@ class Skybox {
 	void set(std::span<Image::View const> images);
 	void reset();
 
-	StaticMesh const& static_mesh() const { return m_cube; }
+	MeshPrimitive const& mesh() const { return m_cube; }
 	Cubemap const& cubemap() const { return m_cubemap; }
 
   private:
 	Sampler m_sampler;
-	StaticMesh m_cube;
+	MeshPrimitive m_cube;
 	Cubemap m_cubemap;
 	Gfx m_gfx;
 };

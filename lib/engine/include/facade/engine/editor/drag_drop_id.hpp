@@ -7,6 +7,14 @@
 #include <typeinfo>
 
 namespace facade::editor {
+template <typename T>
+char const* truncated_name(T const&) {
+	static constexpr std::string_view trim{"facade"};
+	auto ret = std::string_view{typeid(T).name()};
+	if (auto it = ret.find(trim); it != std::string_view::npos) { ret = ret.substr(it + trim.size()); }
+	return ret.data();
+}
+
 ///
 /// \brief Initiate dragging an Id<T> drag-drop payload.
 /// \param out Id to store as the drag-drop payload
@@ -16,7 +24,7 @@ namespace facade::editor {
 template <typename T>
 bool drag_payload(Id<T> id, char const* label) {
 	if (ImGui::BeginDragDropSource()) {
-		ImGui::SetDragDropPayload(typeid(id).name(), &id, sizeof(id));
+		ImGui::SetDragDropPayload(truncated_name(id), &id, sizeof(id));
 		if (label && *label) { ImGui::Text("%s", label); }
 		ImGui::EndDragDropSource();
 		return true;
@@ -32,7 +40,7 @@ bool drag_payload(Id<T> id, char const* label) {
 template <typename T>
 bool accept_drop(Id<T>& out) {
 	if (ImGui::BeginDragDropTarget()) {
-		if (ImGuiPayload const* payload = ImGui::AcceptDragDropPayload(typeid(out).name())) {
+		if (ImGuiPayload const* payload = ImGui::AcceptDragDropPayload(truncated_name(out))) {
 			assert(payload->DataSize == sizeof(out));
 			out = *reinterpret_cast<Id<T>*>(payload->Data);
 			return true;

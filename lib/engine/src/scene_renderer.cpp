@@ -31,45 +31,6 @@ constexpr vk::PrimitiveTopology to_primitive_topology(Topology topology) {
 	}
 	throw Error{"Unsupported primitive topology: " + std::to_string(static_cast<int>(topology))};
 }
-
-constexpr VertexInput instanced_vertex_layout() {
-	auto ret = VertexInput{};
-	ret.bindings.insert(vk::VertexInputBindingDescription{0, sizeof(glm::vec3)});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{0, 0, vk::Format::eR32G32B32Sfloat});
-
-	ret.bindings.insert(vk::VertexInputBindingDescription{1, sizeof(glm::vec3)});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{1, 1, vk::Format::eR32G32B32Sfloat});
-
-	ret.bindings.insert(vk::VertexInputBindingDescription{2, sizeof(glm::vec3)});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{2, 2, vk::Format::eR32G32B32Sfloat});
-
-	ret.bindings.insert(vk::VertexInputBindingDescription{3, sizeof(glm::vec2)});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{3, 3, vk::Format::eR32G32Sfloat});
-
-	ret.bindings.insert(vk::VertexInputBindingDescription{6, sizeof(glm::mat4x4), vk::VertexInputRate::eInstance});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{6, 6, vk::Format::eR32G32B32A32Sfloat, 0 * sizeof(glm::vec4)});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{7, 6, vk::Format::eR32G32B32A32Sfloat, 1 * sizeof(glm::vec4)});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{8, 6, vk::Format::eR32G32B32A32Sfloat, 2 * sizeof(glm::vec4)});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{9, 6, vk::Format::eR32G32B32A32Sfloat, 3 * sizeof(glm::vec4)});
-	return ret;
-}
-
-constexpr VertexInput skinned_vertex_layout() {
-	auto ret = VertexInput{};
-	ret.bindings.insert(vk::VertexInputBindingDescription{0, sizeof(glm::vec3)});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{0, 0, vk::Format::eR32G32B32Sfloat});
-	ret.bindings.insert(vk::VertexInputBindingDescription{1, sizeof(glm::vec3)});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{1, 1, vk::Format::eR32G32B32Sfloat});
-	ret.bindings.insert(vk::VertexInputBindingDescription{2, sizeof(glm::vec3)});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{2, 2, vk::Format::eR32G32B32Sfloat});
-	ret.bindings.insert(vk::VertexInputBindingDescription{3, sizeof(glm::vec2)});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{3, 3, vk::Format::eR32G32Sfloat});
-	ret.bindings.insert(vk::VertexInputBindingDescription{4, sizeof(glm::uvec4)});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{4, 4, vk::Format::eR32G32B32A32Uint});
-	ret.bindings.insert(vk::VertexInputBindingDescription{5, sizeof(glm::vec4)});
-	ret.attributes.insert(vk::VertexInputAttributeDescription{5, 5, vk::Format::eR32G32B32A32Sfloat});
-	return ret;
-}
 } // namespace
 
 SceneRenderer::SceneRenderer(Gfx const& gfx)
@@ -138,20 +99,15 @@ DescriptorBuffer SceneRenderer::make_joint_mats(Skin const& skin, glm::mat4x4 co
 }
 
 void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Skybox const& skybox) {
-	auto pipeline = renderer.bind_pipeline(cb, instanced_vertex_layout(), {.depth_test = false}, {"default.vert", "skybox.frag"});
+	auto const& vlayout = skybox.mesh().vertex_layout();
+	auto pipeline = renderer.bind_pipeline(cb, vlayout.input, {.depth_test = false}, {vlayout.shader, "skybox.frag"});
 	pipeline.set_line_width(1.0f);
 	update_view(pipeline);
 	auto& set1 = pipeline.next_set(1);
 	set1.update(0, skybox.cubemap().descriptor_image());
 	pipeline.bind(set1);
 	auto const mat = glm::translate(matrix_identity_v, m_scene->camera().transform.position());
-	auto const buffer = make_instance_mats({}, mat);
-	draw(cb, skybox.static_mesh(), buffer);
-}
-
-Shader::Id vert_shader(std::optional<Id<SkinnedMesh>> sm) {
-	if (sm) { return "skinned.vert"; }
-	return "default.vert";
+	draw(cb, skybox.mesh(), make_instance_mats({}, mat));
 }
 
 Shader::Id frag_shader(Material const& mat) {
@@ -170,24 +126,22 @@ void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Node const&
 				.mode = m_scene->render_mode.type == RenderMode::Type::eWireframe ? vk::PolygonMode::eLine : vk::PolygonMode::eFill,
 				.topology = to_primitive_topology(primitive.topology),
 			};
-			VertexInput const vlayout = primitive.skinned_mesh ? skinned_vertex_layout() : instanced_vertex_layout();
+			auto const& mesh_primitive = resources.primitives[primitive.primitive];
+			VertexLayout const& vlayout = mesh_primitive.vertex_layout();
 			auto const& material = primitive.material ? resources.materials[primitive.material->value()] : m_material;
-			auto shader = RenderShader{vert_shader(primitive.skinned_mesh), frag_shader(material)};
-			auto pipeline = renderer.bind_pipeline(cb, vlayout, state, shader);
+			auto shader = RenderShader{vlayout.shader, frag_shader(material)};
+			auto pipeline = renderer.bind_pipeline(cb, vlayout.input, state, shader);
 			pipeline.set_line_width(m_scene->render_mode.line_width);
 			update_view(pipeline);
 			material.write_sets(pipeline, store);
 
-			if (primitive.skinned_mesh) {
+			if (mesh_primitive.has_joints()) {
 				auto& set3 = pipeline.next_set(3);
-				auto joints = make_joint_mats(resources.skins[*node.find<Skin>()], parent);
-				set3.update(0, DescriptorBuffer{joints.buffer, joints.size, vk::DescriptorType::eStorageBuffer});
+				set3.update(0, make_joint_mats(resources.skins[*node.find<Skin>()], parent));
 				pipeline.bind(set3);
-				auto const& mesh = resources.skinned_meshes[*primitive.skinned_mesh];
-				mesh.draw(cb);
+				draw(cb, mesh_primitive, {});
 			} else {
-				auto const& static_mesh = resources.static_meshes[primitive.static_mesh];
-				draw(cb, static_mesh, make_instance_mats(node.instances, parent));
+				draw(cb, mesh_primitive, make_instance_mats(node.instances, parent));
 			}
 		}
 	}
@@ -195,10 +149,14 @@ void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Node const&
 	for (auto const& id : node.children) { render(renderer, cb, m_scene->resources().nodes[id], parent); }
 }
 
-void SceneRenderer::draw(vk::CommandBuffer cb, StaticMesh const& static_mesh, BufferView instances) {
-	cb.bindVertexBuffers(6u, instances.buffer, vk::DeviceSize{0});
-	static_mesh.draw(cb, instances.count);
-	m_info.triangles_drawn += static_mesh.info().vertices / 3;
+void SceneRenderer::draw(vk::CommandBuffer cb, MeshPrimitive const& mesh, BufferView instances) {
+	if (instances.buffer) {
+		cb.bindVertexBuffers(6u, instances.buffer, vk::DeviceSize{0});
+		mesh.draw(cb, instances.count);
+	} else {
+		mesh.draw(cb, 1u);
+	}
+	m_info.triangles_drawn += mesh.info().vertices / 3;
 	++m_info.draw_calls;
 }
 } // namespace facade

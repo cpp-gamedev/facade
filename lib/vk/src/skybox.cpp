@@ -13,7 +13,7 @@ std::array<Image::View, 6> make_blank_cubemap_images() {
 } // namespace
 
 Skybox::Skybox(Gfx const& gfx)
-	: m_sampler(gfx), m_cube(gfx, Geometry::Packed::from(make_cube(glm::vec3{1.0f}))),
+	: m_sampler(gfx), m_cube(MeshPrimitive::Builder{gfx, "skybox"}(Geometry::Packed::from(make_cube(glm::vec3{1.0f})))),
 	  m_cubemap(gfx, m_sampler.sampler(), make_blank_cubemap_images(), "skybox"), m_gfx(gfx) {}
 
 void Skybox::set(std::span<Image::View const> images) { m_cubemap = {m_gfx, m_sampler.sampler(), images, "skybox"}; }

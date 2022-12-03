@@ -63,10 +63,8 @@ void run(AppOpts const& opts) {
 		auto material = LitMaterial{};
 		material.albedo = {1.0f, 0.0f, 0.0f};
 		auto material_id = scene.add(Material{std::move(material), "custom"});
-		// TODO: Undo using Packed
-		auto static_mesh_id = scene.add(Geometry::Packed::from(make_cubed_sphere(1.0f, 32)));
-		// auto static_mesh_id = scene.add(make_manipulator(0.125f, 1.0f, 16));
-		auto mesh_id = scene.add(Mesh{.primitives = {Mesh::Primitive{.static_mesh = static_mesh_id, .material = material_id}}});
+		auto primitive_id = scene.add(Geometry::Packed::from(make_cubed_sphere(1.0f, 32)));
+		auto mesh_id = scene.add(Mesh{.primitives = {Mesh::Primitive{.primitive = primitive_id, .material = material_id}}});
 
 		auto node = Node{};
 		node.attach(mesh_id);

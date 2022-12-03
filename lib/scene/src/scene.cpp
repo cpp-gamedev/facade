@@ -87,9 +87,9 @@ Id<Material> Scene::add(Material material) {
 	return id;
 }
 
-Id<StaticMesh> Scene::add(Geometry::Packed const& geometry, std::string name) {
-	auto const id = m_storage.resources.static_meshes.size();
-	m_storage.resources.static_meshes.m_array.emplace_back(m_gfx, geometry, std::move(name));
+Id<MeshPrimitive> Scene::add(Geometry::Packed const& geometry, std::string name) {
+	auto const id = m_storage.resources.primitives.size();
+	m_storage.resources.primitives.m_array.push_back(MeshPrimitive::Builder{m_gfx, std::move(name)}(geometry));
 	return id;
 }
 
@@ -129,12 +129,8 @@ Id<Node> Scene::add(Node node, std::optional<Id<Node>> parent) {
 
 std::vector<Texture> Scene::replace(std::vector<Texture>&& textures) { return std::exchange(m_storage.resources.textures.m_array, std::move(textures)); }
 
-std::vector<StaticMesh> Scene::replace(std::vector<StaticMesh>&& static_meshes) {
-	return std::exchange(m_storage.resources.static_meshes.m_array, std::move(static_meshes));
-}
-
-std::vector<SkinnedMesh> Scene::replace(std::vector<SkinnedMesh>&& skinned_meshes) {
-	return std::exchange(m_storage.resources.skinned_meshes.m_array, std::move(skinned_meshes));
+std::vector<MeshPrimitive> Scene::replace(std::vector<MeshPrimitive>&& static_meshes) {
+	return std::exchange(m_storage.resources.primitives.m_array, std::move(static_meshes));
 }
 
 bool Scene::load(Id<Tree> id) {
@@ -195,12 +191,8 @@ Id<Mesh> Scene::add_unchecked(Mesh mesh) {
 
 void Scene::check(Mesh const& mesh) const noexcept(false) {
 	for (auto const& primitive : mesh.primitives) {
-		if (primitive.skinned_mesh) {
-			if (*primitive.skinned_mesh >= m_storage.resources.skinned_meshes.size()) {
-				throw Error{fmt::format("Scene {}: Invalid Skinned Mesh Id: {}", m_name, *primitive.skinned_mesh)};
-			}
-		} else if (primitive.static_mesh >= m_storage.resources.static_meshes.size()) {
-			throw Error{fmt::format("Scene {}: Invalid Static Mesh Id: {}", m_name, primitive.static_mesh)};
+		if (primitive.primitive >= m_storage.resources.primitives.size()) {
+			throw Error{fmt::format("Scene {}: Invalid Skinned Mesh Id: {}", m_name, primitive.primitive)};
 		}
 		if (primitive.material && primitive.material->value() >= m_storage.resources.materials.size()) {
 			throw Error{fmt::format("Scene {}: Invalid Material Id: {}", m_name, *primitive.material)};

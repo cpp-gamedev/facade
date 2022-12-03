@@ -128,34 +128,24 @@ struct MeshLayout {
 		std::vector<Mesh::Primitive> primitives{};
 	};
 
-	struct Static {
+	struct Primitive {
 		Geometry::Packed geometry{};
-	};
-
-	struct Skinned : Static {
 		std::vector<glm::uvec4> joints{};
 		std::vector<glm::vec4> weights{};
 	};
 
-	std::vector<Static> static_meshes{};
-	std::vector<Skinned> skinned_meshes{};
+	std::vector<Primitive> primitives{};
 	std::vector<Data> data{};
 };
 
-MeshLayout::Skinned to_skinned_mesh_layout(gltf2cpp::Mesh::Primitive&& primitive) {
-	auto ret = MeshLayout::Skinned{};
+MeshLayout::Primitive to_mesh_layout_primitive(gltf2cpp::Mesh::Primitive&& primitive) {
+	auto ret = MeshLayout::Primitive{};
 	if (!primitive.geometry.joints.empty()) {
 		ret.joints.resize(primitive.geometry.joints[0].size());
 		std::memcpy(ret.joints.data(), primitive.geometry.joints[0].data(), std::span{primitive.geometry.joints[0]}.size_bytes());
 		ret.weights.resize(primitive.geometry.weights[0].size());
 		std::memcpy(ret.weights.data(), primitive.geometry.weights[0].data(), std::span{primitive.geometry.weights[0]}.size_bytes());
 	}
-	ret.geometry = to_geometry(std::move(primitive));
-	return ret;
-}
-
-MeshLayout::Static to_static_mesh_layout(gltf2cpp::Mesh::Primitive&& primitive) {
-	auto ret = MeshLayout::Static{};
 	ret.geometry = to_geometry(std::move(primitive));
 	return ret;
 }
@@ -167,21 +157,12 @@ MeshLayout to_mesh_layout(gltf2cpp::Root& out_root) {
 		data.name = std::move(mesh.name);
 		for (auto& primitive : mesh.primitives) {
 			auto const topology = to_topology(primitive.mode);
-			if (!primitive.geometry.joints.empty()) {
-				data.primitives.push_back(Mesh::Primitive{
-					.skinned_mesh = ret.skinned_meshes.size(),
-					.material = primitive.material,
-					.topology = topology,
-				});
-				ret.skinned_meshes.push_back(to_skinned_mesh_layout(std::move(primitive)));
-			} else {
-				data.primitives.push_back(Mesh::Primitive{
-					.static_mesh = ret.static_meshes.size(),
-					.material = primitive.material,
-					.topology = topology,
-				});
-				ret.static_meshes.push_back(to_static_mesh_layout(std::move(primitive)));
-			}
+			data.primitives.push_back(Mesh::Primitive{
+				.primitive = ret.primitives.size(),
+				.material = primitive.material,
+				.topology = topology,
+			});
+			ret.primitives.push_back(to_mesh_layout_primitive(std::move(primitive)));
 		}
 		ret.data.push_back(std::move(data));
 	}
@@ -380,25 +361,16 @@ bool Scene::GltfLoader::operator()(dj::Json const& json, DataProvider const& pro
 		}));
 	}
 
-	auto static_meshes = std::vector<MaybeFuture<StaticMesh>>{};
-	auto skinned_meshes = std::vector<MaybeFuture<SkinnedMesh>>{};
+	auto mesh_primitives = std::vector<MaybeFuture<MeshPrimitive>>{};
 	auto mesh_layout = to_mesh_layout(root);
-	static_meshes.reserve(mesh_layout.static_meshes.size());
-	skinned_meshes.reserve(mesh_layout.skinned_meshes.size());
+	mesh_primitives.reserve(mesh_layout.primitives.size());
 	for (auto& data : mesh_layout.data) {
 		for (auto [primitive, index] : enumerate(data.primitives)) {
 			auto name = fmt::format("{}_{}", data.name, index);
-			if (primitive.skinned_mesh) {
-				auto& mesh = mesh_layout.skinned_meshes[*primitive.skinned_mesh];
-				skinned_meshes.push_back(make_load_future(thread_pool, m_status.done, [mesh = std::move(mesh), name = std::move(name), this] {
-					return SkinnedMesh{m_scene.m_gfx, mesh.geometry, {mesh.joints, mesh.weights}, std::move(name)};
-				}));
-			} else {
-				auto& p = mesh_layout.static_meshes[primitive.static_mesh];
-				static_meshes.push_back(make_load_future(thread_pool, m_status.done, [p = std::move(p), n = std::move(name), this] {
-					return StaticMesh{m_scene.m_gfx, p.geometry, std::move(n)};
-				}));
-			}
+			auto& p = mesh_layout.primitives[primitive.primitive];
+			mesh_primitives.push_back(make_load_future(thread_pool, m_status.done, [p = std::move(p), n = std::move(name), this] {
+				return MeshPrimitive::Builder{m_scene.m_gfx, std::move(n)}(p.geometry, p.joints, p.weights);
+			}));
 		}
 	}
 
@@ -408,8 +380,7 @@ bool Scene::GltfLoader::operator()(dj::Json const& json, DataProvider const& pro
 	m_scene.m_storage.resources.nodes.m_array = to_nodes(root.nodes);
 
 	m_scene.replace(from_maybe_futures(std::move(textures)));
-	m_scene.replace(from_maybe_futures(std::move(static_meshes)));
-	m_scene.replace(from_maybe_futures(std::move(skinned_meshes)));
+	m_scene.replace(from_maybe_futures(std::move(mesh_primitives)));
 
 	m_status.stage = LoadStage::eBuildingScenes;
 	if (root.cameras.empty()) {

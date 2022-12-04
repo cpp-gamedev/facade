@@ -75,6 +75,7 @@ target_sources(${PROJECT_NAME} PRIVATE
   include/${target_prefix}/util/error.hpp
   include/${target_prefix}/util/fixed_string.hpp
   include/${target_prefix}/util/flex_array.hpp
+  include/${target_prefix}/util/hash_combine.hpp
   include/${target_prefix}/util/image.hpp
   include/${target_prefix}/util/logger.hpp
   include/${target_prefix}/util/mufo.hpp

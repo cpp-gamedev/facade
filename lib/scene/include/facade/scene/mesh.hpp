@@ -3,8 +3,20 @@
 #include <optional>
 
 namespace facade {
-class StaticMesh;
-class Material;
+class MeshPrimitive;
+struct Material;
+
+///
+/// \brief Primitive topology.
+///
+enum class Topology {
+	ePoints,
+	eLines,
+	eLineStrip,
+	eTriangles,
+	eTriangleStrip,
+	eTriangleFan,
+};
 
 ///
 /// \brief Represents a Mesh in a Scene.
@@ -15,13 +27,17 @@ struct Mesh {
 	///
 	struct Primitive {
 		///
-		/// \brief Id of the StaticMesh this primitive uses.
+		/// \brief Id of the MeshPrimitive this primitive uses.
 		///
-		Id<StaticMesh> static_mesh{};
+		Id<MeshPrimitive> primitive{};
 		///
 		/// \brief Id of the Material this primitive uses.
 		///
 		std::optional<Id<Material>> material{};
+		///
+		/// \brief Primitive topology.
+		///
+		Topology topology{Topology::eTriangles};
 	};
 
 	std::string name{"(Unnamed)"};

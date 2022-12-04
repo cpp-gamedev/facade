@@ -148,6 +148,11 @@ Texture::Texture(Gfx const& gfx, vk::Sampler sampler, Image::View image, CreateI
 		image = magenta_v;
 		mip_mapped = false;
 	}
+	if (image.bytes.empty()) {
+		logger::warn("[Texture] invalid image bytes: [empty]");
+		image = magenta_v;
+		mip_mapped = false;
+	}
 	if (mip_mapped && can_mip(m_gfx.gpu, m_info.format)) { m_info.mip_levels = mip_levels({image.extent.x, image.extent.y}); }
 	m_image = make_image(m_gfx, {&image, 1}, m_info, vk::ImageViewType::e2D);
 	m_layout = vk::ImageLayout::eShaderReadOnlyOptimal;

@@ -80,6 +80,8 @@ class FixedString {
 		return *this;
 	}
 
+	bool operator==(FixedString const& rhs) const { return view() == rhs.view(); }
+
   private:
 	char m_buffer[Capacity + 1]{};
 	std::size_t m_size{};

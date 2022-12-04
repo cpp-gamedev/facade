@@ -52,4 +52,5 @@ add_subdirectory(src/djson)
 add_subdirectory(src/fmt)
 
 set(GLTF2CPP_DYNARRAY_DEBUG_VIEW ON)
+set(GLTF2CPP_BUILD_TESTS ON)
 add_subdirectory(src/gltf2cpp)

@@ -65,6 +65,18 @@ Geometry& Geometry::append_cube(glm::vec3 size, glm::vec3 rgb, glm::vec3 const o
 
 	return append(vs, is);
 }
+
+Geometry::Packed Geometry::Packed::from(Geometry const& geometry) {
+	auto ret = Packed{};
+	for (auto const& vertex : geometry.vertices) {
+		ret.positions.push_back(vertex.position);
+		ret.rgbs.push_back(vertex.rgb);
+		ret.normals.push_back(vertex.normal);
+		ret.uvs.push_back(vertex.uv);
+	}
+	ret.indices = geometry.indices;
+	return ret;
+}
 } // namespace facade
 
 auto facade::make_cube(glm::vec3 size, glm::vec3 rgb, glm::vec3 const origin) -> Geometry {

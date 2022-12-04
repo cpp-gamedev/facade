@@ -1,6 +1,7 @@
 #include <facade/scene/animation.hpp>
 #include <facade/scene/node.hpp>
 #include <facade/util/bool.hpp>
+#include <facade/util/visitor.hpp>
 #include <facade/util/zip_ranges.hpp>
 
 namespace facade {
@@ -11,28 +12,40 @@ MorphWeights lerp(MorphWeights const& a, MorphWeights const& b, float t) {
 	return ret;
 }
 
+float Animator::duration() const {
+	return std::visit([](auto const& ch) { return ch.duration(); }, channel);
+}
+
 void Animator::update(std::span<Node> nodes, float time) const {
-	if (translation.target) {
-		assert(*translation.target < nodes.size());
-		if (auto const p = translation.interpolate(time)) { nodes[*translation.target].transform.set_position(*p); }
-	}
-	if (rotation.target) {
-		assert(*rotation.target < nodes.size());
-		if (auto const o = rotation.interpolate(time)) { nodes[*rotation.target].transform.set_orientation(*o); }
-	}
-	if (scale.target) {
-		assert(*scale.target < nodes.size());
-		if (auto const s = scale.interpolate(time)) { nodes[*scale.target].transform.set_scale(*s); }
-	}
-	if (weights.target) {
-		assert(*weights.target < nodes.size());
-		if (auto const w = weights.interpolate(time)) { nodes[*weights.target].weights = *w; }
-	}
+	if (!target) { return; }
+	assert(*target < nodes.size());
+	auto& node = nodes[*target];
+	auto const visitor = Visitor{
+		[time, &node](Translate const& translate) {
+			if (auto const p = translate(time)) { node.transform.set_position(*p); }
+		},
+		[time, &node](Rotate const& rotate) {
+			if (auto const o = rotate(time)) { node.transform.set_orientation(*o); }
+		},
+		[time, &node](Scale const& scale) {
+			if (auto const s = scale(time)) { node.transform.set_scale(*s); }
+		},
+		[time, &node](Morph const& morph) {
+			if (auto const m = morph(time)) { node.weights = *m; }
+		},
+	};
+	std::visit(visitor, channel);
+}
+
+void Animation::add(Animator animator) {
+	m_animators.push_back(std::move(animator));
+	for (auto& animator : m_animators) { m_duration = std::max(animator.duration(), m_duration); }
 }
 
 void Animation::update(std::span<Node> nodes, float dt) {
-	elapsed += dt;
-	animator.update(nodes, elapsed);
-	if (elapsed > animator.duration()) { elapsed = {}; }
+	if (!enabled()) { return; }
+	elapsed += dt * time_scale;
+	for (auto& animator : m_animators) { animator.update(nodes, elapsed); }
+	if (elapsed > m_duration) { elapsed = {}; }
 }
 } // namespace facade

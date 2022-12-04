@@ -7,6 +7,7 @@
 #include <facade/vk/geometry.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
 #include <gltf2cpp/gltf2cpp.hpp>
+#include <span>
 
 namespace facade {
 namespace {
@@ -47,24 +48,24 @@ constexpr vk::Filter to_filter(gltf2cpp::Filter const filter) {
 	}
 }
 
-constexpr Material::AlphaMode to_alpha_mode(gltf2cpp::AlphaMode const mode) {
+constexpr AlphaMode to_alpha_mode(gltf2cpp::AlphaMode const mode) {
 	switch (mode) {
 	default:
-	case gltf2cpp::AlphaMode::eOpaque: return Material::AlphaMode::eOpaque;
-	case gltf2cpp::AlphaMode::eBlend: return Material::AlphaMode::eBlend;
-	case gltf2cpp::AlphaMode::eMask: return Material::AlphaMode::eMask;
+	case gltf2cpp::AlphaMode::eOpaque: return AlphaMode::eOpaque;
+	case gltf2cpp::AlphaMode::eBlend: return AlphaMode::eBlend;
+	case gltf2cpp::AlphaMode::eMask: return AlphaMode::eMask;
 	}
 }
 
-constexpr vk::PrimitiveTopology to_primitive_topology(gltf2cpp::PrimitiveMode mode) {
+constexpr Topology to_topology(gltf2cpp::PrimitiveMode mode) {
 	switch (mode) {
-	case gltf2cpp::PrimitiveMode::ePoints: return vk::PrimitiveTopology::ePointList;
-	case gltf2cpp::PrimitiveMode::eLines: return vk::PrimitiveTopology::eLineList;
-	case gltf2cpp::PrimitiveMode::eLineStrip: return vk::PrimitiveTopology::eLineStrip;
+	case gltf2cpp::PrimitiveMode::ePoints: return Topology::ePoints;
+	case gltf2cpp::PrimitiveMode::eLines: return Topology::eLines;
+	case gltf2cpp::PrimitiveMode::eLineStrip: return Topology::eLineStrip;
 	case gltf2cpp::PrimitiveMode::eLineLoop: break;
-	case gltf2cpp::PrimitiveMode::eTriangles: return vk::PrimitiveTopology::eTriangleList;
-	case gltf2cpp::PrimitiveMode::eTriangleStrip: return vk::PrimitiveTopology::eTriangleStrip;
-	case gltf2cpp::PrimitiveMode::eTriangleFan: return vk::PrimitiveTopology::eTriangleFan;
+	case gltf2cpp::PrimitiveMode::eTriangles: return Topology::eTriangles;
+	case gltf2cpp::PrimitiveMode::eTriangleStrip: return Topology::eTriangleStrip;
+	case gltf2cpp::PrimitiveMode::eTriangleFan: return Topology::eTriangleFan;
 	}
 	throw Error{"Unsupported primitive mode: " + std::to_string(static_cast<int>(mode))};
 }
@@ -79,47 +80,48 @@ Sampler::CreateInfo to_sampler_info(gltf2cpp::Sampler const& sampler) {
 }
 
 Material to_material(gltf2cpp::Material const& material) {
-	auto ret = std::make_unique<LitMaterial>();
-	ret->albedo = {material.pbr.base_color_factor[0], material.pbr.base_color_factor[1], material.pbr.base_color_factor[2]};
-	ret->metallic = material.pbr.metallic_factor;
-	ret->roughness = material.pbr.roughness_factor;
-	ret->alpha_mode = to_alpha_mode(material.alpha_mode);
-	ret->alpha_cutoff = material.alpha_cutoff;
-	if (material.pbr.base_color_texture) { ret->base_colour = material.pbr.base_color_texture->texture; }
-	if (material.pbr.metallic_roughness_texture) { ret->roughness_metallic = material.pbr.metallic_roughness_texture->texture; }
-	if (material.emissive_texture) { ret->emissive = material.emissive_texture->texture; }
-	ret->emissive_factor = {material.emissive_factor[0], material.emissive_factor[1], material.emissive_factor[2]};
-	return {std::move(ret)};
+	auto ret = LitMaterial{};
+	ret.albedo = {material.pbr.base_color_factor[0], material.pbr.base_color_factor[1], material.pbr.base_color_factor[2]};
+	ret.metallic = material.pbr.metallic_factor;
+	ret.roughness = material.pbr.roughness_factor;
+	ret.alpha_mode = to_alpha_mode(material.alpha_mode);
+	ret.alpha_cutoff = material.alpha_cutoff;
+	if (material.pbr.base_color_texture) { ret.base_colour = material.pbr.base_color_texture->texture; }
+	if (material.pbr.metallic_roughness_texture) { ret.roughness_metallic = material.pbr.metallic_roughness_texture->texture; }
+	if (material.emissive_texture) { ret.emissive = material.emissive_texture->texture; }
+	ret.emissive_factor = {material.emissive_factor[0], material.emissive_factor[1], material.emissive_factor[2]};
+	return Material{std::move(ret)};
+}
+
+glm::mat4x4 from_gltf(gltf2cpp::Mat4x4 const& in) {
+	auto ret = glm::mat4x4{};
+	std::memcpy(&ret[0], &in[0], sizeof(ret[0]));
+	std::memcpy(&ret[1], &in[1], sizeof(ret[1]));
+	std::memcpy(&ret[2], &in[2], sizeof(ret[2]));
+	std::memcpy(&ret[3], &in[3], sizeof(ret[3]));
+	return ret;
 }
 
 template <glm::length_t Dim>
-constexpr glm::vec<Dim, float> from_gltf(gltf2cpp::Vec<Dim> const& in) {
-	auto ret = glm::vec<Dim, float>{};
-	std::memcpy(&ret, &in, sizeof(in));
+std::vector<glm::vec<Dim, float>> from_gltf(std::vector<gltf2cpp::Vec<Dim>> const in) {
+	if (in.empty()) { return {}; }
+	auto ret = std::vector<glm::vec<Dim, float>>(in.size());
+	std::memcpy(ret.data(), in.data(), std::span<gltf2cpp::Vec<Dim> const>{in}.size_bytes());
 	return ret;
 }
 
-Geometry to_geometry(gltf2cpp::Mesh::Primitive&& primitive) {
-	auto ret = Geometry{};
-	for (std::size_t i = 0; i < primitive.geometry.positions.size(); ++i) {
-		auto vertex = Vertex{.position = from_gltf<3>(primitive.geometry.positions[i])};
-		if (!primitive.geometry.colors.empty()) { vertex.rgb = from_gltf<3>(primitive.geometry.colors[0][i]); }
-		if (!primitive.geometry.normals.empty()) { vertex.normal = from_gltf<3>(primitive.geometry.normals[i]); }
-		if (!primitive.geometry.tex_coords.empty()) { vertex.uv = from_gltf<2>(primitive.geometry.tex_coords[0][i]); }
-		ret.vertices.push_back(vertex);
-	}
+Geometry::Packed to_geometry(gltf2cpp::Mesh::Primitive&& primitive) {
+	auto ret = Geometry::Packed{};
+	ret.positions = from_gltf<3>(primitive.geometry.positions);
+	if (!primitive.geometry.colors.empty()) { ret.rgbs = from_gltf<3>(primitive.geometry.colors[0]); }
+	if (ret.rgbs.empty()) { ret.rgbs = std::vector<glm::vec3>(ret.positions.size(), glm::vec3{1.0f}); }
+	ret.normals = from_gltf<3>(primitive.geometry.normals);
+	if (ret.normals.empty()) { ret.normals = std::vector<glm::vec3>(ret.positions.size(), glm::vec3{0.0f, 0.0f, 1.0f}); }
+	if (!primitive.geometry.tex_coords.empty()) { ret.uvs = from_gltf<2>(primitive.geometry.tex_coords[0]); }
+	if (ret.uvs.empty()) { ret.uvs = std::vector<glm::vec2>(ret.positions.size()); }
 	ret.indices = std::move(primitive.geometry.indices);
 	return ret;
 }
-
-struct MeshData {
-	struct Primitive {
-		Geometry geometry{};
-		std::optional<std::size_t> material{};
-	};
-
-	std::vector<Primitive> primitives{};
-};
 
 struct MeshLayout {
 	struct Data {
@@ -128,13 +130,26 @@ struct MeshLayout {
 	};
 
 	struct Primitive {
-		Geometry geometry{};
-		vk::PrimitiveTopology topology{vk::PrimitiveTopology::eTriangleList};
+		Geometry::Packed geometry{};
+		std::vector<glm::uvec4> joints{};
+		std::vector<glm::vec4> weights{};
 	};
 
 	std::vector<Primitive> primitives{};
 	std::vector<Data> data{};
 };
+
+MeshLayout::Primitive to_mesh_layout_primitive(gltf2cpp::Mesh::Primitive&& primitive) {
+	auto ret = MeshLayout::Primitive{};
+	if (!primitive.geometry.joints.empty()) {
+		ret.joints.resize(primitive.geometry.joints[0].size());
+		std::memcpy(ret.joints.data(), primitive.geometry.joints[0].data(), std::span{primitive.geometry.joints[0]}.size_bytes());
+		ret.weights.resize(primitive.geometry.weights[0].size());
+		std::memcpy(ret.weights.data(), primitive.geometry.weights[0].data(), std::span{primitive.geometry.weights[0]}.size_bytes());
+	}
+	ret.geometry = to_geometry(std::move(primitive));
+	return ret;
+}
 
 MeshLayout to_mesh_layout(gltf2cpp::Root& out_root) {
 	auto ret = MeshLayout{};
@@ -142,9 +157,13 @@ MeshLayout to_mesh_layout(gltf2cpp::Root& out_root) {
 		auto data = MeshLayout::Data{};
 		data.name = std::move(mesh.name);
 		for (auto& primitive : mesh.primitives) {
-			auto const topology = to_primitive_topology(primitive.mode);
-			data.primitives.push_back(Mesh::Primitive{.static_mesh = ret.primitives.size(), .material = primitive.material});
-			ret.primitives.push_back({to_geometry(std::move(primitive)), topology});
+			auto const topology = to_topology(primitive.mode);
+			data.primitives.push_back(Mesh::Primitive{
+				.primitive = ret.primitives.size(),
+				.material = primitive.material,
+				.topology = topology,
+			});
+			ret.primitives.push_back(to_mesh_layout_primitive(std::move(primitive)));
 		}
 		ret.data.push_back(std::move(data));
 	}
@@ -156,15 +175,11 @@ Transform to_transform(gltf2cpp::Transform const& transform) {
 	auto visitor = Visitor{
 		[&ret](gltf2cpp::Trs const& trs) {
 			ret.set_position({trs.translation[0], trs.translation[1], trs.translation[2]});
-			ret.set_orientation({trs.rotation[0], trs.rotation[1], trs.rotation[2], trs.rotation[3]});
+			ret.set_orientation({trs.rotation[3], trs.rotation[0], trs.rotation[1], trs.rotation[2]});
 			ret.set_scale({trs.scale[0], trs.scale[1], trs.scale[2]});
 		},
 		[&ret](gltf2cpp::Mat4x4 const& mat) {
-			auto m = glm::mat4x4{};
-			m[0] = {mat[0][0], mat[0][1], mat[0][2], mat[0][3]};
-			m[1] = {mat[1][0], mat[1][1], mat[1][2], mat[1][3]};
-			m[2] = {mat[2][0], mat[2][1], mat[2][2], mat[2][3]};
-			m[3] = {mat[3][0], mat[3][1], mat[3][2], mat[3][3]};
+			auto m = from_gltf(mat);
 			glm::vec3 scale, pos, skew;
 			glm::vec4 persp;
 			glm::quat orn;
@@ -185,6 +200,7 @@ NodeData to_node_data(gltf2cpp::Node&& node) {
 		.children = std::move(node.children),
 		.camera = node.camera,
 		.mesh = node.mesh,
+		.skin = node.skin,
 	};
 }
 
@@ -207,6 +223,7 @@ std::vector<Node> to_nodes(std::span<gltf2cpp::Node> nodes) {
 		for (auto const& child : in.children) { node.children.push_back(child); }
 		if (in.camera) { node.attach<Camera>(*in.camera); }
 		if (in.mesh) { node.attach<Mesh>(*in.mesh); }
+		if (in.skin) { node.attach<Skin>(*in.skin); }
 		for (float const weight : in.weights) {
 			if (node.weights.weights.size() < MorphWeights::max_weights_v) { node.weights.weights.insert(weight); }
 		}
@@ -224,10 +241,12 @@ Interpolator<T> make_interpolator(std::span<float const> times, std::span<T cons
 	return ret;
 }
 
-Animation to_animation(gltf2cpp::Animation const& animation, std::span<gltf2cpp::Accessor const> accessors) {
+Animation to_animation(gltf2cpp::Animation&& animation, std::span<gltf2cpp::Accessor const> accessors) {
 	using Path = gltf2cpp::Animation::Path;
 	auto ret = Animation{};
+	ret.name = std::move(animation.name);
 	for (auto const& channel : animation.channels) {
+		auto animator = Animator{};
 		auto const& sampler = animation.samplers[channel.sampler];
 		if (sampler.interpolation == gltf2cpp::Interpolation::eCubicSpline) { continue; } // facade constraint
 		auto const& input = accessors[sampler.input];
@@ -236,6 +255,7 @@ Animation to_animation(gltf2cpp::Animation const& animation, std::span<gltf2cpp:
 		auto const& output = accessors[sampler.output];
 		assert(output.component_type == gltf2cpp::ComponentType::eFloat);
 		auto const values = std::get<gltf2cpp::Accessor::Float>(output.data).span();
+		animator.target = channel.target.node;
 		switch (channel.target.path) {
 		case Path::eTranslation:
 		case Path::eScale: {
@@ -244,11 +264,9 @@ Animation to_animation(gltf2cpp::Animation const& animation, std::span<gltf2cpp:
 			vec.resize(values.size() / 3);
 			std::memcpy(vec.data(), values.data(), values.size_bytes());
 			if (channel.target.path == Path::eScale) {
-				ret.animator.scale.target = channel.target.node;
-				ret.animator.scale.interpolator = make_interpolator<glm::vec3>(times, vec, sampler.interpolation);
+				animator.channel = Animator::Scale{make_interpolator<glm::vec3>(times, vec, sampler.interpolation)};
 			} else {
-				ret.animator.translation.target = channel.target.node;
-				ret.animator.translation.interpolator = make_interpolator<glm::vec3>(times, vec, sampler.interpolation);
+				animator.channel = Animator::Translate{make_interpolator<glm::vec3>(times, vec, sampler.interpolation)};
 			}
 			break;
 		}
@@ -257,16 +275,34 @@ Animation to_animation(gltf2cpp::Animation const& animation, std::span<gltf2cpp:
 			auto vec = std::vector<glm::quat>{};
 			vec.resize(values.size() / 4);
 			std::memcpy(vec.data(), values.data(), values.size_bytes());
-			ret.animator.rotation.target = channel.target.node;
-			ret.animator.rotation.interpolator = make_interpolator<glm::quat>(times, vec, sampler.interpolation);
+			animator.channel = Animator::Rotate{make_interpolator<glm::quat>(times, vec, sampler.interpolation)};
 			break;
 		}
 		case Path::eWeights: {
 			// TODO not implemented
+			animator.channel = Animator::Morph{};
 			break;
 		}
 		}
+		ret.add(std::move(animator));
 	}
+	return ret;
+}
+
+Skin to_skin(gltf2cpp::Skin&& skin, std::span<gltf2cpp::Accessor const> accessors) {
+	auto ret = Skin{};
+	if (skin.inverse_bind_matrices) {
+		auto const ibm = accessors[*skin.inverse_bind_matrices].to_mat4();
+		assert(ibm.size() >= skin.joints.size());
+		ret.inverse_bind_matrices.reserve(ibm.size());
+		for (auto const& mat : ibm) { ret.inverse_bind_matrices.push_back(from_gltf(mat)); }
+	} else {
+		ret.inverse_bind_matrices = std::vector<glm::mat4x4>(ret.joints.size(), glm::identity<glm::mat4x4>());
+	}
+	ret.joints.reserve(skin.joints.size());
+	for (auto const& joint : skin.joints) { ret.joints.push_back(joint); }
+	ret.name = std::move(skin.name);
+	ret.skeleton = skin.skeleton;
 	return ret;
 }
 
@@ -305,10 +341,11 @@ bool Scene::GltfLoader::operator()(dj::Json const& json, DataProvider const& pro
 	m_status.stage = LoadStage::eUploadingResources;
 	m_scene.m_storage = {};
 
-	auto images = std::vector<MaybeFuture<Image>>{};
-	images.reserve(root.images.size());
+	auto image_futures = std::vector<MaybeFuture<Image>>{};
+	image_futures.reserve(root.images.size());
 	for (auto& image : root.images) {
-		images.push_back(make_load_future(thread_pool, m_status.done, [i = std::move(image)] { return Image{i.bytes.span(), std::move(i.name)}; }));
+		assert(!image.bytes.empty());
+		image_futures.push_back(make_load_future(thread_pool, m_status.done, [i = std::move(image)] { return Image{i.bytes.span(), std::move(i.name)}; }));
 	}
 
 	for (auto const& sampler : root.samplers) { m_scene.add(to_sampler_info(sampler)); }
@@ -319,34 +356,36 @@ bool Scene::GltfLoader::operator()(dj::Json const& json, DataProvider const& pro
 
 	auto textures = std::vector<MaybeFuture<Texture>>{};
 	textures.reserve(root.textures.size());
+	auto const images = from_maybe_futures(std::move(image_futures));
 	for (auto& texture : root.textures) {
 		textures.push_back(make_load_future(thread_pool, m_status.done, [texture = std::move(texture), &images, &get_sampler, this] {
 			bool const mip_mapped = !texture.linear;
 			auto const colour_space = texture.linear ? ColourSpace::eLinear : ColourSpace::eSrgb;
 			auto const tci = Texture::CreateInfo{.name = std::move(texture.name), .mip_mapped = mip_mapped, .colour_space = colour_space};
-			return Texture{m_scene.m_gfx, get_sampler(texture.sampler), images[texture.source].get(), tci};
+			return Texture{m_scene.m_gfx, get_sampler(texture.sampler), images[texture.source], tci};
 		}));
 	}
 
-	auto static_meshes = std::vector<MaybeFuture<StaticMesh>>{};
+	auto mesh_primitives = std::vector<MaybeFuture<MeshPrimitive>>{};
 	auto mesh_layout = to_mesh_layout(root);
-	static_meshes.reserve(mesh_layout.primitives.size());
+	mesh_primitives.reserve(mesh_layout.primitives.size());
 	for (auto& data : mesh_layout.data) {
 		for (auto [primitive, index] : enumerate(data.primitives)) {
-			auto& p = mesh_layout.primitives[primitive.static_mesh];
 			auto name = fmt::format("{}_{}", data.name, index);
-			static_meshes.push_back(make_load_future(thread_pool, m_status.done, [p = std::move(p), n = std::move(name), this] {
-				return StaticMesh{m_scene.m_gfx, p.geometry, std::move(n), p.topology};
+			auto& p = mesh_layout.primitives[primitive.primitive];
+			mesh_primitives.push_back(make_load_future(thread_pool, m_status.done, [p = std::move(p), n = std::move(name), this] {
+				return MeshPrimitive{m_scene.m_gfx, p.geometry, {p.joints, p.weights}, std::move(n)};
 			}));
 		}
 	}
 
-	for (auto const& animation : root.animations) { m_scene.m_storage.resources.animations.m_array.push_back(to_animation(animation, root.accessors)); }
+	for (auto& animation : root.animations) { m_scene.m_storage.resources.animations.m_array.push_back(to_animation(std::move(animation), root.accessors)); }
+	for (auto& skin : root.skins) { m_scene.m_storage.resources.skins.m_array.push_back(to_skin(std::move(skin), root.accessors)); }
 
 	m_scene.m_storage.resources.nodes.m_array = to_nodes(root.nodes);
 
 	m_scene.replace(from_maybe_futures(std::move(textures)));
-	m_scene.replace(from_maybe_futures(std::move(static_meshes)));
+	m_scene.replace(from_maybe_futures(std::move(mesh_primitives)));
 
 	m_status.stage = LoadStage::eBuildingScenes;
 	if (root.cameras.empty()) {

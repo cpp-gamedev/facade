@@ -5,6 +5,7 @@
 #include <facade/vk/gfx.hpp>
 #include <facade/vk/pipeline.hpp>
 #include <facade/vk/shader.hpp>
+#include <facade/vk/vertex_layout.hpp>
 #include <memory>
 
 namespace facade {
@@ -14,6 +15,11 @@ namespace facade {
 struct RendererCreateInfo {
 	std::size_t command_buffers{1};
 	std::uint8_t desired_msaa{1};
+};
+
+struct RenderShader {
+	Shader::Id vert{"lit.vert"};
+	Shader::Id frag{"lit.frag"};
 };
 
 ///
@@ -90,11 +96,12 @@ class Renderer {
 	///
 	/// \brief Get or create a Vulkan Pipeline, bind it, and return a corresponding Pipeline.
 	/// \param cb Command buffer to use to bind pipeline
+	/// \param vlayout Vertex Layout to use to find / create a Vulkan Pipeline
 	/// \param state Pipeline state to use to find / create a Vulkan Pipeline
-	/// \param shader_id Shader Id to use to find / create a Vulkan Pipeline
+	/// \param id_frag Fragment shader Id to use to find / create a Vulkan Pipeline
 	/// \returns Pipeline with corresponding descriptor sets to write to
 	///
-	Pipeline bind_pipeline(vk::CommandBuffer cb, Pipeline::State const& state = {}, std::string const& shader_id = "default");
+	Pipeline bind_pipeline(vk::CommandBuffer cb, VertexLayout const& vlayout, Pipeline::State state = {}, Shader::Id id_frag = "lit.frag");
 	///
 	/// \brief Execute render pass and submit all recorded command buffers to the graphics queue.
 	/// \returns false If Swapchain Image has not been acquired
@@ -104,11 +111,10 @@ class Renderer {
 	///
 	/// \brief Add a Shader to the Db.
 	/// \param id The id to associate the shader with
-	/// \param vert Vertex shader code
-	/// \param frag Fragment shader code
+	/// \param spir_v SPIR-V shader code
 	/// \returns Shader referencing added SpirV
 	///
-	Shader add_shader(std::string id, SpirV vert, SpirV frag);
+	Shader add_shader(std::string id, SpirV spir_v);
 	///
 	/// \brief Add a Shader to the Db.
 	/// \param shader Shader data to add (SpirV is not owned by Renderer)
@@ -121,6 +127,8 @@ class Renderer {
 	/// \returns Shader if found, default / empty instance if not
 	///
 	Shader find_shader(std::string const& id) const;
+
+	Gfx const& gfx() const;
 
   private:
 	struct Impl;

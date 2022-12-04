@@ -26,20 +26,20 @@ void edit_material(NotClosed<Window> target, SceneResources const& resources, Li
 	make_id_slot(lit.emissive, "Emissive", name.c_str(), {true});
 }
 
-void edit_material(SceneResources const& resources, UnlitMaterial& unlit) {
+void edit_material(NotClosed<Window>, SceneResources const& resources, UnlitMaterial& unlit) {
 	auto name = FixedString<128>{};
 	if (unlit.texture) { name = FixedString<128>{"{} ({})", resources.textures[*unlit.texture].name(), *unlit.texture}; }
 	make_id_slot(unlit.texture, "Texture", name.c_str(), {true});
 }
 
-constexpr std::string_view to_str(vk::PrimitiveTopology const topo) {
+constexpr std::string_view to_str(Topology const topo) {
 	switch (topo) {
-	case vk::PrimitiveTopology::ePointList: return "Point list";
-	case vk::PrimitiveTopology::eLineList: return "Line list";
-	case vk::PrimitiveTopology::eLineStrip: return "Line strip";
-	case vk::PrimitiveTopology::eTriangleList: return "Triangle list";
-	case vk::PrimitiveTopology::eTriangleStrip: return "Triangle strip";
-	case vk::PrimitiveTopology::eTriangleFan: return "Triangle fan";
+	case Topology::ePoints: return "Points";
+	case Topology::eLines: return "Lines";
+	case Topology::eLineStrip: return "Line strip";
+	case Topology::eTriangles: return "Triangles";
+	case Topology::eTriangleStrip: return "Triangle strip";
+	case Topology::eTriangleFan: return "Triangle fan";
 	default: return "(Unsupported)";
 	}
 }
@@ -58,7 +58,7 @@ void ResourceInspector::view(Texture const& texture, Id<Texture> id) const {
 	}
 }
 
-void ResourceInspector::view(StaticMesh const& mesh, Id<StaticMesh> id) const {
+void ResourceInspector::view(MeshPrimitive const& mesh, Id<MeshPrimitive> id) const {
 	auto const name = FixedString<128>{"{} ({})", mesh.name(), id};
 	auto tn = TreeNode{name.c_str()};
 	drag_payload(id, name.c_str());
@@ -66,18 +66,15 @@ void ResourceInspector::view(StaticMesh const& mesh, Id<StaticMesh> id) const {
 		auto const info = mesh.info();
 		ImGui::Text("%s", FixedString{"Vertices: {}", info.vertices}.c_str());
 		ImGui::Text("%s", FixedString{"Indices: {}", info.indices}.c_str());
-		ImGui::Text("%s", FixedString{"Topology: {}", to_str(mesh.topology())}.c_str());
 	}
 }
 
 void ResourceInspector::edit(Material& out_material, Id<Material> id) const {
-	auto const name = FixedString<128>{"{} ({})", out_material.name(), id};
+	auto const name = FixedString<128>{"{} ({})", out_material.name, id};
 	auto tn = TreeNode{name.c_str()};
 	drag_payload(id, name.c_str());
 	if (tn) {
-		auto& mat = out_material.base();
-		if (auto* lit = dynamic_cast<LitMaterial*>(&mat)) { return edit_material(m_target, m_resources, *lit); }
-		if (auto* unlit = dynamic_cast<UnlitMaterial*>(&mat)) { return edit_material(m_resources, *unlit); }
+		std::visit([&](auto& mat) { edit_material(m_target, m_resources, mat); }, out_material.instance);
 	}
 }
 
@@ -89,12 +86,14 @@ void ResourceInspector::edit(Mesh& out_mesh, Id<Mesh> id) const {
 		auto to_erase = std::optional<std::size_t>{};
 		for (auto [primitive, index] : enumerate(out_mesh.primitives)) {
 			if (auto tn = TreeNode{FixedString{"Primitive [{}]", index}.c_str()}) {
-				name = FixedString<128>{"{} ({})", m_resources.static_meshes[primitive.static_mesh].name(), primitive.static_mesh};
-				make_id_slot(primitive.static_mesh, "Static Mesh", name.c_str());
+				name = FixedString<128>{"{} ({})", m_resources.primitives[primitive.primitive].name(), primitive.primitive};
+				make_id_slot(primitive.primitive, "Mesh Primitive", name.c_str());
 
 				name = {};
-				if (primitive.material) { name = FixedString<128>{"{} ({})", m_resources.materials[*primitive.material].name(), *primitive.material}; }
+				if (primitive.material) { name = FixedString<128>{"{} ({})", m_resources.materials[*primitive.material].name, *primitive.material}; }
 				make_id_slot(primitive.material, "Material", name.c_str(), {true});
+
+				ImGui::Text("%s", FixedString{"Topology: {}", to_str(primitive.topology)}.c_str());
 
 				if (small_button_red("x###remove_primitive")) { to_erase = index; }
 			}
@@ -103,10 +102,21 @@ void ResourceInspector::edit(Mesh& out_mesh, Id<Mesh> id) const {
 		if (ImGui::SmallButton("+###add_primitive")) {
 			if (!out_mesh.primitives.empty()) {
 				out_mesh.primitives.push_back(out_mesh.primitives.front());
-			} else if (!m_resources.static_meshes.empty()) {
+			} else if (!m_resources.primitives.empty()) {
 				out_mesh.primitives.push_back({});
 			}
 		}
+	}
+}
+
+void ResourceInspector::edit(Animation& out_animation, Id<Animation> id) const {
+	auto name = FixedString<128>{"{} ({})", m_resources.animations[id].name, id};
+	auto tn = TreeNode{name.c_str()};
+	drag_payload(id, name.c_str());
+	if (tn) {
+		ImGui::ProgressBar(out_animation.elapsed / out_animation.duration());
+		ImGui::Text("%s", FixedString{"Duration: {:.2f}s", out_animation.duration()}.c_str());
+		ImGui::SliderFloat("Speed", &out_animation.time_scale, 0.0f, 10.0f);
 	}
 }
 

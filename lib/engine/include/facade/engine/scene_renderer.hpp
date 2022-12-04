@@ -21,31 +21,28 @@ class SceneRenderer {
   private:
 	void write_view(glm::vec2 const extent);
 	void update_view(Pipeline& out_pipeline) const;
-	std::span<glm::mat4x4 const> make_instance_mats(Node const& node, glm::mat4x4 const& parent);
+	BufferView make_instance_mats(std::span<Transform const> instances, glm::mat4x4 const& parent);
+	DescriptorBuffer make_joint_mats(Skin const& skin, glm::mat4x4 const& parent);
+	glm::mat4x4 compute_global_mat(Node const& node) const;
+	glm::mat4x4 const& get_global_mat(Node const& node);
 
 	void render(Renderer& renderer, vk::CommandBuffer cb, Skybox const& skybox);
-	void render(Renderer& renderer, vk::CommandBuffer cb, Node const& node, glm::mat4 parent = matrix_identity_v);
-	void draw(vk::CommandBuffer cb, StaticMesh const& static_mesh, std::span<glm::mat4x4 const> mats);
-
-	BufferView next_instances(std::span<glm::mat4x4 const> mats);
-
-	struct Instances {
-		std::vector<Buffer> buffers{};
-		std::size_t index{};
-
-		void rotate();
-	};
+	void render(Renderer& renderer, vk::CommandBuffer cb, Node const& node, glm::mat4x4 parent = matrix_identity_v);
+	void draw(Renderer& renderer, vk::CommandBuffer cb, Node const& node, Mesh::Primitive const& primitive);
+	void draw(vk::CommandBuffer cb, MeshPrimitive const& mesh, BufferView instances);
 
 	Gfx m_gfx;
-	Instances m_instances{};
+	Material m_material;
+	Buffer::VecPool<glm::mat4x4> m_instances;
+	Buffer::VecPool<glm::mat4x4> m_joints;
 	Sampler m_sampler;
 	Buffer m_view_proj;
 	Buffer m_dir_lights;
 	Texture m_white;
 	Texture m_black;
 	Info m_info{};
+	std::unordered_map<Id<Node>, glm::mat4x4, std::hash<std::size_t>> m_global_mats{};
 
-	std::vector<glm::mat4x4> m_instance_mats{};
 	Scene const* m_scene{};
 };
 } // namespace facade

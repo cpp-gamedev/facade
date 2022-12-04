@@ -1,6 +1,7 @@
 #include <bin/shaders.hpp>
 #include <bin/default_vert.spv.hpp>
 #include <bin/lit_frag.spv.hpp>
+#include <bin/skinned_vert.spv.hpp>
 #include <bin/skybox_frag.spv.hpp>
 #include <bin/unlit_frag.spv.hpp>
 
@@ -12,27 +13,38 @@ std::span<std::byte const> to_bytes(unsigned char const (&arr)[N]) {
 }
 } // namespace
 
-Shader shaders::unlit() {
+Shader vert::default_() {
 	return {
-		.id = "unlit",
-		.vert = SpirV::View::from_bytes(to_bytes(default_vert_v)),
-		.frag = SpirV::View::from_bytes(to_bytes(unlit_frag_v)),
+		.id = "default.vert",
+		.spir_v = SpirV::View::from_bytes(to_bytes(default_vert_v)),
 	};
 }
 
-Shader shaders::lit() {
+Shader vert::skinned() {
 	return {
-		.id = "lit",
-		.vert = SpirV::View::from_bytes(to_bytes(default_vert_v)),
-		.frag = SpirV::View::from_bytes(to_bytes(lit_frag_v)),
+		.id = "skinned.vert",
+		.spir_v = SpirV::View::from_bytes(to_bytes(skinned_vert_v)),
 	};
 }
 
-Shader shaders::skybox() {
+Shader frag::unlit() {
 	return {
-		.id = "skybox",
-		.vert = SpirV::View::from_bytes(to_bytes(default_vert_v)),
-		.frag = SpirV::View::from_bytes(to_bytes(skybox_frag_v)),
+		.id = "unlit.frag",
+		.spir_v = SpirV::View::from_bytes(to_bytes(unlit_frag_v)),
+	};
+}
+
+Shader frag::lit() {
+	return {
+		.id = "lit.frag",
+		.spir_v = SpirV::View::from_bytes(to_bytes(lit_frag_v)),
+	};
+}
+
+Shader frag::skybox() {
+	return {
+		.id = "skybox.frag",
+		.spir_v = SpirV::View::from_bytes(to_bytes(skybox_frag_v)),
 	};
 }
 } // namespace facade

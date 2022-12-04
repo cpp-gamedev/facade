@@ -70,11 +70,17 @@ class Scene {
 	///
 	Id<Material> add(Material material);
 	///
-	/// \brief Add a StaticMesh.
-	/// \param geometry Geometry to initialize StaticMesh with
-	/// \returns Id to stored StaticMesh
+	/// \brief Add a MeshPrimitive.
+	/// \param geometry Geometry to initialize MeshPrimitive with
+	/// \returns Id to stored MeshPrimitive
 	///
-	Id<StaticMesh> add(Geometry const& geometry, std::string name = "(Unnamed)");
+	Id<MeshPrimitive> add(Geometry::Packed const& geometry, std::string name = "(Unnamed)");
+	///
+	/// \brief Add a MeshPrimitive.
+	/// \param geometry Geometry to initialize MeshPrimitive with
+	/// \returns Id to stored MeshPrimitive
+	///
+	Id<MeshPrimitive> add(Geometry const& geometry, std::string name = "(Unnamed)") { return add(Geometry::Packed::from(geometry), std::move(name)); }
 	///
 	/// \brief Add a Texture.
 	/// \param image Image to use for the Texture
@@ -106,13 +112,13 @@ class Scene {
 	///
 	std::vector<Texture> replace(std::vector<Texture>&& textures);
 	///
-	/// \brief Replace all static meshes in resources.
-	/// \param static_meshes StaticMesh instances to swap in
-	/// \returns Previously stored static meshes
+	/// \brief Replace all MeshPrimitive instances in resources.
+	/// \param primitives MeshPrimitive instances to swap in
+	/// \returns Previously stored primitives
 	///
 	/// Intended for loaders.
 	///
-	std::vector<StaticMesh> replace(std::vector<StaticMesh>&& static_meshes);
+	std::vector<MeshPrimitive> replace(std::vector<MeshPrimitive>&& primitives);
 
 	///
 	/// \brief Obtain the current Tree Id.
@@ -158,6 +164,19 @@ class Scene {
 	/// \brief Select the target node as the camera.
 	///
 	bool select_camera(Id<Node> target);
+
+	///
+	/// \brief Find the parent node (if any).
+	/// \param id Id of Node whose parent to search for
+	/// \returns Pointer to parent if found
+	///
+	Ptr<Node const> parent(Id<Node> id) const;
+	///
+	/// \brief Find the parent node (if any).
+	/// \param id Id of Node whose parent to search for
+	/// \returns Pointer to parent if found
+	///
+	Ptr<Node> parent(Id<Node> id);
 
 	///
 	/// \brief Obtain the default Sampler.

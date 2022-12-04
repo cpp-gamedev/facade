@@ -40,11 +40,11 @@ class ResourceInspector : public Inspector {
 	///
 	void view(Texture const& texture, Id<Texture> id) const;
 	///
-	/// \brief Inspect a StaticMesh (read-only).
-	/// \param mesh the StaticMesh to inspect
-	/// \param id Id of the StaticMesh being inspected (used to create unique labels and drag payloads)
+	/// \brief Inspect a MeshPrimitive (read-only).
+	/// \param mesh the MeshPrimitive to inspect
+	/// \param id Id of the MeshPrimitive being inspected (used to create unique labels and drag payloads)
 	///
-	void view(StaticMesh const& mesh, Id<StaticMesh> id) const;
+	void view(MeshPrimitive const& mesh, Id<MeshPrimitive> id) const;
 
 	///
 	/// \brief Inspect a Material.
@@ -58,6 +58,12 @@ class ResourceInspector : public Inspector {
 	/// \param id Id of the Mesh being inspected (used to create unique labels and drag payloads)
 	///
 	void edit(Mesh& out_mesh, Id<Mesh> id) const;
+	///
+	/// \brief Inspect an Animation.
+	/// \param out_mesh Animation to inspect
+	/// \param id Id of the Animation being inspected (used to create unique labels and drag payloads)
+	///
+	void edit(Animation& out_animation, Id<Animation> id) const;
 };
 
 ///

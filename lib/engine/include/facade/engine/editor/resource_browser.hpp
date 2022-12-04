@@ -25,7 +25,7 @@ class ResourceBrowser {
   private:
 	void add_mesh(bool trigger);
 	void add_material(bool trigger);
-	void add_static_mesh(bool trigger);
+	void add_mesh_primitive(bool trigger);
 
 	enum class SmType { eCube, eSphere, eCone, eCylinder, eArrow };
 
@@ -61,7 +61,7 @@ class ResourceBrowser {
 				float stalk_height{1.0f};
 				int xz_points{128};
 			} arrow{};
-		} static_mesh{};
+		} primitive{};
 	} m_data{};
 
 	Scene* m_scene{};

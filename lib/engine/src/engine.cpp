@@ -352,14 +352,22 @@ bool Engine::load_async(std::string json_path, UniqueTask<void()> on_loaded) {
 
 	// ensure thread pool queue has at least one worker thread, else load on this thread
 	if (m_impl->thread_pool.thread_count() == 0) {
+		auto early_ret = [&on_loaded]() {
+			on_loaded();
+			return true;
+		};
+
+		m_impl->scene.lights = {};
+
 		auto const start = time::since_start();
 		if (load_gltf(m_impl->scene, json_path.c_str(), m_impl->load.request.status, nullptr)) {
 			logger::info("...GLTF [{}] loaded in [{:.2f}s]", env::to_filename(json_path), time::since_start() - start);
-			return true;
+			return early_ret();
 		}
 		if (auto sd = load_skybox_data(json_path.c_str(), m_impl->load.request.status, nullptr)) {
 			m_impl->skybox.set(sd->views());
 			logger::info("...Skybox [{}] loaded in [{:.2f}s]", env::to_filename(json_path), time::since_start() - start);
+			return early_ret();
 		}
 		logger::error("[Engine] Failed to load file: [{}]", json_path);
 		return false;

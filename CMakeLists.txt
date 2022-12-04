@@ -38,17 +38,20 @@ if(FACADE_BUILD_EXE AND FACADE_BUILD_SHADERS)
     ${CMAKE_CURRENT_SOURCE_DIR}/src/shaders/unlit.frag
     ${CMAKE_CURRENT_SOURCE_DIR}/src/shaders/lit.frag
     ${CMAKE_CURRENT_SOURCE_DIR}/src/shaders/skybox.frag
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/shaders/skinned.vert
 
     OUTPUT
     ${CMAKE_CURRENT_SOURCE_DIR}/src/bin/default_vert.spv.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/bin/unlit_frag.spv.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/bin/lit_frag.spv.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/bin/skybox_frag.spv.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/bin/skinned.vert.hpp
 
     COMMAND embed-shader ${CMAKE_CURRENT_SOURCE_DIR}/src/shaders/default.vert > ${CMAKE_CURRENT_SOURCE_DIR}/src/bin/default_vert.spv.hpp
     COMMAND embed-shader ${CMAKE_CURRENT_SOURCE_DIR}/src/shaders/unlit.frag > ${CMAKE_CURRENT_SOURCE_DIR}/src/bin/unlit_frag.spv.hpp
     COMMAND embed-shader ${CMAKE_CURRENT_SOURCE_DIR}/src/shaders/lit.frag > ${CMAKE_CURRENT_SOURCE_DIR}/src/bin/lit_frag.spv.hpp
     COMMAND embed-shader ${CMAKE_CURRENT_SOURCE_DIR}/src/shaders/skybox.frag > ${CMAKE_CURRENT_SOURCE_DIR}/src/bin/skybox_frag.spv.hpp
+    COMMAND embed-shader ${CMAKE_CURRENT_SOURCE_DIR}/src/shaders/skinned.vert > ${CMAKE_CURRENT_SOURCE_DIR}/src/bin/skinned_vert.spv.hpp
   )
 endif()
 
@@ -73,6 +76,9 @@ if(FACADE_BUILD_EXE)
 
     src/bin/default_vert.spv.hpp
     src/bin/unlit_frag.spv.hpp
+    src/bin/lit_frag.spv.hpp
+    src/bin/skybox_frag.spv.hpp
+    src/bin/skinned_vert.spv.hpp
   )
 
   target_link_libraries(${PROJECT_NAME} PRIVATE

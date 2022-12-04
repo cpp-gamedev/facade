@@ -87,9 +87,9 @@ Id<Material> Scene::add(Material material) {
 	return id;
 }
 
-Id<StaticMesh> Scene::add(Geometry const& geometry, std::string name) {
-	auto const id = m_storage.resources.static_meshes.size();
-	m_storage.resources.static_meshes.m_array.emplace_back(m_gfx, geometry, std::move(name));
+Id<MeshPrimitive> Scene::add(Geometry::Packed const& geometry, std::string name) {
+	auto const id = m_storage.resources.primitives.size();
+	m_storage.resources.primitives.m_array.emplace_back(m_gfx, geometry, MeshPrimitive::Joints{}, std::move(name));
 	return id;
 }
 
@@ -129,8 +129,8 @@ Id<Node> Scene::add(Node node, std::optional<Id<Node>> parent) {
 
 std::vector<Texture> Scene::replace(std::vector<Texture>&& textures) { return std::exchange(m_storage.resources.textures.m_array, std::move(textures)); }
 
-std::vector<StaticMesh> Scene::replace(std::vector<StaticMesh>&& static_meshes) {
-	return std::exchange(m_storage.resources.static_meshes.m_array, std::move(static_meshes));
+std::vector<MeshPrimitive> Scene::replace(std::vector<MeshPrimitive>&& static_meshes) {
+	return std::exchange(m_storage.resources.primitives.m_array, std::move(static_meshes));
 }
 
 bool Scene::load(Id<Tree> id) {
@@ -155,10 +155,23 @@ bool Scene::select_camera(Id<Node> target) {
 	return false;
 }
 
+Ptr<Node const> Scene::parent(Id<Node> id) const {
+	for (auto& node : m_storage.resources.nodes.view()) {
+		if (std::find(node.children.begin(), node.children.end(), id) != node.children.end()) { return &node; }
+	}
+	return {};
+}
+
+Ptr<Node> Scene::parent(Id<Node> id) { return const_cast<Node*>(std::as_const(*this).parent(id)); }
+
 Texture Scene::make_texture(Image::View image) const { return Texture{m_gfx, default_sampler(), image}; }
 
 void Scene::tick(float dt) {
-	for (auto& animation : m_storage.resources.animations.view()) { animation.update(m_storage.resources.nodes.view(), dt); }
+	auto const nodes = m_storage.resources.nodes.view();
+	for (auto& animation : m_storage.resources.animations.view()) {
+		if (!animation.enabled()) { continue; }
+		animation.update(nodes, dt);
+	}
 }
 
 Node Scene::make_camera_node(Id<Camera> id) const {
@@ -191,8 +204,8 @@ Id<Mesh> Scene::add_unchecked(Mesh mesh) {
 
 void Scene::check(Mesh const& mesh) const noexcept(false) {
 	for (auto const& primitive : mesh.primitives) {
-		if (primitive.static_mesh >= m_storage.resources.static_meshes.size()) {
-			throw Error{fmt::format("Scene {}: Invalid Static Mesh Id: {}", m_name, primitive.static_mesh)};
+		if (primitive.primitive >= m_storage.resources.primitives.size()) {
+			throw Error{fmt::format("Scene {}: Invalid MeshPrimitive Id: {}", m_name, primitive.primitive)};
 		}
 		if (primitive.material && primitive.material->value() >= m_storage.resources.materials.size()) {
 			throw Error{fmt::format("Scene {}: Invalid Material Id: {}", m_name, *primitive.material)};

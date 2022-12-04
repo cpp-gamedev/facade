@@ -1,4 +1,5 @@
 #include <facade/util/error.hpp>
+#include <facade/util/ptr.hpp>
 #include <facade/vk/buffer.hpp>
 #include <facade/vk/cmd.hpp>
 
@@ -46,5 +47,21 @@ BufferView Buffer::view() const {
 DescriptorBuffer Buffer::descriptor_buffer() const {
 	refresh();
 	return {m_buffers.get().get().get().buffer, m_data.size(), to_descriptor_type(m_type)};
+}
+
+Buffer& Buffer::Pool::get(Gfx const& gfx) {
+	auto ret = Ptr<Buffer>{};
+	if (m_index < m_buffers.size()) {
+		ret = &m_buffers[m_index++];
+	} else {
+		++m_index;
+		ret = &m_buffers.emplace_back(gfx, m_type);
+	}
+	return *ret;
+}
+
+void Buffer::Pool::rotate() {
+	for (auto& buffer : m_buffers) { buffer.rotate(); }
+	m_index = 0;
 }
 } // namespace facade

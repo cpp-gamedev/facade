@@ -255,6 +255,7 @@ Animation to_animation(gltf2cpp::Animation&& animation, std::span<gltf2cpp::Acce
 		auto const& output = accessors[sampler.output];
 		assert(output.component_type == gltf2cpp::ComponentType::eFloat);
 		auto const values = std::get<gltf2cpp::Accessor::Float>(output.data).span();
+		animator.target = channel.target.node;
 		switch (channel.target.path) {
 		case Path::eTranslation:
 		case Path::eScale: {
@@ -263,11 +264,9 @@ Animation to_animation(gltf2cpp::Animation&& animation, std::span<gltf2cpp::Acce
 			vec.resize(values.size() / 3);
 			std::memcpy(vec.data(), values.data(), values.size_bytes());
 			if (channel.target.path == Path::eScale) {
-				animator.scale.target = channel.target.node;
-				animator.scale.interpolator = make_interpolator<glm::vec3>(times, vec, sampler.interpolation);
+				animator.channel = Animator::Scale{make_interpolator<glm::vec3>(times, vec, sampler.interpolation)};
 			} else {
-				animator.translation.target = channel.target.node;
-				animator.translation.interpolator = make_interpolator<glm::vec3>(times, vec, sampler.interpolation);
+				animator.channel = Animator::Translate{make_interpolator<glm::vec3>(times, vec, sampler.interpolation)};
 			}
 			break;
 		}
@@ -276,12 +275,12 @@ Animation to_animation(gltf2cpp::Animation&& animation, std::span<gltf2cpp::Acce
 			auto vec = std::vector<glm::quat>{};
 			vec.resize(values.size() / 4);
 			std::memcpy(vec.data(), values.data(), values.size_bytes());
-			animator.rotation.target = channel.target.node;
-			animator.rotation.interpolator = make_interpolator<glm::quat>(times, vec, sampler.interpolation);
+			animator.channel = Animator::Rotate{make_interpolator<glm::quat>(times, vec, sampler.interpolation)};
 			break;
 		}
 		case Path::eWeights: {
 			// TODO not implemented
+			animator.channel = Animator::Morph{};
 			break;
 		}
 		}

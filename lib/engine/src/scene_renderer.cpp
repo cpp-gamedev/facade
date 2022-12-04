@@ -124,12 +124,11 @@ void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Skybox cons
 	draw(cb, skybox.mesh(), make_instance_mats({}, mat));
 }
 
-Shader::Id frag_shader(Material const& mat) {
-	if (std::holds_alternative<UnlitMaterial>(mat.instance)) { return "unlit.frag"; }
-	return "lit.frag";
-}
-
 void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Node const& node, glm::mat4 parent) {
+	auto const frag_shader = [](Material const& mat) -> Shader::Id {
+		if (std::holds_alternative<UnlitMaterial>(mat.instance)) { return "unlit.frag"; }
+		return "lit.frag";
+	};
 	auto const& resources = m_scene->resources();
 	auto const store = TextureStore{resources.textures, m_white, m_black};
 	parent = parent * node.transform.matrix();

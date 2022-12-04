@@ -89,7 +89,7 @@ Id<Material> Scene::add(Material material) {
 
 Id<MeshPrimitive> Scene::add(Geometry::Packed const& geometry, std::string name) {
 	auto const id = m_storage.resources.primitives.size();
-	m_storage.resources.primitives.m_array.push_back(MeshPrimitive::Builder{m_gfx, std::move(name)}(geometry));
+	m_storage.resources.primitives.m_array.emplace_back(m_gfx, geometry, MeshPrimitive::Joints{}, std::move(name));
 	return id;
 }
 

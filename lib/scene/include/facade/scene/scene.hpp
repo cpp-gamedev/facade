@@ -74,8 +74,13 @@ class Scene {
 	/// \param geometry Geometry to initialize MeshPrimitive with
 	/// \returns Id to stored MeshPrimitive
 	///
-	// TODO: Overload for interleaved
 	Id<MeshPrimitive> add(Geometry::Packed const& geometry, std::string name = "(Unnamed)");
+	///
+	/// \brief Add a MeshPrimitive.
+	/// \param geometry Geometry to initialize MeshPrimitive with
+	/// \returns Id to stored MeshPrimitive
+	///
+	Id<MeshPrimitive> add(Geometry const& geometry, std::string name = "(Unnamed)") { return add(Geometry::Packed::from(geometry), std::move(name)); }
 	///
 	/// \brief Add a Texture.
 	/// \param image Image to use for the Texture

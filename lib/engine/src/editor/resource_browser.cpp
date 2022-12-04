@@ -127,7 +127,7 @@ void ResourceBrowser::add_mesh_primitive(bool trigger) {
 			case SmType::eArrow: geometry = make_arrow(prim.arrow.stalk_diam, prim.arrow.stalk_height, arrow_pts, prim.arrow.vertex_rgb); break;
 			default: logger::warn("Unknown mesh primitive type"); break;
 			}
-			if (!geometry.vertices.empty()) { m_scene->add(Geometry::Packed::from(geometry), prim.buffer.c_str()); }
+			if (!geometry.vertices.empty()) { m_scene->add(geometry, prim.buffer.c_str()); }
 			Popup::close_current();
 		}
 	}

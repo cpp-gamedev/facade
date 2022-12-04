@@ -77,6 +77,7 @@ class Buffer::VecPool : public Pool {
 		return update(gfx);
 	}
 
+  private:
 	void clear(std::size_t reserve) {
 		m_vec.clear();
 		m_vec.reserve(reserve);
@@ -88,7 +89,6 @@ class Buffer::VecPool : public Pool {
 		return ret;
 	}
 
-  private:
 	std::vector<T> m_vec{};
 };
 } // namespace facade

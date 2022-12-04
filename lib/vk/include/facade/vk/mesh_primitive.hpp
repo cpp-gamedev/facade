@@ -6,14 +6,22 @@
 #include <glm/vec4.hpp>
 
 namespace facade {
+struct MeshJoints {
+	std::span<glm::uvec4 const> joints{};
+	std::span<glm::vec4 const> weights{};
+};
+
 class MeshPrimitive {
   public:
-	class Builder;
-
 	struct Info {
 		std::uint32_t vertices{};
 		std::uint32_t indices{};
 	};
+
+	using Joints = MeshJoints;
+
+	MeshPrimitive(Gfx const& gfx, Geometry::Packed const& geometry, Joints joints = {}, std::string name = "(Unnamed)");
+	MeshPrimitive(Gfx const& gfx, Geometry const& geometry, Joints joints = {}, std::string name = "(Unnamed)");
 
 	std::string_view name() const { return m_name; }
 	Info info() const;
@@ -24,8 +32,7 @@ class MeshPrimitive {
 	void draw(vk::CommandBuffer cb, std::uint32_t instances = 1u) const;
 
   private:
-	MeshPrimitive(Gfx const& gfx, std::string name);
-
+	struct Uploader;
 	struct Offsets {
 		std::size_t positions{};
 		std::size_t rgbs{};
@@ -44,21 +51,5 @@ class MeshPrimitive {
 	std::uint32_t m_vertices{};
 	std::uint32_t m_indices{};
 	std::uint32_t m_instance_binding{};
-};
-
-class MeshPrimitive::Builder {
-  public:
-	Builder(Gfx const& gfx, std::string name);
-
-	MeshPrimitive operator()(Geometry::Packed const& geometry);
-	MeshPrimitive operator()(Geometry::Packed const& geometry, std::span<glm::uvec4 const> joints, std::span<glm::vec4 const> weights);
-
-  private:
-	[[nodiscard]] UniqueBuffer upload(vk::CommandBuffer cb, Geometry::Packed const& geometry);
-	[[nodiscard]] UniqueBuffer upload(vk::CommandBuffer cb, std::span<glm::uvec4 const> joints, std::span<glm::vec4 const> weights);
-
-	Gfx m_gfx;
-	MeshPrimitive m_ret;
-	std::string m_name{"(Unnamed)"};
 };
 } // namespace facade

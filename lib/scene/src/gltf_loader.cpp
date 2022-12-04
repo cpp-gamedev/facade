@@ -374,7 +374,7 @@ bool Scene::GltfLoader::operator()(dj::Json const& json, DataProvider const& pro
 			auto name = fmt::format("{}_{}", data.name, index);
 			auto& p = mesh_layout.primitives[primitive.primitive];
 			mesh_primitives.push_back(make_load_future(thread_pool, m_status.done, [p = std::move(p), n = std::move(name), this] {
-				return MeshPrimitive::Builder{m_scene.m_gfx, std::move(n)}(p.geometry, p.joints, p.weights);
+				return MeshPrimitive{m_scene.m_gfx, p.geometry, {p.joints, p.weights}, std::move(n)};
 			}));
 		}
 	}

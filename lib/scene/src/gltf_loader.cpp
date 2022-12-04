@@ -241,9 +241,10 @@ Interpolator<T> make_interpolator(std::span<float const> times, std::span<T cons
 	return ret;
 }
 
-Animation to_animation(gltf2cpp::Animation const& animation, std::span<gltf2cpp::Accessor const> accessors) {
+Animation to_animation(gltf2cpp::Animation&& animation, std::span<gltf2cpp::Accessor const> accessors) {
 	using Path = gltf2cpp::Animation::Path;
 	auto ret = Animation{};
+	ret.name = std::move(animation.name);
 	for (auto const& channel : animation.channels) {
 		auto animator = Animator{};
 		auto const& sampler = animation.samplers[channel.sampler];
@@ -284,7 +285,7 @@ Animation to_animation(gltf2cpp::Animation const& animation, std::span<gltf2cpp:
 			break;
 		}
 		}
-		ret.animators.push_back(std::move(animator));
+		ret.add(std::move(animator));
 	}
 	return ret;
 }
@@ -341,10 +342,11 @@ bool Scene::GltfLoader::operator()(dj::Json const& json, DataProvider const& pro
 	m_status.stage = LoadStage::eUploadingResources;
 	m_scene.m_storage = {};
 
-	auto images = std::vector<MaybeFuture<Image>>{};
-	images.reserve(root.images.size());
+	auto image_futures = std::vector<MaybeFuture<Image>>{};
+	image_futures.reserve(root.images.size());
 	for (auto& image : root.images) {
-		images.push_back(make_load_future(thread_pool, m_status.done, [i = std::move(image)] { return Image{i.bytes.span(), std::move(i.name)}; }));
+		assert(!image.bytes.empty());
+		image_futures.push_back(make_load_future(thread_pool, m_status.done, [i = std::move(image)] { return Image{i.bytes.span(), std::move(i.name)}; }));
 	}
 
 	for (auto const& sampler : root.samplers) { m_scene.add(to_sampler_info(sampler)); }
@@ -355,12 +357,13 @@ bool Scene::GltfLoader::operator()(dj::Json const& json, DataProvider const& pro
 
 	auto textures = std::vector<MaybeFuture<Texture>>{};
 	textures.reserve(root.textures.size());
+	auto const images = from_maybe_futures(std::move(image_futures));
 	for (auto& texture : root.textures) {
 		textures.push_back(make_load_future(thread_pool, m_status.done, [texture = std::move(texture), &images, &get_sampler, this] {
 			bool const mip_mapped = !texture.linear;
 			auto const colour_space = texture.linear ? ColourSpace::eLinear : ColourSpace::eSrgb;
 			auto const tci = Texture::CreateInfo{.name = std::move(texture.name), .mip_mapped = mip_mapped, .colour_space = colour_space};
-			return Texture{m_scene.m_gfx, get_sampler(texture.sampler), images[texture.source].get(), tci};
+			return Texture{m_scene.m_gfx, get_sampler(texture.sampler), images[texture.source], tci};
 		}));
 	}
 
@@ -377,7 +380,7 @@ bool Scene::GltfLoader::operator()(dj::Json const& json, DataProvider const& pro
 		}
 	}
 
-	for (auto const& animation : root.animations) { m_scene.m_storage.resources.animations.m_array.push_back(to_animation(animation, root.accessors)); }
+	for (auto& animation : root.animations) { m_scene.m_storage.resources.animations.m_array.push_back(to_animation(std::move(animation), root.accessors)); }
 	for (auto& skin : root.skins) { m_scene.m_storage.resources.skins.m_array.push_back(to_skin(std::move(skin), root.accessors)); }
 
 	m_scene.m_storage.resources.nodes.m_array = to_nodes(root.nodes);

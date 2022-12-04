@@ -30,13 +30,15 @@ void Animator::update(std::span<Node> nodes, float time) const {
 	}
 }
 
+void Animation::add(Animator animator) {
+	m_animators.push_back(std::move(animator));
+	for (auto& animator : m_animators) { m_duration = std::max(animator.duration(), m_duration); }
+}
+
 void Animation::update(std::span<Node> nodes, float dt) {
-	elapsed += dt;
-	auto duration = float{};
-	for (auto& animator : animators) {
-		animator.update(nodes, elapsed);
-		duration = std::max(animator.duration(), duration);
-	}
-	if (elapsed > duration) { elapsed = {}; }
+	if (!enabled()) { return; }
+	elapsed += dt * time_scale;
+	for (auto& animator : m_animators) { animator.update(nodes, elapsed); }
+	if (elapsed > m_duration) { elapsed = {}; }
 }
 } // namespace facade

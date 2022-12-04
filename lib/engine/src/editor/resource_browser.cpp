@@ -15,6 +15,10 @@ void ResourceBrowser::display(NotClosed<Window> target, Scene& out_scene) {
 	auto& resources = out_scene.resources();
 	static constexpr auto flags_v = ImGuiTreeNodeFlags_Framed;
 	bool material{}, mesh{}, primitive{};
+
+	if (auto tn = TreeNode{"Animations", flags_v}) {
+		for (auto [animation, id] : enumerate(resources.animations.view())) { ri.edit(animation, id); }
+	}
 	if (auto tn = TreeNode("Textures", flags_v)) {
 		for (auto [texture, id] : enumerate(resources.textures.view())) { ri.view(texture, id); }
 	}

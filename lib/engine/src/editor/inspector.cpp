@@ -109,6 +109,17 @@ void ResourceInspector::edit(Mesh& out_mesh, Id<Mesh> id) const {
 	}
 }
 
+void ResourceInspector::edit(Animation& out_animation, Id<Animation> id) const {
+	auto name = FixedString<128>{"{} ({})", m_resources.animations[id].name, id};
+	auto tn = TreeNode{name.c_str()};
+	drag_payload(id, name.c_str());
+	if (tn) {
+		ImGui::ProgressBar(out_animation.elapsed / out_animation.duration());
+		ImGui::Text("%s", FixedString{"Duration: {:.2f}s", out_animation.duration()}.c_str());
+		ImGui::SliderFloat("Speed", &out_animation.time_scale, 0.0f, 10.0f);
+	}
+}
+
 void SceneInspector::camera() const {
 	auto& node = m_scene.camera();
 	auto id = node.find<Camera>();

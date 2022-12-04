@@ -32,10 +32,20 @@ struct Animator {
 	void update(std::span<Node> nodes, float time) const;
 };
 
-struct Animation {
-	std::vector<Animator> animators{};
+class Animation {
+  public:
+	void add(Animator animator);
+	void update(std::span<Node> nodes, float dt);
+	bool enabled() const { return time_scale > 0.0f; }
+
+	float duration() const { return m_duration; }
+
+	std::string name{};
+	float time_scale{1.0f};
 	float elapsed{};
 
-	void update(std::span<Node> nodes, float dt);
+  private:
+	std::vector<Animator> m_animators{};
+	float m_duration{};
 };
 } // namespace facade

@@ -167,7 +167,11 @@ Ptr<Node> Scene::parent(Id<Node> id) { return const_cast<Node*>(std::as_const(*t
 Texture Scene::make_texture(Image::View image) const { return Texture{m_gfx, default_sampler(), image}; }
 
 void Scene::tick(float dt) {
-	for (auto& animation : m_storage.resources.animations.view()) { animation.update(m_storage.resources.nodes.view(), dt); }
+	auto const nodes = m_storage.resources.nodes.view();
+	for (auto& animation : m_storage.resources.animations.view()) {
+		if (!animation.enabled()) { continue; }
+		animation.update(nodes, dt);
+	}
 }
 
 Node Scene::make_camera_node(Id<Camera> id) const {

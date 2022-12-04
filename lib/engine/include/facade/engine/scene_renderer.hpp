@@ -23,6 +23,8 @@ class SceneRenderer {
 	void update_view(Pipeline& out_pipeline) const;
 	BufferView make_instance_mats(std::span<Transform const> instances, glm::mat4x4 const& parent);
 	DescriptorBuffer make_joint_mats(Skin const& skin, glm::mat4x4 const& parent);
+	glm::mat4x4 compute_global_mat(Node const& node) const;
+	glm::mat4x4 const& get_global_mat(Node const& node);
 
 	void render(Renderer& renderer, vk::CommandBuffer cb, Skybox const& skybox);
 	void render(Renderer& renderer, vk::CommandBuffer cb, Node const& node, glm::mat4x4 parent = matrix_identity_v);
@@ -39,6 +41,7 @@ class SceneRenderer {
 	Texture m_white;
 	Texture m_black;
 	Info m_info{};
+	std::unordered_map<Id<Node>, glm::mat4x4, std::hash<std::size_t>> m_global_mats{};
 
 	Scene const* m_scene{};
 };

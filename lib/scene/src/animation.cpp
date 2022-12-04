@@ -32,7 +32,11 @@ void Animator::update(std::span<Node> nodes, float time) const {
 
 void Animation::update(std::span<Node> nodes, float dt) {
 	elapsed += dt;
-	animator.update(nodes, elapsed);
-	if (elapsed > animator.duration()) { elapsed = {}; }
+	auto duration = float{};
+	for (auto& animator : animators) {
+		animator.update(nodes, elapsed);
+		duration = std::max(animator.duration(), duration);
+	}
+	if (elapsed > duration) { elapsed = {}; }
 }
 } // namespace facade

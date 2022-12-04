@@ -33,7 +33,7 @@ struct Animator {
 };
 
 struct Animation {
-	Animator animator{};
+	std::vector<Animator> animators{};
 	float elapsed{};
 
 	void update(std::span<Node> nodes, float dt);

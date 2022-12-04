@@ -42,6 +42,7 @@ SceneRenderer::SceneRenderer(Gfx const& gfx)
 void SceneRenderer::render(Scene const& scene, Ptr<Skybox const> skybox, Renderer& renderer, vk::CommandBuffer cb) {
 	m_scene = &scene;
 	m_info = {};
+	m_global_mats.clear();
 	write_view(renderer.framebuffer_extent());
 	if (skybox) { render(renderer, cb, *skybox); }
 	for (auto const& node : m_scene->roots()) { render(renderer, cb, m_scene->resources().nodes[node]); }
@@ -88,20 +89,27 @@ BufferView SceneRenderer::make_instance_mats(std::span<Transform const> instance
 	return m_instances.rewrite(m_gfx, instances.empty() ? 1u : instances.size(), rewrite).view();
 }
 
-glm::mat4 global_mat(Scene const& scene, Node const& node) {
-	auto const ret = node.transform.matrix();
-	if (auto const* parent = scene.parent(node.self)) { return global_mat(scene, *parent) * ret; }
-	return ret;
-}
-
 DescriptorBuffer SceneRenderer::make_joint_mats(Skin const& skin, glm::mat4x4 const& parent) {
 	auto const& resources = m_scene->resources();
 	auto rewrite = [&](std::vector<glm::mat4x4>& mats) {
-		for (auto const& [j, ibm] : zip_ranges(skin.joints, skin.inverse_bind_matrices)) {
-			mats.push_back(parent * global_mat(*m_scene, resources.nodes[j]) * ibm);
-		}
+		for (auto const& [j, ibm] : zip_ranges(skin.joints, skin.inverse_bind_matrices)) { mats.push_back(parent * get_global_mat(resources.nodes[j]) * ibm); }
 	};
 	return m_joints.rewrite(m_gfx, skin.joints.size(), rewrite).descriptor_buffer();
+}
+
+glm::mat4x4 SceneRenderer::compute_global_mat(Node const& node) const {
+	auto ret = node.transform.matrix();
+	if (auto const* parent = m_scene->parent(node.self)) {
+		if (auto const it = m_global_mats.find(parent->self); it != m_global_mats.end()) { return it->second * ret; }
+		return compute_global_mat(*parent) * ret;
+	}
+	return ret;
+}
+
+glm::mat4 const& SceneRenderer::get_global_mat(Node const& node) {
+	if (auto it = m_global_mats.find(node.self); it != m_global_mats.end()) { return it->second; }
+	auto [it, _] = m_global_mats.emplace(node.self, compute_global_mat(node));
+	return it->second;
 }
 
 void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Skybox const& skybox) {

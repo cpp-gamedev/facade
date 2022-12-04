@@ -245,6 +245,7 @@ Animation to_animation(gltf2cpp::Animation const& animation, std::span<gltf2cpp:
 	using Path = gltf2cpp::Animation::Path;
 	auto ret = Animation{};
 	for (auto const& channel : animation.channels) {
+		auto animator = Animator{};
 		auto const& sampler = animation.samplers[channel.sampler];
 		if (sampler.interpolation == gltf2cpp::Interpolation::eCubicSpline) { continue; } // facade constraint
 		auto const& input = accessors[sampler.input];
@@ -261,11 +262,11 @@ Animation to_animation(gltf2cpp::Animation const& animation, std::span<gltf2cpp:
 			vec.resize(values.size() / 3);
 			std::memcpy(vec.data(), values.data(), values.size_bytes());
 			if (channel.target.path == Path::eScale) {
-				ret.animator.scale.target = channel.target.node;
-				ret.animator.scale.interpolator = make_interpolator<glm::vec3>(times, vec, sampler.interpolation);
+				animator.scale.target = channel.target.node;
+				animator.scale.interpolator = make_interpolator<glm::vec3>(times, vec, sampler.interpolation);
 			} else {
-				ret.animator.translation.target = channel.target.node;
-				ret.animator.translation.interpolator = make_interpolator<glm::vec3>(times, vec, sampler.interpolation);
+				animator.translation.target = channel.target.node;
+				animator.translation.interpolator = make_interpolator<glm::vec3>(times, vec, sampler.interpolation);
 			}
 			break;
 		}
@@ -274,8 +275,8 @@ Animation to_animation(gltf2cpp::Animation const& animation, std::span<gltf2cpp:
 			auto vec = std::vector<glm::quat>{};
 			vec.resize(values.size() / 4);
 			std::memcpy(vec.data(), values.data(), values.size_bytes());
-			ret.animator.rotation.target = channel.target.node;
-			ret.animator.rotation.interpolator = make_interpolator<glm::quat>(times, vec, sampler.interpolation);
+			animator.rotation.target = channel.target.node;
+			animator.rotation.interpolator = make_interpolator<glm::quat>(times, vec, sampler.interpolation);
 			break;
 		}
 		case Path::eWeights: {
@@ -283,6 +284,7 @@ Animation to_animation(gltf2cpp::Animation const& animation, std::span<gltf2cpp:
 			break;
 		}
 		}
+		ret.animators.push_back(std::move(animator));
 	}
 	return ret;
 }

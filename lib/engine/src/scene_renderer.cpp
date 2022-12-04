@@ -164,7 +164,7 @@ void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Node const&
 
 void SceneRenderer::draw(vk::CommandBuffer cb, MeshPrimitive const& mesh, BufferView instances) {
 	if (instances.buffer) {
-		cb.bindVertexBuffers(6u, instances.buffer, vk::DeviceSize{0});
+		cb.bindVertexBuffers(mesh.instance_binding(), instances.buffer, vk::DeviceSize{0});
 		mesh.draw(cb, instances.count);
 	} else {
 		mesh.draw(cb, 1u);

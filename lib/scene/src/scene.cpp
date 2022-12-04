@@ -201,7 +201,7 @@ Id<Mesh> Scene::add_unchecked(Mesh mesh) {
 void Scene::check(Mesh const& mesh) const noexcept(false) {
 	for (auto const& primitive : mesh.primitives) {
 		if (primitive.primitive >= m_storage.resources.primitives.size()) {
-			throw Error{fmt::format("Scene {}: Invalid Skinned Mesh Id: {}", m_name, primitive.primitive)};
+			throw Error{fmt::format("Scene {}: Invalid MeshPrimitive Id: {}", m_name, primitive.primitive)};
 		}
 		if (primitive.material && primitive.material->value() >= m_storage.resources.materials.size()) {
 			throw Error{fmt::format("Scene {}: Invalid Material Id: {}", m_name, *primitive.material)};

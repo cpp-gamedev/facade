@@ -106,6 +106,7 @@ MeshPrimitive MeshPrimitive::Builder::operator()(Geometry::Packed const& geometr
 		if (!joints.empty()) { staging.insert(upload(cmd.cb, joints, weights)); }
 	}
 	m_ret.m_vlayout = joints.empty() ? instanced_vertex_layout() : skinned_vertex_layout();
+	m_ret.m_instance_binding = 6u;
 	return std::move(m_ret);
 }
 

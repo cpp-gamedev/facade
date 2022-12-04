@@ -1,8 +1,8 @@
 #pragma once
 #include <facade/vk/defer.hpp>
 #include <facade/vk/geometry.hpp>
-#include <facade/vk/vertex_layout.hpp>
 #include <facade/vk/gfx.hpp>
+#include <facade/vk/vertex_layout.hpp>
 #include <glm/vec4.hpp>
 
 namespace facade {
@@ -19,6 +19,7 @@ class MeshPrimitive {
 	Info info() const;
 	VertexLayout const& vertex_layout() const { return m_vlayout; }
 	bool has_joints() const { return m_jwbo.get().get().size > 0; }
+	std::uint32_t instance_binding() const { return m_instance_binding; }
 
 	void draw(vk::CommandBuffer cb, std::uint32_t instances = 1u) const;
 
@@ -42,6 +43,7 @@ class MeshPrimitive {
 	std::string m_name{};
 	std::uint32_t m_vertices{};
 	std::uint32_t m_indices{};
+	std::uint32_t m_instance_binding{};
 };
 
 class MeshPrimitive::Builder {

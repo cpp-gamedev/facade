@@ -55,14 +55,18 @@ struct Rgb {
 	}
 
 	///
+	/// \brief Obtain only the normalzed tint (no HDR).
+	///
+	constexpr glm::vec4 to_tint(float alpha) const { return glm::vec4{to_f32(channels.x), to_f32(channels.y), to_f32(channels.z), alpha}; }
+	///
 	/// \brief Convert instance to 3 channel normalized output.
 	/// \returns 3 normalized floats
 	///
-	constexpr glm::vec3 to_vec3() const { return intensity * glm::vec3{to_f32(channels.x), to_f32(channels.y), to_f32(channels.z)}; }
+	constexpr glm::vec3 to_vec3() const { return to_vec4(1.0f); }
 	///
 	/// \brief Convert instance to 4 channel normalized output.
 	/// \returns 4 normalized floats
 	///
-	constexpr glm::vec4 to_vec4(float alpha = 1.0f) const { return {to_vec3(), alpha}; }
+	constexpr glm::vec4 to_vec4(float alpha = 1.0f) const { return intensity * to_tint(alpha); }
 };
 } // namespace facade

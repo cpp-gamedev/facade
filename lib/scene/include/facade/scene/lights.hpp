@@ -2,6 +2,7 @@
 #include <facade/util/flex_array.hpp>
 #include <facade/util/nvec3.hpp>
 #include <facade/util/rgb.hpp>
+#include <glm/gtx/quaternion.hpp>
 
 namespace facade {
 ///
@@ -11,7 +12,7 @@ struct DirLight {
 	///
 	/// \brief Direction.
 	///
-	nvec3 direction{-front_v};
+	glm::quat direction{glm::angleAxis(glm::radians(180.0f), up_v)};
 	///
 	/// \brief Colour and intensity.
 	///

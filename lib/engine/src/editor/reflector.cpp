@@ -65,14 +65,17 @@ bool Reflector::operator()(char const* label, glm::quat& out_quat) const {
 	auto euler = to_degree(glm::eulerAngles(out_quat));
 	float deg[3] = {euler.x, euler.y, euler.z};
 	auto const org = euler;
+	bool ret = false;
 	if (drag_float(label, deg, 0.5f, -180.0f, 180.0f, ImGuiSliderFlags_NoInput)) {
 		euler = {deg[0], deg[1], deg[2]};
 		if (auto const diff = org.x - euler.x; std::abs(diff) > 0.0f) { out_quat = glm::rotate(out_quat, glm::radians(diff), right_v); }
 		if (auto const diff = org.y - euler.y; std::abs(diff) > 0.0f) { out_quat = glm::rotate(out_quat, glm::radians(diff), up_v); }
 		if (auto const diff = org.z - euler.z; std::abs(diff) > 0.0f) { out_quat = glm::rotate(out_quat, glm::radians(diff), front_v); }
-		return true;
+		ret = true;
 	}
-	return false;
+	ImGui::SameLine();
+	if (ImGui::SmallButton("Reset")) { out_quat = quat_identity_v; }
+	return ret;
 }
 
 bool Reflector::operator()(char const* label, AsRgb out_rgb) const {
@@ -101,8 +104,6 @@ bool Reflector::operator()(Transform& out_transform, Bool& out_unified_scaling, 
 	if (ret((*this)("Position", vec3, 0.01f))) { out_transform.set_position(vec3); }
 	auto quat = out_transform.orientation();
 	if (ret((*this)("Orientation", quat))) { out_transform.set_orientation(quat); }
-	ImGui::SameLine();
-	if (ImGui::SmallButton("Reset")) { out_transform.set_orientation(quat_identity_v); }
 	vec3 = out_transform.scale();
 	if (out_unified_scaling) {
 		if (ret(ImGui::DragFloat("Scale", &vec3.x, 0.01f))) { out_transform.set_scale({vec3.x, vec3.x, vec3.x}); }

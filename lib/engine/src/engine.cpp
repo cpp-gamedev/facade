@@ -193,13 +193,13 @@ std::optional<Skybox::Data> load_skybox_data(char const* path, AtomicLoadStatus&
 
 	for (auto [face, image] : zip_ranges(faces_v, images)) { image = load_image(json[face].as_string()); }
 
-	if (!std::all_of(std::begin(images), std::end(images), [](MaybeFuture<Image> const& i) { return i.active(); })) {
+	if (!std::all_of(std::begin(images), std::end(images), [](StoredFuture<Image> const& i) { return i.active(); })) {
 		// TODO: error
 		return {};
 	}
 
 	auto ret = Skybox::Data{};
-	for (auto [in, out] : zip_ranges(images, ret.images)) { out = in.get(); }
+	for (auto [in, out] : zip_ranges(images, ret.images)) { out = std::move(in.get()); }
 	return ret;
 }
 

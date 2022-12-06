@@ -67,7 +67,10 @@ struct Scene::TreeBuilder {
 	}
 };
 
-Scene::Scene(Gfx const& gfx) : m_gfx(gfx), m_sampler(gfx) { add_default_camera(); }
+Scene::Scene(Gfx const& gfx) : m_gfx(gfx), m_sampler(gfx) {
+	add_default_camera();
+	add_default_light();
+}
 
 Id<Camera> Scene::add(Camera camera) {
 	auto const id = m_storage.resources.cameras.size();
@@ -188,6 +191,11 @@ void Scene::add_default_camera() {
 	m_tree.roots.push_back(m_storage.resources.nodes.size());
 	m_storage.resources.nodes.m_array.push_back(make_camera_node(add(Camera{.name = "default"})));
 	m_tree.camera = m_tree.cameras.front();
+}
+
+void Scene::add_default_light() {
+	static auto const dir_light_orn = [] { return glm::angleAxis(glm::radians(180.0f + 45.0f), up_v) * glm::angleAxis(glm::radians(45.0f), right_v); }();
+	lights.dir_lights.insert(DirLight{.direction = dir_light_orn, .rgb = {.intensity = 5.0f}});
 }
 
 bool Scene::load_tree(Id<Tree> id) {

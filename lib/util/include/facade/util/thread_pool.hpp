@@ -4,6 +4,7 @@
 #include <future>
 #include <optional>
 #include <thread>
+#include <utility>
 #include <vector>
 
 namespace facade {
@@ -63,26 +64,28 @@ class ThreadPool {
 };
 
 template <typename T>
-struct MaybeFuture {
-	std::future<T> future{};
+struct StoredFuture {
+	std::shared_future<T> future{};
 	std::optional<T> t{};
 
-	MaybeFuture() = default;
+	StoredFuture() = default;
 
 	template <typename F>
 		requires(std::same_as<std::invoke_result_t<F>, T>)
-	MaybeFuture(ThreadPool& pool, F func) : future(pool.enqueue([f = std::move(func)] { return f(); })) {}
+	StoredFuture(ThreadPool& pool, F func) : future(pool.enqueue([f = std::move(func)] { return f(); }).share()) {}
 
 	template <typename F>
 		requires(std::same_as<std::invoke_result_t<F>, T>)
-	explicit MaybeFuture(F func) : t(func()) {}
+	explicit StoredFuture(F func) : t(func()) {}
 
 	bool active() const { return future.valid() || t.has_value(); }
 
-	T get() {
+	T const& get() const {
 		assert(active());
 		if (future.valid()) { return future.get(); }
-		return std::move(*t);
+		return *t;
 	}
+
+	T& get() { return const_cast<T&>(std::as_const(*this).get()); }
 };
 } // namespace facade

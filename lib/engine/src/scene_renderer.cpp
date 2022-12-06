@@ -14,7 +14,7 @@ struct DirLightSSBO {
 
 	static DirLightSSBO make(DirLight const& light) {
 		return {
-			.direction = light.direction.value(),
+			.direction = glm::normalize(light.direction * front_v),
 			.diffuse = light.rgb.to_vec4(),
 		};
 	}

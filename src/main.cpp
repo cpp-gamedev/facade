@@ -57,7 +57,6 @@ void run(AppOpts const& opts) {
 	auto node_id = Id<Node>{};
 	auto post_scene_load = [&engine, &node_id]() {
 		auto& scene = engine->scene();
-		scene.lights.dir_lights.insert(DirLight{.direction = glm::normalize(glm::vec3{-1.0f, -1.0f, -1.0f}), .rgb = {.intensity = 5.0f}});
 		scene.camera().transform.set_position({0.0f, 0.0f, 5.0f});
 
 		auto material = LitMaterial{};

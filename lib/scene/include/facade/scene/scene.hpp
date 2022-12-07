@@ -241,6 +241,7 @@ class Scene {
 
 	Node make_camera_node(Id<Camera> id) const;
 	void add_default_camera();
+	void add_default_camera(TreeImpl& out, Id<Camera> id);
 	void add_default_light();
 	bool load_tree(Id<Tree> id);
 	Id<Mesh> add_unchecked(Mesh mesh);

@@ -74,7 +74,10 @@ bool Reflector::operator()(char const* label, glm::quat& out_quat) const {
 		ret = true;
 	}
 	ImGui::SameLine();
-	if (ImGui::SmallButton("Reset")) { out_quat = quat_identity_v; }
+	if (ImGui::SmallButton("Reset")) {
+		out_quat = quat_identity_v;
+		ret = true;
+	}
 	return ret;
 }
 

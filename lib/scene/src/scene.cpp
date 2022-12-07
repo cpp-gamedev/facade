@@ -34,29 +34,20 @@ struct Img1x1 {
 struct Scene::TreeBuilder {
 	Scene& out_scene;
 
-	bool set_camera(TreeImpl& out_tree, Id<Node> id, std::span<Node const> nodes) const {
+	void add_cameras(TreeImpl& out_tree, Id<Node> id, std::span<Node const> nodes) const {
 		auto& node = nodes[id];
-		if (auto cam = node.find<Camera>()) {
-			out_tree.camera = id;
-			return true;
-		}
-		for (auto const child : node.children) {
-			if (set_camera(out_tree, child, nodes)) { return true; }
-		}
-		return false;
+		if (auto cam = node.find<Camera>()) { out_tree.cameras.push_back(id); }
+		for (auto const child : node.children) { add_cameras(out_tree, child, nodes); }
 	}
 
 	void set_camera(TreeImpl& out_tree, std::span<Node const> nodes) const {
-		for (auto const& id : out_tree.roots) {
-			if (set_camera(out_tree, id, nodes)) { return; }
+		for (auto const& id : out_tree.roots) { add_cameras(out_tree, id, nodes); }
+		if (!out_tree.cameras.empty()) {
+			out_tree.camera = out_tree.cameras.front();
+			return;
 		}
-		auto node = Node{.name = "camera"};
-		node.attach<Camera>(0);
-		auto const id = out_scene.m_storage.resources.nodes.size();
-		out_scene.m_storage.resources.nodes.m_array.push_back(std::move(node));
-		out_tree.roots.push_back(id);
-		out_tree.cameras.push_back(id);
-		out_tree.camera = out_tree.cameras.front();
+		assert(!out_scene.m_storage.resources.cameras.empty());
+		out_scene.add_default_camera(out_tree, 0);
 	}
 
 	TreeImpl operator()(Id<Tree> id) {
@@ -186,12 +177,14 @@ Node Scene::make_camera_node(Id<Camera> id) const {
 	return node;
 }
 
-void Scene::add_default_camera() {
-	m_tree.cameras.push_back(m_storage.resources.nodes.size());
-	m_tree.roots.push_back(m_storage.resources.nodes.size());
-	m_storage.resources.nodes.m_array.push_back(make_camera_node(add(Camera{.name = "default"})));
-	m_tree.camera = m_tree.cameras.front();
+void Scene::add_default_camera(TreeImpl& out, Id<Camera> id) {
+	auto const node = add(make_camera_node(id));
+	out.roots.push_back(node);
+	out.cameras.push_back(node);
+	out.camera = out.cameras.front();
 }
+
+void Scene::add_default_camera() { add_default_camera(m_tree, add(Camera{.name = "default"})); }
 
 void Scene::add_default_light() {
 	static auto const dir_light_orn = [] { return glm::angleAxis(glm::radians(180.0f + 45.0f), up_v) * glm::angleAxis(glm::radians(45.0f), right_v); }();

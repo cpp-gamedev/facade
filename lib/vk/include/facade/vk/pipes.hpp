@@ -10,9 +10,6 @@
 #include <unordered_map>
 
 namespace facade {
-struct DrawInstance;
-class StaticMesh;
-
 class Pipes {
   public:
 	using State = Pipeline::State;

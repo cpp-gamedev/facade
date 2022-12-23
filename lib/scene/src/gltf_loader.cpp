@@ -328,9 +328,17 @@ bool Scene::GltfLoader::operator()(dj::Json const& json, DataProvider const& pro
 	m_status.total = 1 + meta.images + meta.textures + meta.primitives + 1;
 	m_status.stage = LoadStage::eParsingJson;
 
-	auto get_bytes = [&provider](std::string_view uri) {
+	auto loaded_bytes = std::unordered_map<std::string, ByteBuffer>{};
+	auto loaded_mutex = std::mutex{};
+	auto get_bytes = [&](std::string_view uri) {
+		auto str = std::string{uri};
+		auto lock = std::unique_lock{loaded_mutex};
+		if (auto it = loaded_bytes.find(str); it != loaded_bytes.end()) { return it->second.span(); }
+		lock.unlock();
 		auto ret = provider.load(uri);
-		return gltf2cpp::ByteArray{std::move(ret.bytes), ret.size};
+		lock.lock();
+		auto [it, _] = loaded_bytes.insert_or_assign(str, std::move(ret));
+		return it->second.span();
 	};
 
 	auto root = parser.parse(get_bytes);

@@ -147,8 +147,8 @@ void SceneRenderer::render(Renderer& renderer, vk::CommandBuffer cb, Node const&
 			update_view(pipeline);
 			material.write_sets(pipeline, store);
 
-			if (mesh_primitive.has_joints()) {
-				auto& set3 = pipeline.next_set(3);
+			if (auto const joints_set = mesh_primitive.joints_set()) {
+				auto& set3 = pipeline.next_set(*joints_set);
 				set3.update(0, make_joint_mats(resources.skins[*node.find<Skin>()], parent));
 				pipeline.bind(set3);
 				draw(cb, mesh_primitive, {});

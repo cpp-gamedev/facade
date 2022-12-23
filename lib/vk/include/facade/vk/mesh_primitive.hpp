@@ -4,6 +4,7 @@
 #include <facade/vk/gfx.hpp>
 #include <facade/vk/vertex_layout.hpp>
 #include <glm/vec4.hpp>
+#include <optional>
 
 namespace facade {
 struct MeshJoints {
@@ -27,6 +28,7 @@ class MeshPrimitive {
 	Info info() const;
 	VertexLayout const& vertex_layout() const { return m_vlayout; }
 	bool has_joints() const { return m_jwbo.get().get().size > 0; }
+	std::optional<std::uint32_t> joints_set() const { return m_jwbo.get().get().size > 0 ? std::optional<std::uint32_t>{3} : std::nullopt; }
 	std::uint32_t instance_binding() const { return m_instance_binding; }
 
 	void draw(vk::CommandBuffer cb, std::uint32_t instances = 1u) const;

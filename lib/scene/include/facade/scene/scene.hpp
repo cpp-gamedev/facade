@@ -191,6 +191,12 @@ class Scene {
 	Texture make_texture(Image::View image) const;
 
 	///
+	/// \brief Update animations and corresponding nodes.
+	/// \param dt Duration to advance simulation by (time since last call to tick)
+	///
+	void tick(float dt);
+
+	///
 	/// \brief Obtain a mutable reference to the scene's resources.
 	/// \returns Mutable reference to SceneResources
 	///
@@ -210,12 +216,6 @@ class Scene {
 	/// \brief Render mode.
 	///
 	RenderMode render_mode{};
-
-	///
-	/// \brief Update animations and corresponding nodes.
-	/// \param dt Duration to advance simulation by (time since last call to tick)
-	///
-	void tick(float dt);
 
   private:
 	struct TreeBuilder;
@@ -241,6 +241,8 @@ class Scene {
 
 	Node make_camera_node(Id<Camera> id) const;
 	void add_default_camera();
+	void add_default_camera(TreeImpl& out, Id<Camera> id);
+	void add_default_light();
 	bool load_tree(Id<Tree> id);
 	Id<Mesh> add_unchecked(Mesh mesh);
 

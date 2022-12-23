@@ -313,10 +313,10 @@ auto make_load_future(ThreadPool* pool, std::atomic<std::size_t>& out_done, F fu
 }
 
 template <typename T>
-std::vector<T> from_maybe_futures(std::vector<MaybeFuture<T>>&& futures) {
+std::vector<T> from_stored(std::vector<StoredFuture<T>>&& futures) {
 	auto ret = std::vector<T>{};
 	ret.reserve(futures.size());
-	for (auto& future : futures) { ret.push_back(future.get()); }
+	for (auto& future : futures) { ret.push_back(std::move(future.get())); }
 	return ret;
 }
 } // namespace
@@ -328,9 +328,17 @@ bool Scene::GltfLoader::operator()(dj::Json const& json, DataProvider const& pro
 	m_status.total = 1 + meta.images + meta.textures + meta.primitives + 1;
 	m_status.stage = LoadStage::eParsingJson;
 
-	auto get_bytes = [&provider](std::string_view uri) {
+	auto loaded_bytes = std::unordered_map<std::string, ByteBuffer>{};
+	auto loaded_mutex = std::mutex{};
+	auto get_bytes = [&](std::string_view uri) {
+		auto str = std::string{uri};
+		auto lock = std::unique_lock{loaded_mutex};
+		if (auto it = loaded_bytes.find(str); it != loaded_bytes.end()) { return it->second.span(); }
+		lock.unlock();
 		auto ret = provider.load(uri);
-		return gltf2cpp::ByteArray{std::move(ret.bytes), ret.size};
+		lock.lock();
+		auto [it, _] = loaded_bytes.insert_or_assign(str, std::move(ret));
+		return it->second.span();
 	};
 
 	auto root = parser.parse(get_bytes);
@@ -341,11 +349,11 @@ bool Scene::GltfLoader::operator()(dj::Json const& json, DataProvider const& pro
 	m_status.stage = LoadStage::eUploadingResources;
 	m_scene.m_storage = {};
 
-	auto image_futures = std::vector<MaybeFuture<Image>>{};
-	image_futures.reserve(root.images.size());
+	auto images = std::vector<StoredFuture<Image>>{};
+	images.reserve(root.images.size());
 	for (auto& image : root.images) {
 		assert(!image.bytes.empty());
-		image_futures.push_back(make_load_future(thread_pool, m_status.done, [i = std::move(image)] { return Image{i.bytes.span(), std::move(i.name)}; }));
+		images.push_back(make_load_future(thread_pool, m_status.done, [i = std::move(image)] { return Image{i.bytes.span(), std::move(i.name)}; }));
 	}
 
 	for (auto const& sampler : root.samplers) { m_scene.add(to_sampler_info(sampler)); }
@@ -354,19 +362,18 @@ bool Scene::GltfLoader::operator()(dj::Json const& json, DataProvider const& pro
 		return m_scene.m_storage.resources.samplers[*sampler_id].sampler();
 	};
 
-	auto textures = std::vector<MaybeFuture<Texture>>{};
+	auto textures = std::vector<StoredFuture<Texture>>{};
 	textures.reserve(root.textures.size());
-	auto const images = from_maybe_futures(std::move(image_futures));
 	for (auto& texture : root.textures) {
 		textures.push_back(make_load_future(thread_pool, m_status.done, [texture = std::move(texture), &images, &get_sampler, this] {
 			bool const mip_mapped = !texture.linear;
 			auto const colour_space = texture.linear ? ColourSpace::eLinear : ColourSpace::eSrgb;
 			auto const tci = Texture::CreateInfo{.name = std::move(texture.name), .mip_mapped = mip_mapped, .colour_space = colour_space};
-			return Texture{m_scene.m_gfx, get_sampler(texture.sampler), images[texture.source], tci};
+			return Texture{m_scene.m_gfx, get_sampler(texture.sampler), images[texture.source].get(), tci};
 		}));
 	}
 
-	auto mesh_primitives = std::vector<MaybeFuture<MeshPrimitive>>{};
+	auto mesh_primitives = std::vector<StoredFuture<MeshPrimitive>>{};
 	auto mesh_layout = to_mesh_layout(root);
 	mesh_primitives.reserve(mesh_layout.primitives.size());
 	for (auto& data : mesh_layout.data) {
@@ -384,8 +391,8 @@ bool Scene::GltfLoader::operator()(dj::Json const& json, DataProvider const& pro
 
 	m_scene.m_storage.resources.nodes.m_array = to_nodes(root.nodes);
 
-	m_scene.replace(from_maybe_futures(std::move(textures)));
-	m_scene.replace(from_maybe_futures(std::move(mesh_primitives)));
+	m_scene.replace(from_stored(std::move(textures)));
+	m_scene.replace(from_stored(std::move(mesh_primitives)));
 
 	m_status.stage = LoadStage::eBuildingScenes;
 	if (root.cameras.empty()) {

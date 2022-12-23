@@ -54,39 +54,16 @@ void run(AppOpts const& opts) {
 	engine_info.desired_msaa = config.config.window.msaa;
 	engine_info.force_thread_count = opts.force_threads;
 
-	auto node_id = Id<Node>{};
-	auto post_scene_load = [&engine, &node_id]() {
-		auto& scene = engine->scene();
-		scene.lights.dir_lights.insert(DirLight{.direction = glm::normalize(glm::vec3{-1.0f, -1.0f, -1.0f}), .rgb = {.intensity = 5.0f}});
-		scene.camera().transform.set_position({0.0f, 0.0f, 5.0f});
-
-		auto material = LitMaterial{};
-		material.albedo = {1.0f, 0.0f, 0.0f};
-		auto material_id = scene.add(Material{std::move(material), "custom"});
-		auto primitive_id = scene.add(Geometry::Packed::from(make_cubed_sphere(1.0f, 32)));
-		auto mesh_id = scene.add(Mesh{.primitives = {Mesh::Primitive{.primitive = primitive_id, .material = material_id}}});
-
-		auto node = Node{};
-		node.attach(mesh_id);
-		node.instances.emplace_back().set_position({1.0f, -5.0f, -20.0f});
-		node.instances.emplace_back().set_position({-1.0f, 1.0f, 0.0f});
-		node_id = scene.add(std::move(node));
-	};
-
 	auto init = [&] {
 		engine.emplace(engine_info);
 		if (config.config.window.position) { glfwSetWindowPos(engine->window(), config.config.window.position->x, config.config.window.position->y); }
 		log_prologue();
 
 		engine->add_shaders(vert::default_(), vert::skinned(), frag::unlit(), frag::lit(), frag::skybox());
-
-		post_scene_load();
 		engine->show(true);
 	};
 
 	init();
-
-	float const drot_z[] = {100.0f, -150.0f};
 
 	auto file_menu = FileMenu{};
 	auto window_menu = WindowMenu{};
@@ -98,8 +75,8 @@ void run(AppOpts const& opts) {
 		std::string title{};
 	} loading{};
 
-	auto load_async = [&engine, &file_menu, &loading, &post_scene_load, &config](fs::path const& path) {
-		if (engine->load_async(path.generic_string(), post_scene_load)) {
+	auto load_async = [&engine, &file_menu, &loading, &config](fs::path const& path) {
+		if (engine->load_async(path.generic_string())) {
 			loading.title = fmt::format("Loading {}...", path.filename().generic_string());
 			file_menu.add_recent(path.generic_string());
 			config.config.file_menu.recents = {file_menu.recents().begin(), file_menu.recents().end()};
@@ -156,21 +133,6 @@ void run(AppOpts const& opts) {
 		if (auto path = path_sources.update(); !path.empty()) { load_async(std::move(path)); }
 
 		config.update(*engine);
-
-		// TEMP CODE
-		if (!ImGui::GetIO().WantTextInput && input.keyboard.pressed(GLFW_KEY_R)) {
-			logger::info("Reloading...");
-			engine.reset();
-			init();
-			continue;
-		}
-
-		if (auto* node = engine->scene().resources().nodes.find(node_id); node && node->instances.size() > 1) {
-			node->instances[0].rotate(glm::radians(drot_z[0]) * dt, {0.0f, 1.0f, 0.0f});
-			node->instances[1].rotate(glm::radians(drot_z[1]) * dt, {1.0f, 0.0f, 0.0f});
-		}
-		// TEMP CODE
-
 		engine->render();
 	}
 }

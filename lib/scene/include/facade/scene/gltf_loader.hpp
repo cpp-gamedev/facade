@@ -21,19 +21,19 @@ struct AtomicLoadStatus {
 };
 
 template <typename T>
-struct LoadFuture : MaybeFuture<T> {
+struct LoadFuture : StoredFuture<T> {
 	LoadFuture() = default;
 
 	template <typename F>
 	LoadFuture(ThreadPool& pool, std::atomic<std::size_t>& post_increment, F func)
-		: MaybeFuture<T>(pool, [&post_increment, f = std::move(func)] {
+		: StoredFuture<T>(pool, [&post_increment, f = std::move(func)] {
 			  auto ret = f();
 			  ++post_increment;
 			  return ret;
 		  }) {}
 
 	template <typename F>
-	LoadFuture(std::atomic<std::size_t>& post_increment, F func) : MaybeFuture<T>(std::move(func)) {
+	LoadFuture(std::atomic<std::size_t>& post_increment, F func) : StoredFuture<T>(std::move(func)) {
 		++post_increment;
 	}
 };
